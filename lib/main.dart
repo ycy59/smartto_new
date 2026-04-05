@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'screens/main_screen.dart';
+import 'package:smartto_new/screens/main_screen.dart';
+import 'screens/home_shell.dart';
 
 void main() {
   runApp(const SmarttoApp());
@@ -14,7 +15,7 @@ class SmarttoApp extends StatelessWidget {
       title: 'Smartto',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: const Color(0xFFF6F6F3),
+        scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
       home: const OnboardingScreen(),
@@ -163,7 +164,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             nickname: nicknameController.text.trim(),
             selectedStudyTime: selectedStudyTime,
           ),
-          const SizedBox.shrink(),
         ],
       ),
     ),
@@ -217,16 +217,14 @@ class _SplashPageState extends State<SplashPage> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        widget.onFinished();
-      }
+      if (mounted) widget.onFinished();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFFEF6EF), // ✅ 배경색 변경
+      color: Colors.white, // ✅ 배경색 변경
       child: Center(
         child: Stack(
           alignment: Alignment.center,
@@ -243,7 +241,7 @@ class _SplashPageState extends State<SplashPage> {
 
             // 🍃 꼭지 (위쪽)
             Positioned(
-              top: 110,
+              top: 98,
               child: Transform.rotate(
                 angle: -0.2,
                 child: const Icon(
@@ -267,7 +265,7 @@ class _SplashPageState extends State<SplashPage> {
                     letterSpacing: 1,
                   ),
                 ),
-                SizedBox(height: 6),
+                SizedBox(height: 8),
                 Text(
                   'Focus Your Study',
                   style: TextStyle(
@@ -291,12 +289,12 @@ class IntroGuidePage extends StatelessWidget {
   const IntroGuidePage({
     super.key,
     required this.onStart,
-    });
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFFFEF6EF),
+      color: Colors.white,
       child: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -309,25 +307,18 @@ class IntroGuidePage extends StatelessWidget {
                   const Spacer(),
                   Column(
                     children: [
-                      Container(
-                        width: 110,
-                        height: 110,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Color(0xFFD95C4F),
-                        ),
-                        alignment: Alignment.center,
-                        child: const Text(
-                          '🍅',
-                          style: TextStyle(fontSize: 56),
-                        ),
+                      Image.asset(
+                        'assets/images/tomato_glasses.png',
+                        width: 130,
+                        height: 130,
+                        fit: BoxFit.contain,
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
                       const Text(
                         'SMARTTO가 당신의 집중 상태를',
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: Color(0xFF222222),
                         ),
                       ),
@@ -336,7 +327,7 @@ class IntroGuidePage extends StatelessWidget {
                         '실시간으로 분석해 최적의 학습 리듬을 만들어드려요',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w500,
                           color: Color(0xFF444444),
                         ),
@@ -362,7 +353,7 @@ class IntroGuidePage extends StatelessWidget {
                         backgroundColor: const Color(0xFFF4A261),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         elevation: 0,
                       ),
@@ -437,24 +428,24 @@ class NicknamePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PlaceholderImageBox(size: 36),
-          const SizedBox(height: 20),
+          const PlaceholderImageBox(size: 40),
+          const SizedBox(height: 24),
           const Text(
             '사용할 닉네임을 설정해 주세요',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: Color(0xFF232323),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
           TextField(
             controller: controller,
             onChanged: onChanged,
             decoration: const InputDecoration(
               hintText: '이름 또는 닉네임 입력',
               hintStyle: TextStyle(
-                color: Color(0xFFB3B3B3),
+                color: Color(0xFFBDBDBD),
                 fontSize: 13,
               ),
               enabledBorder: UnderlineInputBorder(
@@ -503,45 +494,45 @@ class PurposePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PlaceholderImageBox(size: 36),
-          const SizedBox(height: 20),
+          const PlaceholderImageBox(size: 40),
+          const SizedBox(height: 24),
           const Text(
             '어떤 목적으로 공부하시나요?',
             style: TextStyle(
               fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
               color: Color(0xFF232323),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 26),
           ...options.map((option) {
             final title = option['title']!;
             final subtitle = option['subtitle']!;
             final isSelected = selectedPurpose == title;
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 14),
               child: GestureDetector(
                 onTap: () => onSelect(title),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
+                    horizontal: 14,
+                    vertical: 14,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? const Color(0xFFFFF3E8)
+                        ? const Color(0xFFFFF5EB)
                         : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isSelected
                           ? const Color(0xFFF4A261)
-                          : const Color(0xFFE4E4E4),
+                          : const Color(0xFFE3E3E3),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const PlaceholderImageBox(size: 24),
+                      const PlaceholderImageBox(size: 28),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -550,19 +541,19 @@ class PurposePage extends StatelessWidget {
                             Text(
                               title,
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w700,
                                 color: isSelected
                                     ? const Color(0xFFF4A261)
                                     : const Color(0xFF222222),
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Text(
                               subtitle,
                               style: const TextStyle(
-                                fontSize: 11,
-                                color: Color(0xFF999999),
+                                fontSize: 12,
+                                color: Color(0xFF9C9C9C),
                               ),
                             ),
                           ],
@@ -607,86 +598,64 @@ class StudyTimePage extends StatelessWidget {
     return OnboardingLayout(
       stepIndex: 2,
       onBack: onBack,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const PlaceholderImageBox(size: 36),
-            const SizedBox(height: 20),
-            const Text(
-              '목표를 설정해 주세요',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF232323),
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const PlaceholderImageBox(size: 40),
+          const SizedBox(height: 24),
+          const Text(
+            '목표를 설정해 주세요',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF232323),
             ),
-            const SizedBox(height: 22),
-            GridView.builder(
-              shrinkWrap: true,
-              itemCount: options.length,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 14,
-                crossAxisSpacing: 14,
-                childAspectRatio: 1.0,
-              ),
-              itemBuilder: (context, index) {
-                final option = options[index];
-                final isSelected = selectedTime == option;
+          ),
+          const SizedBox(height: 26),
+          GridView.builder(
+            shrinkWrap: true,
+            itemCount: options.length,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.45,
+            ),
+            itemBuilder: (context, index) {
+              final option = options[index];
+              final isSelected = selectedTime == option;
 
-                return GestureDetector(
-                  onTap: () => onSelect(option),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAF8),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFFF4A261)
-                            : const Color(0xFFE6D2BF),
-                        width: isSelected ? 2 : 1.2,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 64,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: const Color(0xFFD9D9D9),
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Icon(
-                            Icons.image_outlined,
-                            size: 18,
-                            color: Color(0xFFBDBDBD),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          option,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: isSelected
-                                ? const Color(0xFFF4A261)
-                                : const Color(0xFF333333),
-                          ),
-                        ),
-                      ],
+              return GestureDetector(
+                onTap: () => onSelect(option),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFFF4A261)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFFF4A261)
+                          : const Color(0xFFE7E7E7),
                     ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    option,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF222222),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -704,124 +673,60 @@ class CompletePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          Row(
-            children: const [
-              SizedBox(width: 16),
-              Expanded(
-                child: SizedBox(
-                  height: 4,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF4A261),
-                      borderRadius: BorderRadius.all(Radius.circular(999)),
+    return Container(
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 40, 24, 24),
+        child: Column(
+          children: [
+            const Spacer(),
+            const Text(
+              '🎉',
+              style: TextStyle(fontSize: 62),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              '준비 완료!',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF222222),
+              ),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HomeShell(
+                        nickname: nickname,
+                      ),
                     ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF4A261),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  '첫 과목 추가하기',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 4,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF4A261),
-                      borderRadius: BorderRadius.all(Radius.circular(999)),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 4,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Color(0xFFF4A261),
-                      borderRadius: BorderRadius.all(Radius.circular(999)),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Container(
-            width: 160,
-            height: 160,
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFD9D9D9)),
             ),
-            child: const Icon(
-              Icons.image_outlined,
-              size: 42,
-              color: Color(0xFFC7C7C7),
-            ),
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            '준비 완료!',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF222222),
-            ),
-          ),
-          const SizedBox(height: 22),
-          Container(
-            width: 170,
-            height: 8,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            width: 170,
-            height: 8,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
-              borderRadius: BorderRadius.circular(999),
-            ),
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MainScreen(
-                      nickname: nickname,
-                    ),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF4A261),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                '첫 과목 추가하기',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -865,8 +770,7 @@ class OnboardingLayout extends StatelessWidget {
             children: [
               GestureDetector(
                 onTap: onBack,
-                child: 
-                const Icon(
+                child: const Icon(
                   Icons.arrow_back_ios_new,
                   size: 16,
                   color: Color(0xFF333333),
@@ -903,7 +807,7 @@ class PlaceholderImageBox extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: const Color(0xFF2D2D37),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: const Icon(
         Icons.image_outlined,

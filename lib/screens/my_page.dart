@@ -7,11 +7,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 class MyPage extends StatefulWidget {
   final String initialNickname;
   final String? initialProfileImagePath;
+  final void Function({
+    required String nickname,
+    String? profileImagePath,
+  }) onProfileUpdated;
 
   const MyPage({
     super.key,
     required this.initialNickname,
     this.initialProfileImagePath,
+    required this.onProfileUpdated,
   });
 
   @override
@@ -89,9 +94,13 @@ class _MyPageState extends State<MyPage> {
 
     if (!mounted) return;
 
-    Navigator.pop(context, {
-      'nickname': newNickname,
-      'profileImagePath': _profileImagePath,
+    widget.onProfileUpdated(
+      nickname: newNickname,
+      profileImagePath: _profileImagePath,
+    );
+
+    setState(() {
+      _currentNickname = newNickname;
     });
   }
 
@@ -102,7 +111,7 @@ class _MyPageState extends State<MyPage> {
         : _nicknameController.text.trim();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFBF0),
+      backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -114,26 +123,12 @@ class _MyPageState extends State<MyPage> {
                   const SizedBox(height: 8),
                   const _MyPageStatusBar(),
                   const SizedBox(height: 14),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                        onTap: () {
-                        Navigator.pop(context);
-                        },
-                        child: const Icon(
-                        Icons.arrow_back_ios_new,
-                        size: 18,
-                        color: Colors.black,
-                        ),
-                    ),
-                    ),
-                    const SizedBox(height: 20),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       CircleAvatar(
                         radius: 32,
-                        backgroundColor: const Color(0xFF15100D),
+                        backgroundColor: const Color(0xFF1C1C1C),
                         backgroundImage: _profileImagePath != null
                             ? FileImage(File(_profileImagePath!))
                             : null,
@@ -164,8 +159,7 @@ class _MyPageState extends State<MyPage> {
                     child: OutlinedButton(
                       onPressed: _pickProfileImage,
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFD6D6D6)),
-                        foregroundColor: const Color(0xFF666666),
+                        side: const BorderSide(color: Color(0xFFE0E0E0)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -176,7 +170,10 @@ class _MyPageState extends State<MyPage> {
                       ),
                       child: const Text(
                         '프로필 이미지 수정',
-                        style: TextStyle(fontSize: 11),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF666666),
+                        ),
                       ),
                     ),
                   ),
@@ -196,7 +193,7 @@ class _MyPageState extends State<MyPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF0EFEB),
+                      color: const Color(0xFFD9D9D9),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Row(
@@ -235,21 +232,22 @@ class _MyPageState extends State<MyPage> {
                     child: ElevatedButton(
                       onPressed: _saveNickname,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFBE8E7),
-                        foregroundColor: const Color(0xFFD49AA0),
+                        backgroundColor: const Color(0xFFF6E1DF),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                           side: const BorderSide(
-                            color: Color(0xFFE6B7BC),
+                            color: Color(0xFFF299B2),
+                            width: 1,
                           ),
                         ),
-                        elevation: 0,
                       ),
                       child: const Text(
                         '저장하기',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
+                          color: Color(0xFFD49AA0),
                         ),
                       ),
                     ),
@@ -301,16 +299,26 @@ class _MyPageBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 72,
+    return Container(
+      height: 68,
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF0F0F0),
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE5E5E5),
+            width: 1,
+          ),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: const [
           _NavIcon(icon: Icons.home, label: 'Home', active: true),
           _NavIcon(icon: Icons.calendar_month, label: 'Calendar'),
-          _PomodoroIcon(),
+          _TomatoNavItem(),
           _NavIcon(icon: Icons.bar_chart, label: 'Report'),
-          _NavIcon(icon: Icons.subject, label: 'Subject'),
+          _NavIcon(icon: Icons.square_rounded, label: 'Subject'),
         ],
       ),
     );
@@ -330,19 +338,22 @@ class _NavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? const Color(0xFF5A3D2C) : const Color(0xFFB8B8B8);
+    final color = active
+        ? const Color(0xFFE08C84)
+        : const Color(0xFFC8C8C8);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 4),
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 2),
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             color: color,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -350,35 +361,39 @@ class _NavIcon extends StatelessWidget {
   }
 }
 
-class _PomodoroIcon extends StatelessWidget {
-  const _PomodoroIcon();
+class _TomatoNavItem extends StatelessWidget {
+  const _TomatoNavItem();
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 44,
-          height: 44,
-          decoration: const BoxDecoration(
-            color: Color(0xFFD94C43),
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
+            color: Colors.white,
+            border: Border.all(
+              color: const Color(0xFFE7D9CC),
+              width: 1,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x14000000),
+                blurRadius: 4,
+                offset: Offset(0, 1),
+              ),
+            ],
           ),
-          alignment: Alignment.center,
-          child: const Text(
-            '🍅',
-            style: TextStyle(fontSize: 24),
-          ),
-        ),
-        const SizedBox(height: 2),
-        const Text(
-          '토마토\n(뽀모도로)',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 9,
-            color: Color(0xFF7C7C7C),
-            height: 1.0,
+          padding: const EdgeInsets.all(2),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/tomato_glasses.png',
+              fit: BoxFit.cover,
+            ),
           ),
         ),
       ],
