@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'subject_page.dart';
 
 class MyPage extends StatefulWidget {
   final String initialNickname;
@@ -11,12 +12,16 @@ class MyPage extends StatefulWidget {
     required String nickname,
     String? profileImagePath,
   }) onProfileUpdated;
+  final int currentIndex;
+  final ValueChanged<int> onTapNav;
 
   const MyPage({
     super.key,
     required this.initialNickname,
     this.initialProfileImagePath,
     required this.onProfileUpdated,
+    required this.currentIndex,
+    required this.onTapNav,
   });
 
   @override
@@ -253,7 +258,10 @@ class _MyPageState extends State<MyPage> {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  const _MyPageBottomNav(),
+                  _MyPageBottomNav(
+                    currentIndex: widget.currentIndex,
+                    onTapNav: widget.onTapNav,
+                  ),
                 ],
               ),
             ),
@@ -295,12 +303,18 @@ class _MyPageStatusBar extends StatelessWidget {
 }
 
 class _MyPageBottomNav extends StatelessWidget {
-  const _MyPageBottomNav();
+  final int currentIndex;
+  final ValueChanged<int> onTapNav;
+
+  const _MyPageBottomNav({
+    required this.currentIndex,
+    required this.onTapNav,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 68,
+      height: 64,
       padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
       decoration: const BoxDecoration(
         color: Color(0xFFF0F0F0),
@@ -313,12 +327,42 @@ class _MyPageBottomNav extends StatelessWidget {
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: const [
-          _NavIcon(icon: Icons.home, label: 'Home', active: true),
-          _NavIcon(icon: Icons.calendar_month, label: 'Calendar'),
-          _TomatoNavItem(),
-          _NavIcon(icon: Icons.bar_chart, label: 'Report'),
-          _NavIcon(icon: Icons.square_rounded, label: 'Subject'),
+        children: [
+          _NavIcon(
+            icon: Icons.home,
+            label: 'Home',
+            active: currentIndex == 0,
+            onTap: () => onTapNav(0),
+          ),
+          _NavIcon(
+            icon: Icons.calendar_month,
+            label: 'Calendar',
+            active: false,
+            onTap: () {},
+          ),
+          const _TomatoNavItem(),
+          _NavIcon(
+            icon: Icons.bar_chart,
+            label: 'Report',
+            active: false,
+            onTap: () {},
+          ),
+          _NavIcon(
+            icon: Icons.book,
+            label: 'Subject',
+            active: false,
+            onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => SubjectPageShell(
+                            currentIndex: 2,
+                            onTapNav: (_) {},
+                        )
+                    )
+                );
+            }
+          ),
         ],
       ),
     );
@@ -329,34 +373,38 @@ class _NavIcon extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final VoidCallback onTap;
 
   const _NavIcon({
     required this.icon,
     required this.label,
+    required this.onTap,
     this.active = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = active
-        ? const Color(0xFFE08C84)
-        : const Color(0xFFC8C8C8);
+    final color =
+        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: color,
-            fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -371,11 +419,11 @@ class _TomatoNavItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white,
+            color: Colors.transparent,
             border: Border.all(
               color: const Color(0xFFE7D9CC),
               width: 1,

@@ -16,6 +16,8 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   late final PageController _pageController;
+
+  int currentIndex = 0;
   String currentNickname = '';
   String? currentProfileImagePath;
 
@@ -24,6 +26,24 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     currentNickname = widget.nickname;
     _pageController = PageController(initialPage: 0);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void moveToPage(int index) {
+    setState(() {
+      currentIndex = index;
+    });
+
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
   }
 
   void updateProfile({
@@ -40,15 +60,24 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     return PageView(
       controller: _pageController,
+      onPageChanged: (index) {
+        setState(() {
+          currentIndex = index;
+        });
+      },
       children: [
         MainScreen(
           nickname: currentNickname,
           profileImagePath: currentProfileImagePath,
+          currentIndex: currentIndex,
+          onTapNav: moveToPage,
         ),
         MyPage(
           initialNickname: currentNickname,
           initialProfileImagePath: currentProfileImagePath,
           onProfileUpdated: updateProfile,
+          currentIndex: currentIndex,
+          onTapNav: moveToPage,
         ),
       ],
     );

@@ -40,9 +40,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String selectedStudyTime = '';
 
   final List<Map<String, String>> purposeOptions = const [
-    {'title': '대학생', 'subtitle': '수능 · 시험 · 시험'},
-    {'title': '수험생', 'subtitle': '자격증 · 공무원'},
-    {'title': '자기계발', 'subtitle': '자유 학습'},
+    {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.jpg'},
+    {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.jpg'},
+    {'title': '자기계발', 'subtitle': '지격증 · 언어', 'icon': 'assets/images/icon_growth.jpg'},
   ];
 
   final List<String> timeOptions = const ['1시간', '2시간', '4시간', '5시간+'];
@@ -202,82 +202,91 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
 class SplashPage extends StatefulWidget {
   final VoidCallback onFinished;
-
-  const SplashPage({
-    super.key,
-    required this.onFinished,
-  });
+  const SplashPage({super.key, required this.onFinished});
 
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> {
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _fade;
+  late Animation<double> _scale;
+
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _fade = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
+    );
+    _scale = Tween<double>(begin: 0.85, end: 1).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack),
+    );
+    _ctrl.forward();
+
+    Future.delayed(const Duration(milliseconds: 2600), () {
       if (mounted) widget.onFinished();
     });
   }
 
   @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white, // ✅ 배경색 변경
-      child: Center(
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // 🍅 토마토 (뒤 배경)
-            Container(
-              width: 260,
-              height: 260,
-              decoration: const BoxDecoration(
-                color: Color(0xFFD98C8C), // 토마토 색
-                shape: BoxShape.circle,
+      color: const Color(0xFFFFFFFF),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // 배경 토마토 — 투명도 적용
+          Opacity(
+            opacity: 0.14,
+            child: Image.asset(
+              'assets/images/tomato_splash.png',
+              width: double.infinity,
+              fit: BoxFit.fitWidth,
+            ),
+          ),
+          // 텍스트 애니메이션
+          FadeTransition(
+            opacity: _fade,
+            child: ScaleTransition(
+              scale: _scale,
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'SMARTTO',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF1A1A1A),
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Focus Your Study',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Color(0xFF888888),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
             ),
-
-            // 🍃 꼭지 (위쪽)
-            Positioned(
-              top: 98,
-              child: Transform.rotate(
-                angle: -0.2,
-                child: const Icon(
-                  Icons.eco,
-                  size: 90,
-                  color: Color(0xFFA8C686),
-                ),
-              ),
-            ),
-
-            // 📝 텍스트
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text(
-                  'SMARTTO',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black,
-                    letterSpacing: 1,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Focus Your Study',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFF444444),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -309,8 +318,8 @@ class IntroGuidePage extends StatelessWidget {
                     children: [
                       Image.asset(
                         'assets/images/tomato_glasses.png',
-                        width: 130,
-                        height: 130,
+                        width: 150,
+                        height: 150,
                         fit: BoxFit.contain,
                       ),
                       const SizedBox(height: 18),
@@ -428,8 +437,6 @@ class NicknamePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PlaceholderImageBox(size: 40),
-          const SizedBox(height: 24),
           const Text(
             '사용할 닉네임을 설정해 주세요',
             style: TextStyle(
@@ -494,8 +501,7 @@ class PurposePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PlaceholderImageBox(size: 40),
-          const SizedBox(height: 24),
+          // ✅ 상단 아이콘 박스 제거
           const Text(
             '어떤 목적으로 공부하시나요?',
             style: TextStyle(
@@ -508,6 +514,7 @@ class PurposePage extends StatelessWidget {
           ...options.map((option) {
             final title = option['title']!;
             final subtitle = option['subtitle']!;
+            final iconPath = option['icon']!;
             final isSelected = selectedPurpose == title;
 
             return Padding(
@@ -532,7 +539,12 @@ class PurposePage extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const PlaceholderImageBox(size: 28),
+                      // ✅ 실제 이미지 아이콘
+                      Image.asset(
+                        iconPath,
+                        width: 36,
+                        height: 36,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -541,14 +553,14 @@ class PurposePage extends StatelessWidget {
                             Text(
                               title,
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: isSelected
                                     ? const Color(0xFFF4A261)
                                     : const Color(0xFF222222),
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 3),
                             Text(
                               subtitle,
                               style: const TextStyle(
@@ -601,8 +613,6 @@ class StudyTimePage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const PlaceholderImageBox(size: 40),
-          const SizedBox(height: 24),
           const Text(
             '목표를 설정해 주세요',
             style: TextStyle(
@@ -784,35 +794,10 @@ class OnboardingLayout extends StatelessWidget {
               bar(stepIndex >= 2),
             ],
           ),
-          const SizedBox(height: 36),
+          const Spacer(),
           child,
+          const Spacer(),
         ],
-      ),
-    );
-  }
-}
-
-class PlaceholderImageBox extends StatelessWidget {
-  final double size;
-
-  const PlaceholderImageBox({
-    super.key,
-    required this.size,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D2D37),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Icon(
-        Icons.image_outlined,
-        color: Colors.white,
-        size: 18,
       ),
     );
   }

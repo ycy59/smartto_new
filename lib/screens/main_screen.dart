@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'subject_page.dart';
 
 class MainScreen extends StatelessWidget {
   final String nickname;
   final String? profileImagePath;
+  final int currentIndex;
+  final ValueChanged<int> onTapNav;
 
   const MainScreen({
     super.key,
     required this.nickname,
     this.profileImagePath,
+    required this.currentIndex,
+    required this.onTapNav,
   });
 
   @override
@@ -40,7 +45,10 @@ class MainScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const BottomNavBar(),
+                  BottomNavBar(
+                    currentIndex: currentIndex,
+                    onTapNav: onTapNav,
+                  ),
                 ],
               ),
             ),
@@ -585,27 +593,67 @@ class _SmallDot extends StatelessWidget {
 }
 
 class BottomNavBar extends StatelessWidget {
-  const BottomNavBar({super.key});
+  final int currentIndex;
+  final ValueChanged<int> onTapNav;
+
+  const BottomNavBar({
+    super.key,
+    required this.currentIndex,
+    required this.onTapNav,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 90,
-      padding: const EdgeInsets.only(bottom: 16),
+      height: 66,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: const BoxDecoration(
         color: Color(0xFFF0F0F0),
         border: Border(
-          top: BorderSide(color: Color(0xFFE0E0E0)),
+          top: BorderSide(
+            color: Color(0xFFE9E9E9),
+            width: 1,
+          ),
         ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: const [
-          NavItem(icon: Icons.home, label: 'Home', active: true),
-          NavItem(icon: Icons.calendar_month, label: 'Calendar'),
-          TomatoNavItem(),
-          NavItem(icon: Icons.bar_chart, label: 'Report'),
-          NavItem(icon: Icons.book, label: 'Subject'),
+        children: [
+          NavItem(
+            icon: Icons.home,
+            label: 'Home',
+            active: currentIndex == 0,
+            onTap: () => onTapNav(0),
+          ),
+          NavItem(
+            icon: Icons.calendar_month,
+            label: 'Calendar',
+            active: false,
+            onTap: () {},
+          ),
+          const TomatoNavItem(),
+          NavItem(
+            icon: Icons.bar_chart,
+            label: 'Report',
+            active: false,
+            onTap: () {},
+          ),
+          NavItem(
+            icon: Icons.book,
+            label: 'Subject',
+            active: false,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SubjectPageShell(
+                    currentIndex: 2,
+                    onTapNav: (_) {},
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -616,34 +664,38 @@ class NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final VoidCallback onTap;
 
   const NavItem({
     super.key,
     required this.icon,
     required this.label,
+    required this.onTap,
     this.active = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = active
-        ? const Color(0xFFE08C84)
-        : const Color(0xFFC8C8C8);
+    final color =
+        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Icon(icon, color: color, size: 23),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: color,
-            fontWeight: FontWeight.w600,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Icon(icon, color: color, size: 23),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
