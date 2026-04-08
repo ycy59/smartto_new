@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'calendar_page.dart';
 
 enum SubjectPageMode {
   empty,
@@ -1104,14 +1105,27 @@ class SubjectBottomNavBar extends StatelessWidget {
           _BottomNavIcon(
             icon: Icons.home,
             label: 'Home',
-            active: currentIndex == 0,
-            onTap: () => onTapNav(0),
+            active: false,
+            onTap: () {
+                onTapNav(0);
+                Navigator.pop(context);
+            },
           ),
           _BottomNavIcon(
             icon: Icons.calendar_month,
             label: 'Calendar',
             active: false,
-            onTap: () {},
+            onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CalendarPageShell(
+                      currentIndex: 1,
+                      onTapNav: onTapNav,
+                    ),
+                  ),
+                );
+            },
           ),
           const _BottomTomatoItem(),
           _BottomNavIcon(

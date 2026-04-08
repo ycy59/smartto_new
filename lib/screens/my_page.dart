@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'subject_page.dart';
+import 'calendar_page.dart';
 
 class MyPage extends StatefulWidget {
   final String initialNickname;
@@ -257,6 +258,25 @@ class _MyPageState extends State<MyPage> {
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 18),
+
+                Container(
+                  width: 34,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAEAEA),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      _Dot(active: false),
+                      SizedBox(width: 4),
+                      _Dot(active: true),
+                    ],
+                  ),
+                ),
                   const SizedBox(height: 26),
                   _MyPageBottomNav(
                     currentIndex: widget.currentIndex,
@@ -267,6 +287,24 @@ class _MyPageState extends State<MyPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final bool active;
+
+  const _Dot({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: active ? 7 : 5,
+      height: active ? 7 : 5,
+      decoration: BoxDecoration(
+        color: active ? Colors.black : const Color(0xFFBDBDBD),
+        shape: BoxShape.circle,
       ),
     );
   }
@@ -338,7 +376,17 @@ class _MyPageBottomNav extends StatelessWidget {
             icon: Icons.calendar_month,
             label: 'Calendar',
             active: false,
-            onTap: () {},
+            onTap: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => CalendarPageShell(
+                        currentIndex: 1,
+                        onTapNav: onTapNav,
+                      ),
+                    ),
+                );
+            },
           ),
           const _TomatoNavItem(),
           _NavIcon(
@@ -357,7 +405,7 @@ class _MyPageBottomNav extends StatelessWidget {
                     MaterialPageRoute(
                         builder: (context) => SubjectPageShell(
                             currentIndex: 2,
-                            onTapNav: (_) {},
+                            onTapNav: onTapNav,
                         )
                     )
                 );
@@ -418,25 +466,9 @@ class _TomatoNavItem extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.transparent,
-            border: Border.all(
-              color: const Color(0xFFE7D9CC),
-              width: 1,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x14000000),
-                blurRadius: 4,
-                offset: Offset(0, 1),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.all(2),
+        SizedBox(
+          width: 48,
+          height: 48,
           child: ClipOval(
             child: Image.asset(
               'assets/images/tomato_glasses.png',

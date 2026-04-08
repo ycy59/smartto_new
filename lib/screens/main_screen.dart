@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'subject_page.dart';
+import 'calendar_page.dart';
 
 class MainScreen extends StatelessWidget {
   final String nickname;
@@ -566,7 +567,7 @@ class PageIndicatorDots extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: const [
           _SmallDot(active: true),
-          SizedBox(width: 5),
+          SizedBox(width: 4),
           _SmallDot(active: false),
         ],
       ),
@@ -629,7 +630,17 @@ class BottomNavBar extends StatelessWidget {
             icon: Icons.calendar_month,
             label: 'Calendar',
             active: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CalendarPageShell(
+                    currentIndex: 1,
+                    onTapNav: onTapNav,
+                  ),
+                ),
+              );
+            },
           ),
           const TomatoNavItem(),
           NavItem(
@@ -648,7 +659,7 @@ class BottomNavBar extends StatelessWidget {
                 MaterialPageRoute(
                   builder: (context) => SubjectPageShell(
                     currentIndex: 2,
-                    onTapNav: (_) {},
+                    onTapNav: onTapNav,
                   ),
                 ),
               );
