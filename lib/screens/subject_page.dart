@@ -331,9 +331,12 @@ class _SubjectRow extends StatelessWidget {
          ),
      ),
      const SizedBox(width: 6),
-     const Icon(
-       Icons.chevron_right,
-       color: Color(0xFFC7C7C7),
+     GestureDetector(
+      onTap: onDetailTap,
+      child: const Icon(
+        Icons.chevron_right,
+        color: Color(0xFFC7C7C7),
+      ),
      ),
         ],
       ),
@@ -633,6 +636,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
   late List<TodoItem> _todos;
   late List<TextEditingController> _todoControllers;
 
+  bool _showColorPalette = false;
+
   final List<Color> _colorOptions = const [
     Color(0xFF7B89FF),
     Color(0xFF9F88FF),
@@ -697,6 +702,10 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
         return '쉬움';
     }
   }
+
+  Color _softBackground(Color color) {
+  return Color.lerp(color, Colors.white, 0.88)!;
+}
 
   void _insertNextTodo(int index) {
     setState(() {
@@ -771,46 +780,9 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                     ),
                     IconButton(
                       onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          builder: (context) {
-                            return Container(
-                              padding: const EdgeInsets.all(20),
-                              child: Wrap(
-                                spacing: 14,
-                                runSpacing: 14,
-                                children: _colorOptions.map((color) {
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedColor = color;
-                                      });
-                                      Navigator.pop(context);
-                                    },
-                                    child: Container(
-                                      width: 34,
-                                      height: 34,
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.grey.shade400,
-                                        ),
-                                      ),
-                                      child: _selectedColor == color
-                                          ? const Icon(
-                                              Icons.check,
-                                              color: Colors.white,
-                                              size: 18,
-                                            )
-                                          : null,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            );
-                          },
-                        );
+                        setState(() {
+                          _showColorPalette = !_showColorPalette;
+                        });
                       },
                       icon: const Icon(
                         Icons.edit,
@@ -821,6 +793,46 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                   ],
                 ),
                 const SizedBox(height: 10),
+                if (_showColorPalette) ...[
+  const SizedBox(height: 6),
+  Row(
+    mainAxisAlignment: MainAxisAlignment.end,
+    children: _colorOptions.map((color) {
+      final selected = _selectedColor == color;
+
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedColor = color;
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.only(left: 8),
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: color,
+              width: 2,
+            ),
+          ),
+          child: Center(
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? color : Colors.transparent,
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList(),
+  ),
+],
+const SizedBox(height: 10),
                 Row(
                   children: [
                     GestureDetector(
@@ -837,7 +849,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF7F2F7),
+                          color: _softBackground(_selectedColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(

@@ -56,8 +56,6 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
   String _key(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  List<CalendarPlan> get _selectedPlans => _plans[_key(_selectedDate)] ?? [];
-
   void _changeMonth(int delta) {
     setState(() {
       _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + delta, 1);
@@ -193,293 +191,6 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final days = _buildMonthDays(_focusedMonth);
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Column(
-              children: [
-                const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: _CalendarStatusBar(),
-                ),
-                const SizedBox(height: 10),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              children: [
-                                const SizedBox(height: 14),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      GestureDetector(
-                                        onTap: () => _changeMonth(-1),
-                                        child: const CircleAvatar(
-                                          radius: 12,
-                                          backgroundColor: Color(0xFFF1F1F1),
-                                          child: Icon(Icons.chevron_left, size: 16, color: Colors.grey),
-                                        ),
-                                      ),
-                                      Text(
-                                        _monthTitle(_focusedMonth),
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () => _changeMonth(1),
-                                        child: const CircleAvatar(
-                                          radius: 12,
-                                          backgroundColor: Color(0xFFF1F1F1),
-                                          child: Icon(Icons.chevron_right, size: 16, color: Colors.grey),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 10),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                    children: [
-                                      _WeekText('MON'),
-                                      _WeekText('TUE'),
-                                      _WeekText('WED'),
-                                      _WeekText('THU'),
-                                      _WeekText('FRI'),
-                                      _WeekText('SAT', color: Color(0xFF7EA3FF)),
-                                      _WeekText('SUN', color: Color(0xFFF08AA1)),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Expanded(
-                                  child: GridView.builder(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: days.length,
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 7,
-                                      childAspectRatio: 0.9,
-                                    ),
-                                    itemBuilder: (context, index) {
-                                      final day = days[index];
-                                      if (day == null) return const SizedBox();
-
-                                      final isSelected = _isSameDay(day, _selectedDate);
-                                      final key = _key(day);
-                                      final focus = _focusMap[key];
-
-                                      return GestureDetector(
-                                        onTap: () => _selectDate(day),
-                                        child: Container(
-                                          margin: const EdgeInsets.all(2),
-                                          decoration: BoxDecoration(
-                                            color: isSelected
-                                                ? const Color(0xFFF9F4F4)
-                                                : Colors.transparent,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Text(
-                                                '${day.day}',
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: day.weekday == DateTime.sunday
-                                                      ? const Color(0xFFF08AA1)
-                                                      : day.weekday == DateTime.saturday
-                                                          ? const Color(0xFF7EA3FF)
-                                                          : Colors.black,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              if (focus != null)
-                                                _TomatoFace(level: focus),
-                                              const SizedBox(height: 3),
-                                              ..._miniPlanBars(day),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 10),
-                                Center(
-                                  child: Container(
-                                    width: 36,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFD0D0D0),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: Text(
-                                    '${_selectedDate.month}월 ${_selectedDate.day}일 ${_weekdayKorean(_selectedDate.weekday)}',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Expanded(
-                                  child: _selectedPlans.isEmpty
-                                      ? const Center(
-                                          child: Text(
-                                            '등록된 계획이 없습니다',
-                                            style: TextStyle(
-                                              color: Color(0xFFB3B3B3),
-                                            ),
-                                          ),
-                                        )
-                                      : ListView.builder(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                                          itemCount: _selectedPlans.length,
-                                          itemBuilder: (context, index) {
-                                            final plan = _selectedPlans[index];
-                                            return Padding(
-                                              padding: const EdgeInsets.only(bottom: 18),
-                                              child: Row(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  SizedBox(
-                                                    width: 54,
-                                                    child: Text(
-                                                      plan.time,
-                                                      style: const TextStyle(
-                                                        fontSize: 11,
-                                                        color: Color(0xFF4F4F4F),
-                                                        height: 1.3,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    width: 3,
-                                                    height: 42,
-                                                    decoration: BoxDecoration(
-                                                      color: plan.color,
-                                                      borderRadius: BorderRadius.circular(10),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Text(
-                                                          plan.subject,
-                                                          style: const TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight: FontWeight.w700,
-                                                          ),
-                                                        ),
-                                                        const SizedBox(height: 3),
-                                                        Text(
-                                                          plan.detail,
-                                                          style: const TextStyle(
-                                                            fontSize: 11,
-                                                            color: Color(0xFF7F7F7F),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-                                  child: SizedBox(
-                                    width: double.infinity,
-                                    height: 42,
-                                    child: ElevatedButton(
-                                      onPressed: _addPlanDialog,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFFF6E1DF),
-                                        foregroundColor: const Color(0xFFB85C74),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(14),
-                                          side: const BorderSide(
-                                            color: Color(0xFFF299B2),
-                                          ),
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                      child: const Text(
-                                        '이 날짜 계획 추가',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                CalendarBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   List<DateTime?> _buildMonthDays(DateTime month) {
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
@@ -542,6 +253,187 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
     return '${months[d.month]} ${d.year}';
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final days = _buildMonthDays(_focusedMonth);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              children: [
+                const SizedBox(height: 14),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: _CalendarStatusBar(),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 14),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _changeMonth(-1),
+                                  child: const CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: Color(0xFFF1F1F1),
+                                    child: Icon(
+                                      Icons.chevron_left,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  _monthTitle(_focusedMonth),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => _changeMonth(1),
+                                  child: const CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: Color(0xFFF1F1F1),
+                                    child: Icon(
+                                      Icons.chevron_right,
+                                      size: 16,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _WeekText('MON'),
+                                _WeekText('TUE'),
+                                _WeekText('WED'),
+                                _WeekText('THU'),
+                                _WeekText('FRI'),
+                                _WeekText('SAT', color: Color(0xFF7EA3FF)),
+                                _WeekText('SUN', color: Color(0xFFF08AA1)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Expanded(
+                            child: GridView.builder(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 8,
+                              ),
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: days.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 7,
+                                childAspectRatio: 0.9,
+                              ),
+                              itemBuilder: (context, index) {
+                                final day = days[index];
+                                if (day == null) return const SizedBox();
+
+                                final isSelected = _isSameDay(day, _selectedDate);
+                                final key = _key(day);
+                                final focus = _focusMap[key];
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    _selectDate(day);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => CalendarDetailPage(
+                                          selectedDate: day,
+                                          plans: _plans[_key(day)] ?? [],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? const Color(0xFFF9F4F4)
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          '${day.day}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: day.weekday == DateTime.sunday
+                                                ? const Color(0xFFF08AA1)
+                                                : day.weekday == DateTime.saturday
+                                                    ? const Color(0xFF7EA3FF)
+                                                    : Colors.black,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        if (focus != null)
+                                          _TomatoFace(level: focus),
+                                        const SizedBox(height: 3),
+                                        ..._miniPlanBars(day),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                CalendarBottomNavBar(
+                  currentIndex: widget.currentIndex,
+                  onTapNav: widget.onTapNav,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CalendarDetailPage extends StatelessWidget {
+  final DateTime selectedDate;
+  final List<CalendarPlan> plans;
+
+  const CalendarDetailPage({
+    super.key,
+    required this.selectedDate,
+    required this.plans,
+  });
+
   String _weekdayKorean(int weekday) {
     switch (weekday) {
       case 1:
@@ -561,6 +453,131 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
       default:
         return '';
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 10),
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD0D0D0),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text(
+                        '${selectedDate.month}월 ${selectedDate.day}일 ${_weekdayKorean(selectedDate.weekday)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Expanded(
+                      child: plans.isEmpty
+                          ? const Center(
+                              child: Text(
+                                '등록된 계획이 없습니다',
+                                style: TextStyle(
+                                  color: Color(0xFFB3B3B3),
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              itemCount: plans.length,
+                              itemBuilder: (context, index) {
+                                final plan = plans[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 18),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        width: 54,
+                                        child: Text(
+                                          plan.time,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Color(0xFF4F4F4F),
+                                            height: 1.3,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        width: 3,
+                                        height: 42,
+                                        decoration: BoxDecoration(
+                                          color: plan.color,
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              plan.subject,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              plan.detail,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: Color(0xFF7F7F7F),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -593,16 +610,16 @@ class _TomatoFace extends StatelessWidget {
     Color bodyColor;
     switch (level) {
       case DayFocusLevel.high:
-        bodyColor = const Color(0xFFD94C43); // 빨강
+        bodyColor = const Color(0xFFD94C43);
         break;
       case DayFocusLevel.medium:
-        bodyColor = const Color(0xFFD79A42); // 주황
+        bodyColor = const Color(0xFFD79A42);
         break;
       case DayFocusLevel.low:
-        bodyColor = const Color(0xFFA8CF63); // 초록
+        bodyColor = const Color(0xFFA8CF63);
         break;
       case DayFocusLevel.none:
-        bodyColor = const Color(0xFF5A5A5A); // 썩은 토마토 느낌
+        bodyColor = const Color(0xFF5A5A5A);
         break;
     }
 
@@ -732,9 +749,8 @@ class _BottomNavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active
-        ? const Color(0xFFE08C84)
-        : const Color(0xFFC8C8C8);
+    final color =
+        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
 
     return GestureDetector(
       onTap: onTap,
