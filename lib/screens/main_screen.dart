@@ -21,74 +21,35 @@ class MainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      bottomNavigationBar: BottomNavBar(
+        currentIndex: currentIndex,
+        onTapNav: onTapNav,
+      ),
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Column(
-                children: [
-                  const _StatusBar(),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          GreetingCard(nickname: nickname),
-                          const SizedBox(height: 16),
-                          const WeeklyStatsCard(),
-                          const SizedBox(height: 16),
-                          const TodayPlanCard(),
-                          const SizedBox(height: 10),
-                          const PageIndicatorDots(),
-                          const SizedBox(height: 14),
-                        ],
-                      ),
-                    ),
-                  ),
-                  BottomNavBar(
-                    currentIndex: currentIndex,
-                    onTapNav: onTapNav,
-                  ),
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    GreetingCard(nickname: nickname),
+                    const SizedBox(height: 16),
+                    const WeeklyStatsCard(),
+                    const SizedBox(height: 16),
+                    const TodayPlanCard(),
+                    const SizedBox(height: 10),
+                    const PageIndicatorDots(),
+                    const SizedBox(height: 14),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _StatusBar extends StatelessWidget {
-  const _StatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      height: 24,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '9:41',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
-          Row(
-            children: [
-              Icon(Icons.signal_cellular_alt, size: 16, color: Colors.black),
-              SizedBox(width: 4),
-              Icon(Icons.wifi, size: 16, color: Colors.black),
-              SizedBox(width: 4),
-              Icon(Icons.battery_full, size: 18, color: Colors.black),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -542,7 +503,8 @@ class _CheckRow extends StatelessWidget {
             text,
             style: TextStyle(
               fontSize: 12,
-              color: checked ? const Color(0xFF333333) : const Color(0xFF7F7F7F),
+              color:
+                  checked ? const Color(0xFF333333) : const Color(0xFF7F7F7F),
               fontWeight: checked ? FontWeight.w500 : FontWeight.w400,
             ),
           ),
@@ -607,66 +569,74 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFFE9E9E9),
-            width: 1,
+      color: Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          height: 56,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              NavItem(
+                icon: Icons.home,
+                label: 'Home',
+                active: currentIndex == 0,
+                onTap: () => onTapNav(0),
+              ),
+              NavItem(
+                icon: Icons.calendar_month,
+                label: 'Calendar',
+                active: false,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 180),
+                      pageBuilder: (context, animation, _) => CalendarPageShell(
+                        currentIndex: 1,
+                        onTapNav: onTapNav,
+                      ),
+                      transitionsBuilder: (context, animation, _, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                    ),
+                  );
+                },
+              ),
+              TomatoNavItem(),
+              NavItem(
+                icon: Icons.bar_chart,
+                label: 'Report',
+                active: false,
+                onTap: () {},
+              ),
+              NavItem(
+                icon: Icons.book,
+                label: 'Subject',
+                active: false,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 180),
+                      pageBuilder: (context, animation, _) => SubjectPageShell(
+                        currentIndex: 2,
+                        onTapNav: onTapNav,
+                      ),
+                      transitionsBuilder: (context, animation, _, child) =>
+                          FadeTransition(opacity: animation, child: child),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          NavItem(
-            icon: Icons.home,
-            label: 'Home',
-            active: currentIndex == 0,
-            onTap: () => onTapNav(0),
-          ),
-          NavItem(
-            icon: Icons.calendar_month,
-            label: 'Calendar',
-            active: false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CalendarPageShell(
-                    currentIndex: 1,
-                    onTapNav: onTapNav,
-                  ),
-                ),
-              );
-            },
-          ),
-          const TomatoNavItem(),
-          NavItem(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {},
-          ),
-          NavItem(
-            icon: Icons.book,
-            label: 'Subject',
-            active: false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => SubjectPageShell(
-                    currentIndex: 2,
-                    onTapNav: onTapNav,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
       ),
     );
   }
@@ -688,8 +658,7 @@ class NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
+    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
 
     return GestureDetector(
       onTap: onTap,
@@ -720,20 +689,23 @@ class TomatoNavItem extends StatelessWidget {
     return GestureDetector(
       onTap: () => showPomodoroStartModal(context),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.transparent,
-            ),
-            padding: const EdgeInsets.all(1),
+          SizedBox(
+            width: 40,
+            height: 40,
             child: ClipOval(
               child: Image.asset(
                 'assets/images/tomato_glasses.png',
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: const Color(0xFFD94C43),
+                    child: const Center(
+                      child: Text('🍅', style: TextStyle(fontSize: 22)),
+                    ),
+                  );
+                },
               ),
             ),
           ),

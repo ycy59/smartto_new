@@ -127,7 +127,6 @@ class _MyPageState extends State<MyPage> {
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  const _MyPageStatusBar(),
                   const SizedBox(height: 14),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
@@ -258,25 +257,23 @@ class _MyPageState extends State<MyPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 18),
-
-                Container(
-                  width: 34,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAEAEA),
-                    borderRadius: BorderRadius.circular(10),
+                  Container(
+                    width: 34,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAEAEA),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        _Dot(active: false),
+                        SizedBox(width: 4),
+                        _Dot(active: true),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      _Dot(active: false),
-                      SizedBox(width: 4),
-                      _Dot(active: true),
-                    ],
-                  ),
-                ),
                   const SizedBox(height: 26),
                   _MyPageBottomNav(
                     currentIndex: widget.currentIndex,
@@ -306,36 +303,6 @@ class _Dot extends StatelessWidget {
         color: active ? Colors.black : const Color(0xFFBDBDBD),
         shape: BoxShape.circle,
       ),
-    );
-  }
-}
-
-class _MyPageStatusBar extends StatelessWidget {
-  const _MyPageStatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          '9:41',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        ),
-        Row(
-          children: [
-            Icon(Icons.signal_cellular_alt, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.wifi, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.battery_full, size: 18, color: Colors.black),
-          ],
-        ),
-      ],
     );
   }
 }
@@ -377,15 +344,15 @@ class _MyPageBottomNav extends StatelessWidget {
             label: 'Calendar',
             active: false,
             onTap: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => CalendarPageShell(
-                        currentIndex: 1,
-                        onTapNav: onTapNav,
-                      ),
-                    ),
-                );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CalendarPageShell(
+                    currentIndex: 1,
+                    onTapNav: onTapNav,
+                  ),
+                ),
+              );
             },
           ),
           const _TomatoNavItem(),
@@ -396,21 +363,18 @@ class _MyPageBottomNav extends StatelessWidget {
             onTap: () {},
           ),
           _NavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: false,
-            onTap: () {
+              icon: Icons.book,
+              label: 'Subject',
+              active: false,
+              onTap: () {
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => SubjectPageShell(
-                            currentIndex: 2,
-                            onTapNav: onTapNav,
-                        )
-                    )
-                );
-            }
-          ),
+                              currentIndex: 2,
+                              onTapNav: onTapNav,
+                            )));
+              }),
         ],
       ),
     );
@@ -432,8 +396,7 @@ class _NavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
+    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
 
     return GestureDetector(
       onTap: onTap,

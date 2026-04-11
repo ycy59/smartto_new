@@ -103,23 +103,20 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      bottomNavigationBar: SubjectBottomNavBar(
+        currentIndex: widget.currentIndex,
+        onTapNav: widget.onTapNav,
+      ),
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: Column(
               children: [
                 const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: _SubjectStatusBar(),
-                ),
                 const SizedBox(height: 10),
                 Expanded(child: body),
-                SubjectBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
-                ),
               ],
             ),
           ),
@@ -173,6 +170,7 @@ class SubjectEmptyPage extends StatelessWidget {
     );
   }
 }
+
 // ──────────────────────────────────────────
 // 과목 목록 화면
 // ──────────────────────────────────────────
@@ -322,22 +320,22 @@ class _SubjectRow extends StatelessWidget {
           GestureDetector(
             onTap: onDetailTap,
             child: const Text(
-                'Detail',
-                style: TextStyle(
+              'Detail',
+              style: TextStyle(
                 color: Color(0xFFB7B7B7),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
+              ),
             ),
-         ),
-     ),
-     const SizedBox(width: 6),
-     GestureDetector(
-      onTap: onDetailTap,
-      child: const Icon(
-        Icons.chevron_right,
-        color: Color(0xFFC7C7C7),
-      ),
-     ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onDetailTap,
+            child: const Icon(
+              Icons.chevron_right,
+              color: Color(0xFFC7C7C7),
+            ),
+          ),
         ],
       ),
     );
@@ -410,7 +408,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
         level: _selectedLevel!,
         color: const Color(0xFF9F88FF),
         todos: [
-            TodoItem(text: '', done: false),
+          TodoItem(text: '', done: false),
         ],
       ),
     );
@@ -463,8 +461,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   hintText: '입력',
-                  hintStyle:
-                      TextStyle(color: Color(0xFFBEBEBE), fontSize: 14),
+                  hintStyle: TextStyle(color: Color(0xFFBEBEBE), fontSize: 14),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 12),
                 ),
@@ -486,7 +483,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                   child: _ModeButton(
                     title: '학습 모드',
                     selected: _selectedMode == StudyMode.study,
-                    onTap: () => setState(() => _selectedMode = StudyMode.study),
+                    onTap: () =>
+                        setState(() => _selectedMode = StudyMode.study),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -522,11 +520,10 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     controller: _dateController,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 14),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 14),
                       hintText: '날짜 선택',
-                      hintStyle: TextStyle(
-                          color: Color(0xFFBEBEBE), fontSize: 14),
+                      hintStyle:
+                          TextStyle(color: Color(0xFFBEBEBE), fontSize: 14),
                     ),
                     style: const TextStyle(
                         fontSize: 14,
@@ -553,8 +550,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '어려움',
                     background: const Color(0xFFF08AA1),
                     selected: _selectedLevel == UnderstandingLevel.hard,
-                    onTap: () =>
-                        setState(() => _selectedLevel = UnderstandingLevel.hard),
+                    onTap: () => setState(
+                        () => _selectedLevel = UnderstandingLevel.hard),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -573,8 +570,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '쉬움',
                     background: const Color(0xFF97D778),
                     selected: _selectedLevel == UnderstandingLevel.easy,
-                    onTap: () =>
-                        setState(() => _selectedLevel = UnderstandingLevel.easy),
+                    onTap: () => setState(
+                        () => _selectedLevel = UnderstandingLevel.easy),
                   ),
                 ),
               ],
@@ -704,8 +701,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
   }
 
   Color _softBackground(Color color) {
-  return Color.lerp(color, Colors.white, 0.88)!;
-}
+    return Color.lerp(color, Colors.white, 0.88)!;
+  }
 
   void _insertNextTodo(int index) {
     setState(() {
@@ -794,45 +791,45 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                 ),
                 const SizedBox(height: 10),
                 if (_showColorPalette) ...[
-  const SizedBox(height: 6),
-  Row(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: _colorOptions.map((color) {
-      final selected = _selectedColor == color;
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: _colorOptions.map((color) {
+                      final selected = _selectedColor == color;
 
-      return GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedColor = color;
-          });
-        },
-        child: Container(
-          margin: const EdgeInsets.only(left: 8),
-          width: 18,
-          height: 18,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: color,
-              width: 2,
-            ),
-          ),
-          child: Center(
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? color : Colors.transparent,
-              ),
-            ),
-          ),
-        ),
-      );
-    }).toList(),
-  ),
-],
-const SizedBox(height: 10),
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedColor = color;
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: color,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selected ? color : Colors.transparent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     GestureDetector(
@@ -907,7 +904,8 @@ const SizedBox(height: 10),
                             ),
                             const SizedBox(height: 10),
                             Column(
-                              children: List.generate(_todoControllers.length, (index) {
+                              children: List.generate(_todoControllers.length,
+                                  (index) {
                                 return Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: Row(
@@ -915,7 +913,8 @@ const SizedBox(height: 10),
                                       GestureDetector(
                                         onTap: () {
                                           setState(() {
-                                            _todos[index].done = !_todos[index].done;
+                                            _todos[index].done =
+                                                !_todos[index].done;
                                           });
                                         },
                                         child: Container(
@@ -1079,9 +1078,7 @@ class _LevelButton extends StatelessWidget {
           child: Text(
             title,
             style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white),
+                fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ),
       ),
@@ -1105,54 +1102,64 @@ class SubjectBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavIcon(
-            icon: Icons.home,
-            label: 'Home',
-            active: false,
-            onTap: () {
-                onTapNav(0);
-                Navigator.pop(context);
-            },
+      color: Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          height: 56,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+            ),
           ),
-          _BottomNavIcon(
-            icon: Icons.calendar_month,
-            label: 'Calendar',
-            active: false,
-            onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => CalendarPageShell(
-                      currentIndex: 1,
-                      onTapNav: onTapNav,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _BottomNavIcon(
+                icon: Icons.home,
+                label: 'Home',
+                active: false,
+                onTap: () {
+                  onTapNav(0);
+                  Navigator.pop(context);
+                },
+              ),
+              _BottomNavIcon(
+                icon: Icons.calendar_month,
+                label: 'Calendar',
+                active: false,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      transitionDuration: const Duration(milliseconds: 180),
+                      pageBuilder: (context, animation, _) => CalendarPageShell(
+                        currentIndex: 1,
+                        onTapNav: onTapNav,
+                      ),
+                      transitionsBuilder: (context, animation, _, child) =>
+                          FadeTransition(opacity: animation, child: child),
                     ),
-                  ),
-                );
-            },
+                  );
+                },
+              ),
+              const _BottomTomatoItem(),
+              _BottomNavIcon(
+                icon: Icons.bar_chart,
+                label: 'Report',
+                active: false,
+                onTap: () {},
+              ),
+              _BottomNavIcon(
+                icon: Icons.book,
+                label: 'Subject',
+                active: currentIndex == 2,
+                onTap: () => onTapNav(2),
+              ),
+            ],
           ),
-          const _BottomTomatoItem(),
-          _BottomNavIcon(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {},
-          ),
-          _BottomNavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: currentIndex == 2,
-            onTap: () => onTapNav(2),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1183,9 +1190,7 @@ class _BottomNavIcon extends StatelessWidget {
           const SizedBox(height: 4),
           Text(label,
               style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.w600)),
+                  fontSize: 10, color: color, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -1197,50 +1202,27 @@ class _BottomTomatoItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.transparent,
-      ),
-      padding: const EdgeInsets.all(1),
-      child: ClipOval(
-        child: Image.asset(
-          'assets/images/tomato_glasses.png',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: const Color(0xFFD94C43),
-              child: const Center(
-                child: Text('🍅', style: TextStyle(fontSize: 24)),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _SubjectStatusBar extends StatelessWidget {
-  const _SubjectStatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text('9:41',
-            style:
-                TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black)),
-        Row(children: [
-          Icon(Icons.signal_cellular_alt, size: 16, color: Colors.black),
-          SizedBox(width: 4),
-          Icon(Icons.wifi, size: 16, color: Colors.black),
-          SizedBox(width: 4),
-          Icon(Icons.battery_full, size: 18, color: Colors.black),
-        ]),
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/tomato_glasses.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: const Color(0xFFD94C43),
+                  child: const Center(
+                    child: Text('🍅', style: TextStyle(fontSize: 22)),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
       ],
     );
   }

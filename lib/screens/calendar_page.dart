@@ -58,7 +58,8 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
 
   void _changeMonth(int delta) {
     setState(() {
-      _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + delta, 1);
+      _focusedMonth =
+          DateTime(_focusedMonth.year, _focusedMonth.month + delta, 1);
     });
   }
 
@@ -259,7 +260,12 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      bottomNavigationBar: CalendarBottomNavBar(
+        currentIndex: widget.currentIndex,
+        onTapNav: widget.onTapNav,
+      ),
       body: SafeArea(
+        bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
@@ -268,7 +274,6 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                 const SizedBox(height: 14),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: _CalendarStatusBar(),
                 ),
                 const SizedBox(height: 10),
                 Expanded(
@@ -355,7 +360,8 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                                 final day = days[index];
                                 if (day == null) return const SizedBox();
 
-                                final isSelected = _isSameDay(day, _selectedDate);
+                                final isSelected =
+                                    _isSameDay(day, _selectedDate);
                                 final key = _key(day);
                                 final focus = _focusMap[key];
 
@@ -364,11 +370,15 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                                     _selectDate(day);
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (context) => CalendarDetailPage(
+                                      PageRouteBuilder(
+                                        transitionDuration: const Duration(milliseconds: 180),
+                                        pageBuilder: (context, animation, _) =>
+                                            CalendarDetailPage(
                                           selectedDate: day,
                                           plans: _plans[_key(day)] ?? [],
                                         ),
+                                        transitionsBuilder: (context, animation, _, child) =>
+                                            FadeTransition(opacity: animation, child: child),
                                       ),
                                     );
                                   },
@@ -381,15 +391,18 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           '${day.day}',
                                           style: TextStyle(
                                             fontSize: 13,
-                                            color: day.weekday == DateTime.sunday
+                                            color: day.weekday ==
+                                                    DateTime.sunday
                                                 ? const Color(0xFFF08AA1)
-                                                : day.weekday == DateTime.saturday
+                                                : day.weekday ==
+                                                        DateTime.saturday
                                                     ? const Color(0xFF7EA3FF)
                                                     : Colors.black,
                                           ),
@@ -410,10 +423,6 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                       ),
                     ),
                   ),
-                ),
-                CalendarBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
                 ),
               ],
             ),
@@ -684,51 +693,53 @@ class CalendarBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 82,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(
-          top: BorderSide(
-            color: Color(0xFFE9E9E9),
-            width: 1,
+      color: Colors.white,
+      child: SafeArea(
+        top: false,
+        child: Container(
+          height: 56,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              top: BorderSide(color: Color(0xFFEEEEEE), width: 1),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _BottomNavIcon(
+                icon: Icons.home,
+                label: 'Home',
+                active: false,
+                onTap: () {
+                  onTapNav(0);
+                  Navigator.pop(context);
+                },
+              ),
+              _BottomNavIcon(
+                icon: Icons.calendar_month,
+                label: 'Calendar',
+                active: true,
+                onTap: () {},
+              ),
+              const _BottomTomatoItem(),
+              _BottomNavIcon(
+                icon: Icons.bar_chart,
+                label: 'Report',
+                active: false,
+                onTap: () {},
+              ),
+              _BottomNavIcon(
+                icon: Icons.book,
+                label: 'Subject',
+                active: false,
+                onTap: () {
+                  Navigator.pop(context);
+                },
+              ),
+            ],
           ),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavIcon(
-            icon: Icons.home,
-            label: 'Home',
-            active: false,
-            onTap: () {
-              onTapNav(0);
-              Navigator.pop(context);
-            },
-          ),
-          _BottomNavIcon(
-            icon: Icons.calendar_month,
-            label: 'Calendar',
-            active: true,
-            onTap: () {},
-          ),
-          const _BottomTomatoItem(),
-          _BottomNavIcon(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {},
-          ),
-          _BottomNavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: false,
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-        ],
       ),
     );
   }
@@ -749,8 +760,7 @@ class _BottomNavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
+    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
 
     return GestureDetector(
       onTap: onTap,
@@ -778,51 +788,26 @@ class _BottomTomatoItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 46,
-      height: 46,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/images/tomato_glasses.png',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: const Color(0xFFD94C43),
-              child: const Center(
-                child: Text('🍅', style: TextStyle(fontSize: 24)),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
-
-class _CalendarStatusBar extends StatelessWidget {
-  const _CalendarStatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          '9:41',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/tomato_glasses.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: const Color(0xFFD94C43),
+                  child: const Center(
+                    child: Text('🍅', style: TextStyle(fontSize: 22)),
+                  ),
+                );
+              },
+            ),
           ),
-        ),
-        Row(
-          children: [
-            Icon(Icons.signal_cellular_alt, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.wifi, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.battery_full, size: 18, color: Colors.black),
-          ],
         ),
       ],
     );
