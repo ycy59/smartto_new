@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'camera_page.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
 import 'main_screen.dart';
@@ -169,7 +170,7 @@ class _MyPageState extends State<MyPage> {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => const CameraPage(
+      builder: (context) => CameraPage(
         initialSelectedTask: null,
         allTasks: [],
       ),

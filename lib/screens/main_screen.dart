@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
 import 'my_page.dart';
+import 'camera_page.dart';
+
+List<String> globalTodayTasks = [];
 
 class MainScreen extends StatefulWidget {
   final String nickname;
@@ -68,6 +71,7 @@ void _openMyPage() {
 
   Future<void> _showStartDialog() async {
     final allTasks = _todayPlanKey.currentState?.getAllTodoTitles() ?? [];
+    globalTodayTasks = allTasks;
 
     final result = await showDialog<bool>(
       context: context,
@@ -168,7 +172,7 @@ void _openMyPage() {
       },
     );
 
-    if (result != true) return;
+   if (result != true) return;
 
     final pageResult = await Navigator.push<Map<String, dynamic>>(
       context,
@@ -182,17 +186,19 @@ void _openMyPage() {
 
     if (pageResult != null) {
       final selectedTask = pageResult['selectedTask'] as String?;
-      final isCompleted = pageResult['isCompleted'] as bool? ?? false;
+      final doneMap = pageResult['doneMap'] as Map<String, bool>? ?? {};
 
       if (selectedTask != null && selectedTask.isNotEmpty) {
         setState(() {
           _selectedTaskTitle = selectedTask;
         });
-
-        _todayPlanKey.currentState?.markTaskDoneByText(selectedTask, isCompleted);
       }
+
+      doneMap.forEach((task, isDone) {
+        _todayPlanKey.currentState?.markTaskDoneByText(task, isDone);
+      });
     }
-  }
+  }  // ← _showStartDialog 닫는 괄호
 
   @override
   Widget build(BuildContext context) {
@@ -1348,288 +1354,6 @@ class TomatoNavItem extends StatelessWidget {
   }
 }
 
-class CameraPage extends StatefulWidget {
-  final String? initialSelectedTask;
-  final List<String> allTasks;
-
-  const CameraPage({
-    super.key,
-    required this.initialSelectedTask,
-    required this.allTasks,
-  });
-
-  @override
-  State<CameraPage> createState() => _CameraPageState();
-}
-
-class _CameraPageState extends State<CameraPage> {
-  late String? _selectedTask;
-  bool _isCompleted = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedTask = widget.initialSelectedTask;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final displayTask =
-        (_selectedTask == null || _selectedTask!.trim().isEmpty)
-            ? '과목을 선택하세요'
-            : _selectedTask!;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    'Camera-go',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF8B8B8B),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF5F1F1),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.circle,
-                          size: 8,
-                          color: Color(0xFFD97068),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          displayTask,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF4A4A4A),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isCompleted = !_isCompleted;
-                      });
-                    },
-                    child: Text(
-                      _isCompleted ? '미완료' : '완료',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF232323),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    '카메라',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF7A7A7A),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 34,
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF5FB),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: const [
-                                Text(
-                                  '오늘 할 일',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF232323),
-                                  ),
-                                ),
-                                Spacer(),
-                                Text(
-                                  '1 / 5',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Color(0xFF7E7E7E),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            ...widget.allTasks.map((task) {
-                              final bool isSelected = _selectedTask == task;
-                              final bool done = _isCompleted && isSelected;
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedTask = task;
-                                    });
-                                  },
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.circle,
-                                        size: 8,
-                                        color: done
-                                            ? const Color(0xFFCBCBCB)
-                                            : const Color(0xFFD97068),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          task,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: done
-                                                ? const Color(0xFFCBCBCB)
-                                                : const Color(0xFF555555),
-                                            fontWeight: isSelected
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                          ),
-                                        ),
-                                      ),
-                                      if (done)
-                                        const Icon(
-                                          Icons.check_circle,
-                                          color: Color(0xFF8BCB75),
-                                          size: 16,
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      flex: 32,
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 8),
-                          Container(
-                            width: 150,
-                            height: 150,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: const Color(0xFFB34C3D),
-                                width: 5,
-                              ),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '20:38',
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.black,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 26),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.pop(
-                                context,
-                                {
-                                  'selectedTask': _selectedTask,
-                                  'isCompleted': _isCompleted,
-                                },
-                              );
-                            },
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.black,
-                              ),
-                              child: const Icon(
-                                Icons.pause,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      flex: 22,
-                      child: Column(
-                        children: [
-                          const Spacer(),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: Container(
-                              height: 86,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEDEDED),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.person_outline,
-                                  size: 34,
-                                  color: Color(0xFFC7C7C7),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class TodoItem {
   String title;

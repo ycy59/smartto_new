@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'camera_page.dart';
 import 'calendar_page.dart';
 import 'main_screen.dart';
 
@@ -136,7 +137,7 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
   Navigator.push(
     context,
     MaterialPageRoute(
-      builder: (context) => const CameraPage(
+      builder: (context) => CameraPage(
         initialSelectedTask: null,
         allTasks: [],
       ),
