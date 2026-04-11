@@ -13,6 +13,16 @@ dependencies:
     sdk: flutter
   shared_preferences: ^2.5.5
   smooth_page_indicator: ^1.1.0
+  # 카메라
+  camera: ^0.11.0+2
+  # 온디바이스 얼굴 감지 (eye open prob + head yaw + 입술 윤곽)
+  google_mlkit_face_detection: ^0.9.0
+  # ONNX 모델 추론
+  onnxruntime: ^1.4.1
+  # 로컬 SQLite DB
+  sqflite: ^2.3.3
+  path_provider: ^2.1.3
+  path: ^1.9.0
  
 flutter:
   uses-material-design: true
@@ -22,3 +32,4 @@ flutter:
     - assets/images/icon_university.jpg
     - assets/images/icon_exam.jpg
     - assets/images/icon_growth.jpg
+    - assets/models/xgb_model.onnx

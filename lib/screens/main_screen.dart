@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
+import 'pomodoro_timer_screen.dart';
 
 class MainScreen extends StatelessWidget {
   final String nickname;
@@ -716,25 +717,28 @@ class TomatoNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.transparent,
-          ),
-          padding: const EdgeInsets.all(1),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/tomato_glasses.png',
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () => showPomodoroStartModal(context),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.transparent,
+            ),
+            padding: const EdgeInsets.all(1),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/tomato_glasses.png',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
