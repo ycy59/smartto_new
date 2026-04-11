@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'camera_page.dart';
 import 'main_screen.dart';
 import 'subject_page.dart';
+import 'report_page.dart';
 
 class CalendarPageShell extends StatefulWidget {
   final int currentIndex;
@@ -916,7 +917,19 @@ class CalendarBottomNavBar extends StatelessWidget {
             icon: Icons.bar_chart,
             label: 'Report',
             active: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReportPageShell(
+                    currentIndex: 3,
+                    onTapNav: onTapNav,
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
+                  ),
+                ),
+              );
+            },
           ),
           _BottomNavIcon(
             icon: Icons.book,

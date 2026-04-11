@@ -7,6 +7,7 @@ import 'camera_page.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
 import 'main_screen.dart';
+import 'report_page.dart';
 
 class MyPage extends StatefulWidget {
   final String initialNickname;
@@ -529,7 +530,19 @@ class _MyPageBottomNav extends StatelessWidget {
             icon: Icons.bar_chart,
             label: 'Report',
             active: false,
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReportPageShell(
+                    currentIndex: 3,
+                    onTapNav: onTapNav,
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
+                  ),
+                ),
+              );
+            },
           ),
           _NavIcon(
             icon: Icons.book,

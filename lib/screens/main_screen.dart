@@ -3,6 +3,7 @@ import 'subject_page.dart';
 import 'calendar_page.dart';
 import 'my_page.dart';
 import 'camera_page.dart';
+import 'report_page.dart';
 
 List<String> globalTodayTasks = [];
 
@@ -1252,7 +1253,19 @@ class BottomNavBar extends StatelessWidget {
             icon: Icons.bar_chart,
             label: 'Report',
             active: false,
-            onTap: () {},
+            onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportPageShell(
+                      currentIndex: 3,
+                      onTapNav: onTapNav,
+                      nickname: nickname,
+                      profileImagePath: profileImagePath,
+                    ),
+                  ),
+                );
+            },
           ),
           NavItem(
             icon: Icons.book,
