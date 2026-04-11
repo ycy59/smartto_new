@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
+import 'my_page.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   final String nickname;
   final String? profileImagePath;
   final int currentIndex;
@@ -17,40 +18,233 @@ class MainScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Column(
-                children: [
-                  const _StatusBar(),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          GreetingCard(nickname: nickname),
-                          const SizedBox(height: 16),
-                          const WeeklyStatsCard(),
-                          const SizedBox(height: 16),
-                          const TodayPlanCard(),
-                          const SizedBox(height: 10),
-                          const PageIndicatorDots(),
-                          const SizedBox(height: 14),
-                        ],
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<_TodayPlanCardState> _todayPlanKey =
+      GlobalKey<_TodayPlanCardState>();
+
+  late String _nickname;
+  String? _profileImagePath;
+  String? _selectedTaskTitle;
+
+  @override
+  void initState() {
+  super.initState();
+  _nickname = widget.nickname;
+  _profileImagePath = widget.profileImagePath;
+}
+
+  void _handleTaskSelected(String taskTitle) {
+    setState(() {
+      _selectedTaskTitle = taskTitle;
+  });
+}
+
+void _openMyPage() {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => MyPage(
+        initialNickname: _nickname,
+        initialProfileImagePath: _profileImagePath,
+        currentIndex: widget.currentIndex,
+        onTapNav: widget.onTapNav,
+        onProfileUpdated: ({
+          required String nickname,
+          String? profileImagePath,
+        }) {
+          setState(() {
+            _nickname = nickname;
+            _profileImagePath = profileImagePath;
+          });
+        },
+      ),
+    ),
+  );
+}
+
+  Future<void> _showStartDialog() async {
+    final allTasks = _todayPlanKey.currentState?.getAllTodoTitles() ?? [];
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/tomato_glasses.png',
+                  width: 66,
+                  height: 66,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '시작하시겠습니까?',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF232323),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: Color(0xFF8F8F8F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFE5E5E5)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: const Color(0xFFF8F8F8),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(
+                              color: Color(0xFF9A9A9A),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  BottomNavBar(
-                    currentIndex: currentIndex,
-                    onTapNav: onTapNav,
-                  ),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD97068),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '시작',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != true) return;
+
+    final pageResult = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraPage(
+          initialSelectedTask: _selectedTaskTitle,
+          allTasks: allTasks,
+        ),
+      ),
+    );
+
+    if (pageResult != null) {
+      final selectedTask = pageResult['selectedTask'] as String?;
+      final isCompleted = pageResult['isCompleted'] as bool? ?? false;
+
+      if (selectedTask != null && selectedTask.isNotEmpty) {
+        setState(() {
+          _selectedTaskTitle = selectedTask;
+        });
+
+        _todayPlanKey.currentState?.markTaskDoneByText(selectedTask, isCompleted);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null &&
+              details.primaryVelocity! < -100) {
+            _openMyPage();
+          }
+        },
+        child: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Column(
+                  children: [
+                    const _StatusBar(),
+                    const SizedBox(height: 14),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            GreetingCard(nickname: _nickname),
+                            const SizedBox(height: 16),
+                            const WeeklyStatsCard(),
+                            const SizedBox(height: 16),
+                            TodayPlanCard(
+                              key: _todayPlanKey,
+                              selectedTaskTitle: _selectedTaskTitle,
+                              onTaskSelected: _handleTaskSelected,
+                            ),
+                            const SizedBox(height: 10),
+                            const PageIndicatorDots(),
+                            const SizedBox(height: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                    BottomNavBar(
+                      currentIndex: widget.currentIndex,
+                      onTapNav: widget.onTapNav,
+                      onTapTomato: _showStartDialog,
+                      nickname: _nickname,
+                      profileImagePath: _profileImagePath,
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -103,7 +297,7 @@ class GreetingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final displayName = nickname.trim().isEmpty ? '이용자' : nickname.trim();
+    final displayName = nickname.trim();
 
     return Container(
       width: double.infinity,
@@ -116,7 +310,7 @@ class GreetingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '안녕하세요 ${displayName}님!',
+            displayName.isEmpty ? '안녕하세요!' : '안녕하세요 ${displayName}님!',
             style: const TextStyle(
               fontSize: 11,
               color: Color(0xFF444444),
@@ -347,8 +541,176 @@ class StatItem extends StatelessWidget {
   }
 }
 
-class TodayPlanCard extends StatelessWidget {
-  const TodayPlanCard({super.key});
+class TodayPlanCard extends StatefulWidget {
+  final String? selectedTaskTitle;
+  final ValueChanged<String> onTaskSelected;
+
+  TodayPlanCard({
+    super.key,
+    required this.selectedTaskTitle,
+    required this.onTaskSelected,
+  });
+
+  @override
+  State<TodayPlanCard> createState() => _TodayPlanCardState();
+}
+
+class _TodayPlanCardState extends State<TodayPlanCard> {
+  bool _isEditing = false;
+  int? _paletteOpenIndex;
+
+  final List<Color> _subjectColors = const [
+    Color(0xFFE06B63),
+    Color(0xFF79B13D),
+    Color(0xFF7B89FF),
+    Color(0xFF9F88FF),
+    Color(0xFFF0C06F),
+    Color(0xFFF08AA1),
+  ];
+
+  final List<MainPlanSubject> _subjects = [
+    MainPlanSubject(
+      title: '데이터베이스',
+      color: const Color(0xFFE06B63),
+      dday: 17,
+      todos: [
+        MainPlanTodo(text: 'SQLite 실습', done: false),
+        MainPlanTodo(text: 'SQL 기본 쿼리 복습', done: true),
+      ],
+    ),
+    MainPlanSubject(
+      title: '인터넷 프로그래밍',
+      color: const Color(0xFF79B13D),
+      dday: 0,
+      todos: [
+        MainPlanTodo(text: 'map / filter / reduce 연습 문제', done: true),
+      ],
+    ),
+  ];
+
+  List<String> getAllTodoTitles() {
+    final List<String> result = [];
+
+    for (final subject in _subjects) {
+      for (final todo in subject.todos) {
+        final text = todo.text.trim();
+        if (text.isNotEmpty) {
+          result.add(text);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  void markTaskDoneByText(String taskText, bool done) {
+    setState(() {
+      for (final subject in _subjects) {
+        for (final todo in subject.todos) {
+          if (todo.text.trim() == taskText.trim()) {
+            todo.done = done;
+          }
+        }
+      }
+    });
+  }
+
+  void _toggleEdit() {
+    setState(() {
+      _isEditing = !_isEditing;
+      if (!_isEditing) {
+        _paletteOpenIndex = null;
+      }
+    });
+  }
+
+  void _addSubject() {
+    setState(() {
+      _subjects.add(
+        MainPlanSubject(
+          title: '새 과목',
+          color: _subjectColors.first,
+          dday: 0,
+          todos: [
+            MainPlanTodo(text: '', done: false),
+          ],
+        ),
+      );
+    });
+  }
+
+  Future<void> _confirmDeleteSubject(int subjectIndex) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('과목 삭제'),
+          content: const Text('정말 이 과목을 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Accept'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      setState(() {
+        _subjects.removeAt(subjectIndex);
+        if (_paletteOpenIndex == subjectIndex) {
+          _paletteOpenIndex = null;
+        }
+      });
+    }
+  }
+
+  Future<void> _confirmDeleteTodo(int subjectIndex, int todoIndex) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('계획 삭제'),
+          content: const Text('정말 이 계획을 삭제하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Accept'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == true) {
+      setState(() {
+        _subjects[subjectIndex].todos.removeAt(todoIndex);
+        if (_subjects[subjectIndex].todos.isEmpty) {
+          _subjects[subjectIndex].todos.add(
+            MainPlanTodo(text: '', done: false),
+          );
+        }
+      });
+    }
+  }
+
+  void _addNextTodo(int subjectIndex, int todoIndex) {
+    setState(() {
+      _subjects[subjectIndex].todos.insert(
+        todoIndex + 1,
+        MainPlanTodo(text: '', done: false),
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -360,10 +722,11 @@ class TodayPlanCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
-              Text(
+            children: [
+              const Text(
                 '오늘의 계획',
                 style: TextStyle(
                   fontSize: 18,
@@ -371,181 +734,409 @@ class TodayPlanCard extends StatelessWidget {
                   color: Colors.black,
                 ),
               ),
-              Spacer(),
-              Text(
-                '편집',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFFE27E76),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-
-          // 첫 과목 그룹
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _ColorDot(color: Color(0xFFD8645C)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Row(
-                      children: [
-                        Text(
-                          '데이터베이스',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.add_circle_outline,
-                          size: 14,
-                          color: Color(0xFFBEBEBE),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    _CheckRow(
-                      checkedColor: Color(0xFFD8645C),
-                      text: 'SQLite 실습',
-                      checked: true,
-                    ),
-                    SizedBox(height: 6),
-                    _CheckRow(
-                      checkedColor: Color(0xFFE5E5E5),
-                      text: 'SQL 기본 쿼리 복습',
-                      checked: false,
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5E3E4),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'D - 17',
-                  style: TextStyle(
-                    fontSize: 10,
+              const Spacer(),
+              GestureDetector(
+                onTap: _toggleEdit,
+                child: Text(
+                  _isEditing ? '완료' : '편집',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFFEE7E76),
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF8D6B6C),
                   ),
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 14),
-          Container(
-            height: 1.5,
-            width: 170,
-            color: const Color(0xFFE7A6A0),
-          ),
-          const SizedBox(height: 14),
-
-          // 두 번째 과목 그룹
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _ColorDot(color: Color(0xFF6FA43E)),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      '인터넷 프로그래밍',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
+          const SizedBox(height: 12),
+          if (_isEditing)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SizedBox(
+                height: 36,
+                child: OutlinedButton.icon(
+                  onPressed: _addSubject,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: const Text('과목 추가'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFEE7E76),
+                    side: const BorderSide(color: Color(0xFFF299B2)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    SizedBox(height: 8),
-                    _CheckRow(
-                      checkedColor: Color(0xFF6FA43E),
-                      text: 'map / filter / reduce 연습 문제',
-                      checked: true,
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ...List.generate(_subjects.length, (subjectIndex) {
+            final subject = _subjects[subjectIndex];
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _EditableSubjectBlock(
+                subject: subject,
+                isEditing: _isEditing,
+                showPalette: _paletteOpenIndex == subjectIndex,
+                selectedTaskTitle: widget.selectedTaskTitle,
+                onTaskSelected: widget.onTaskSelected,
+                onTogglePalette: () {
+                  setState(() {
+                    _paletteOpenIndex =
+                        _paletteOpenIndex == subjectIndex ? null : subjectIndex;
+                  });
+                },
+                subjectColors: _subjectColors,
+                onDeleteSubject: () => _confirmDeleteSubject(subjectIndex),
+                onPickColor: (color) {
+                  setState(() {
+                    subject.color = color;
+                  });
+                },
+                onChangedTitle: (value) {
+                  subject.title = value;
+                },
+                onChangedDday: (value) {
+                  final parsed = int.tryParse(value);
+                  if (parsed != null) {
+                    subject.dday = parsed;
+                  }
+                },
+                onToggleTodo: (todoIndex) {
+                  setState(() {
+                    subject.todos[todoIndex].done = !subject.todos[todoIndex].done;
+                  });
+                },
+                onRemoveTodo: (todoIndex) =>
+                    _confirmDeleteTodo(subjectIndex, todoIndex),
+                onSubmittedTodo: (todoIndex) =>
+                    _addNextTodo(subjectIndex, todoIndex),
+                onChangedTodo: (todoIndex, value) {
+                  subject.todos[todoIndex].text = value;
+                },
+              ),
+            );
+          }),
         ],
       ),
     );
   }
 }
 
-class _ColorDot extends StatelessWidget {
-  final Color color;
+class MainPlanSubject {
+  String title;
+  Color color;
+  int dday;
+  List<MainPlanTodo> todos;
 
-  const _ColorDot({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 11,
-      height: 11,
-      margin: const EdgeInsets.only(top: 4),
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
+  MainPlanSubject({
+    required this.title,
+    required this.color,
+    required this.dday,
+    required this.todos,
+  });
 }
 
-class _CheckRow extends StatelessWidget {
-  final Color checkedColor;
-  final String text;
-  final bool checked;
+class MainPlanTodo {
+  String text;
+  bool done;
 
-  const _CheckRow({
-    required this.checkedColor,
+  MainPlanTodo({
     required this.text,
-    required this.checked,
+    required this.done,
+  });
+}
+
+class _EditableSubjectBlock extends StatelessWidget {
+  final MainPlanSubject subject;
+  final bool isEditing;
+  final bool showPalette;
+  final String? selectedTaskTitle;
+  final ValueChanged<String> onTaskSelected;
+  final VoidCallback onTogglePalette;
+  final List<Color> subjectColors;
+  final VoidCallback onDeleteSubject;
+  final ValueChanged<Color> onPickColor;
+  final ValueChanged<String> onChangedTitle;
+  final ValueChanged<String> onChangedDday;
+  final ValueChanged<int> onToggleTodo;
+  final ValueChanged<int> onRemoveTodo;
+  final ValueChanged<int> onSubmittedTodo;
+  final void Function(int, String) onChangedTodo;
+
+  const _EditableSubjectBlock({
+    super.key,
+    required this.subject,
+    required this.isEditing,
+    required this.showPalette,
+    required this.selectedTaskTitle,
+    required this.onTaskSelected,
+    required this.onTogglePalette,
+    required this.subjectColors,
+    required this.onDeleteSubject,
+    required this.onPickColor,
+    required this.onChangedTitle,
+    required this.onChangedDday,
+    required this.onToggleTodo,
+    required this.onRemoveTodo,
+    required this.onSubmittedTodo,
+    required this.onChangedTodo,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: checked ? checkedColor : const Color(0xFFE9E9E9),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: checked
-              ? const Icon(
-                  Icons.check,
-                  size: 11,
-                  color: Colors.white,
-                )
-              : null,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 12,
-              color: checked ? const Color(0xFF333333) : const Color(0xFF7F7F7F),
-              fontWeight: checked ? FontWeight.w500 : FontWeight.w400,
+        Row(
+          children: [
+            Container(
+              width: 14,
+              height: 14,
+              decoration: BoxDecoration(
+                color: subject.color,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: isEditing
+                  ? TextFormField(
+                      initialValue: subject.title,
+                      onChanged: onChangedTitle,
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                      ),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : Text(
+                      subject.title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+            if (isEditing) ...[
+              GestureDetector(
+                onTap: onTogglePalette,
+                child: const Icon(
+                  Icons.palette_outlined,
+                  size: 17,
+                  color: Color(0xFF9E9E9E),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: onDeleteSubject,
+                child: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Color(0xFFCC6B6B),
+                ),
+              ),
+            ] else ...[
+              const Icon(
+                Icons.add_circle_outline,
+                size: 17,
+                color: Color(0xFFBDBDBD),
+              ),
+            ],
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF2E1E2),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: isEditing
+                  ? SizedBox(
+                      width: 42,
+                      child: TextFormField(
+                        initialValue: '${subject.dday}',
+                        onChanged: onChangedDday,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF8F7177),
+                        ),
+                      ),
+                    )
+                  : Text(
+                      'D - ${subject.dday}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF8F7177),
+                      ),
+                    ),
+            ),
+          ],
         ),
+        if (showPalette) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: subjectColors.map((color) {
+              final selected = subject.color == color;
+
+              return GestureDetector(
+                onTap: () => onPickColor(color),
+                child: Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: color,
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: selected ? color : Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+        const SizedBox(height: 8),
+        ...List.generate(subject.todos.length, (todoIndex) {
+          final todo = subject.todos[todoIndex];
+          final controller = TextEditingController(text: todo.text);
+          final bool isSelected = selectedTaskTitle == todo.text.trim();
+
+          return Padding(
+            padding: const EdgeInsets.only(left: 18, bottom: 8),
+            child: GestureDetector(
+              onTap: isEditing
+                  ? null
+                  : () {
+                      final text = todo.text.trim();
+                      if (text.isNotEmpty) {
+                        onTaskSelected(text);
+                      }
+                    },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFFFFF1EF)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                  border: isSelected
+                      ? Border.all(color: const Color(0xFFF1B0A9))
+                      : null,
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => onToggleTodo(todoIndex),
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: todo.done
+                              ? subject.color
+                              : const Color(0xFFE8E8E8),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: todo.done
+                            ? const Icon(
+                                Icons.check,
+                                size: 13,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: isEditing
+                          ? TextField(
+                              controller: controller,
+                              onChanged: (value) => onChangedTodo(todoIndex, value),
+                              onSubmitted: (_) => onSubmittedTodo(todoIndex),
+                              decoration: const InputDecoration(
+                                isDense: true,
+                                border: UnderlineInputBorder(
+                                  borderSide:
+                                      BorderSide(color: Color(0xFFD9D9D9)),
+                                ),
+                                enabledBorder: UnderlineInputBorder(
+                                  borderSide:
+                                      BorderSide(color: Color(0xFFD9D9D9)),
+                                ),
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide:
+                                      BorderSide(color: Color(0xFFBDBDBD)),
+                                ),
+                              ),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: todo.done
+                                    ? const Color(0xFFCBCBCB)
+                                    : const Color(0xFF8A8A8A),
+                              ),
+                            )
+                          : Text(
+                              todo.text,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: todo.done
+                                    ? const Color(0xFFCBCBCB)
+                                    : const Color(0xFF8A8A8A),
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                    ),
+                    if (todo.done)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 6),
+                        child: Icon(
+                          Icons.check_circle,
+                          size: 17,
+                          color: Color(0xFF8BCB75),
+                        ),
+                      ),
+                    if (isEditing)
+                      GestureDetector(
+                        onTap: () => onRemoveTodo(todoIndex),
+                        child: const Padding(
+                          padding: EdgeInsets.only(left: 8),
+                          child: Icon(
+                            Icons.close,
+                            size: 16,
+                            color: Color(0xFFB3B3B3),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }),
       ],
     );
   }
@@ -596,11 +1187,17 @@ class _SmallDot extends StatelessWidget {
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
+  final VoidCallback onTapTomato;
+  final String nickname;
+  final String? profileImagePath;
 
   const BottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTapNav,
+    required this.onTapTomato,
+    required this.nickname,
+    this.profileImagePath,
   });
 
   @override
@@ -637,12 +1234,14 @@ class BottomNavBar extends StatelessWidget {
                   builder: (context) => CalendarPageShell(
                     currentIndex: 1,
                     onTapNav: onTapNav,
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
                   ),
                 ),
               );
             },
           ),
-          const TomatoNavItem(),
+          TomatoNavItem(onTap: onTapTomato),
           NavItem(
             icon: Icons.bar_chart,
             label: 'Report',
@@ -660,6 +1259,8 @@ class BottomNavBar extends StatelessWidget {
                   builder: (context) => SubjectPageShell(
                     currentIndex: 2,
                     onTapNav: onTapNav,
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
                   ),
                 ),
               );
@@ -712,29 +1313,330 @@ class NavItem extends StatelessWidget {
 }
 
 class TomatoNavItem extends StatelessWidget {
-  const TomatoNavItem({super.key});
+  final VoidCallback onTap;
+
+  const TomatoNavItem({
+    super.key,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        Container(
-          width: 46,
-          height: 46,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.transparent,
-          ),
-          padding: const EdgeInsets.all(1),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/tomato_glasses.png',
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.transparent,
+            ),
+            padding: const EdgeInsets.all(1),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/tomato_glasses.png',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+class CameraPage extends StatefulWidget {
+  final String? initialSelectedTask;
+  final List<String> allTasks;
+
+  const CameraPage({
+    super.key,
+    required this.initialSelectedTask,
+    required this.allTasks,
+  });
+
+  @override
+  State<CameraPage> createState() => _CameraPageState();
+}
+
+class _CameraPageState extends State<CameraPage> {
+  late String? _selectedTask;
+  bool _isCompleted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTask = widget.initialSelectedTask;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayTask =
+        (_selectedTask == null || _selectedTask!.trim().isEmpty)
+            ? '과목을 선택하세요'
+            : _selectedTask!;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F3F3),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Camera-go',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF8B8B8B),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F1F1),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.circle,
+                          size: 8,
+                          color: Color(0xFFD97068),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          displayTask,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF4A4A4A),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isCompleted = !_isCompleted;
+                      });
+                    },
+                    child: Text(
+                      _isCompleted ? '미완료' : '완료',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF232323),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    '카메라',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF7A7A7A),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 34,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF5FB),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Text(
+                                  '오늘 할 일',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF232323),
+                                  ),
+                                ),
+                                Spacer(),
+                                Text(
+                                  '1 / 5',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Color(0xFF7E7E7E),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ...widget.allTasks.map((task) {
+                              final bool isSelected = _selectedTask == task;
+                              final bool done = _isCompleted && isSelected;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedTask = task;
+                                    });
+                                  },
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.circle,
+                                        size: 8,
+                                        color: done
+                                            ? const Color(0xFFCBCBCB)
+                                            : const Color(0xFFD97068),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          task,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: done
+                                                ? const Color(0xFFCBCBCB)
+                                                : const Color(0xFF555555),
+                                            fontWeight: isSelected
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      if (done)
+                                        const Icon(
+                                          Icons.check_circle,
+                                          color: Color(0xFF8BCB75),
+                                          size: 16,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      flex: 32,
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 150,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFB34C3D),
+                                width: 5,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '20:38',
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 26),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.pop(
+                                context,
+                                {
+                                  'selectedTask': _selectedTask,
+                                  'isCompleted': _isCompleted,
+                                },
+                              );
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.black,
+                              ),
+                              child: const Icon(
+                                Icons.pause,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      flex: 22,
+                      child: Column(
+                        children: [
+                          const Spacer(),
+                          Align(
+                            alignment: Alignment.bottomRight,
+                            child: Container(
+                              height: 86,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEDEDED),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Icon(
+                                  Icons.person_outline,
+                                  size: 34,
+                                  color: Color(0xFFC7C7C7),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TodoItem {
+  String title;
+  bool isDone;
+
+  TodoItem({
+    required this.title,
+    this.isDone = false,
+  });
 }

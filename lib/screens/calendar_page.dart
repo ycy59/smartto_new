@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
+import 'main_screen.dart';
+import 'subject_page.dart';
 
 class CalendarPageShell extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
+  final String nickname;
+  final String? profileImagePath;
 
   const CalendarPageShell({
     super.key,
     required this.currentIndex,
     required this.onTapNav,
+    required this.nickname,
+    this.profileImagePath,
   });
 
   @override
@@ -66,6 +72,116 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
     setState(() {
       _selectedDate = date;
     });
+  }
+
+  Future<void> _showStartDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/tomato_glasses.png',
+                  width: 66,
+                  height: 66,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  '시작하시겠습니까?',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF232323),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: Color(0xFF8F8F8F),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFE5E5E5)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: const Color(0xFFF8F8F8),
+                            foregroundColor: const Color(0xFF9A9A9A),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD97068),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '시작',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != true) return;
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CameraPage(
+          initialSelectedTask: null,
+          allTasks: [],
+        ),
+      ),
+    );
   }
 
   Future<void> _addPlanDialog() async {
@@ -395,8 +511,7 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        if (focus != null)
-                                          _TomatoFace(level: focus),
+                                        if (focus != null) _TomatoFace(level: focus),
                                         const SizedBox(height: 3),
                                         ..._miniPlanBars(day),
                                       ],
@@ -414,6 +529,9 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                 CalendarBottomNavBar(
                   currentIndex: widget.currentIndex,
                   onTapNav: widget.onTapNav,
+                  nickname: widget.nickname,
+                  profileImagePath: widget.profileImagePath,
+                  onTapTomato: _showStartDialog,
                 ),
               ],
             ),
@@ -424,7 +542,46 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
   }
 }
 
-class CalendarDetailPage extends StatelessWidget {
+class _BottomNavIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _BottomNavIcon({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Icon(icon, color: color, size: 23),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class CalendarDetailPage extends StatefulWidget {
   final DateTime selectedDate;
   final List<CalendarPlan> plans;
 
@@ -433,6 +590,13 @@ class CalendarDetailPage extends StatelessWidget {
     required this.selectedDate,
     required this.plans,
   });
+
+  @override
+  State<CalendarDetailPage> createState() => _CalendarDetailPageState();
+}
+
+class _CalendarDetailPageState extends State<CalendarDetailPage> {
+  double _dragOffset = 0;
 
   String _weekdayKorean(int weekday) {
     switch (weekday) {
@@ -460,117 +624,135 @@ class CalendarDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 430),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 10),
-                    Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFD0D0D0),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
+        child: GestureDetector(
+          onVerticalDragUpdate: (details) {
+            if (details.delta.dy > 0) {
+              setState(() {
+                _dragOffset += details.delta.dy;
+              });
+            }
+          },
+          onVerticalDragEnd: (_) {
+            if (_dragOffset > 120) {
+              Navigator.pop(context);
+            } else {
+              setState(() {
+                _dragOffset = 0;
+              });
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            transform: Matrix4.translationValues(0, _dragOffset, 0),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 430),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
                     ),
-                    const SizedBox(height: 18),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        '${selectedDate.month}월 ${selectedDate.day}일 ${_weekdayKorean(selectedDate.weekday)}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD0D0D0),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Expanded(
-                      child: plans.isEmpty
-                          ? const Center(
-                              child: Text(
-                                '등록된 계획이 없습니다',
-                                style: TextStyle(
-                                  color: Color(0xFFB3B3B3),
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: plans.length,
-                              itemBuilder: (context, index) {
-                                final plan = plans[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 18),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(
-                                        width: 54,
-                                        child: Text(
-                                          plan.time,
-                                          style: const TextStyle(
-                                            fontSize: 11,
-                                            color: Color(0xFF4F4F4F),
-                                            height: 1.3,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        width: 3,
-                                        height: 42,
-                                        decoration: BoxDecoration(
-                                          color: plan.color,
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              plan.subject,
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              plan.detail,
+                        const SizedBox(height: 18),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            '${widget.selectedDate.month}월 ${widget.selectedDate.day}일 ${_weekdayKorean(widget.selectedDate.weekday)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Expanded(
+                          child: widget.plans.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    '등록된 계획이 없습니다',
+                                    style: TextStyle(
+                                      color: Color(0xFFB3B3B3),
+                                    ),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  itemCount: widget.plans.length,
+                                  itemBuilder: (context, index) {
+                                    final plan = widget.plans[index];
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 18),
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          SizedBox(
+                                            width: 54,
+                                            child: Text(
+                                              plan.time,
                                               style: const TextStyle(
                                                 fontSize: 11,
-                                                color: Color(0xFF7F7F7F),
+                                                color: Color(0xFF4F4F4F),
+                                                height: 1.3,
                                               ),
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            width: 3,
+                                            height: 42,
+                                            decoration: BoxDecoration(
+                                              color: plan.color,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  plan.subject,
+                                                  style: const TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  plan.detail,
+                                                  style: const TextStyle(
+                                                    fontSize: 11,
+                                                    color: Color(0xFF7F7F7F),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                                    );
+                                  },
+                                ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                     ),
-                    const SizedBox(height: 10),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -674,17 +856,23 @@ class _ColorPickDot extends StatelessWidget {
 class CalendarBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
+  final String nickname;
+  final String? profileImagePath;
+  final VoidCallback onTapTomato;
 
   const CalendarBottomNavBar({
     super.key,
     required this.currentIndex,
     required this.onTapNav,
+    required this.nickname,
+    this.profileImagePath,
+    required this.onTapTomato,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 82,
+      height: 64,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: const BoxDecoration(
         color: Color(0xFFF0F0F0),
@@ -703,8 +891,17 @@ class CalendarBottomNavBar extends StatelessWidget {
             label: 'Home',
             active: false,
             onTap: () {
-              onTapNav(0);
-              Navigator.pop(context);
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => MainScreen(
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
+                    currentIndex: 0,
+                    onTapNav: onTapNav,
+                  ),
+                ),
+                (route) => false,
+              );
             },
           ),
           _BottomNavIcon(
@@ -713,7 +910,7 @@ class CalendarBottomNavBar extends StatelessWidget {
             active: true,
             onTap: () {},
           ),
-          const _BottomTomatoItem(),
+          _BottomTomatoItem(onTap: onTapTomato),
           _BottomNavIcon(
             icon: Icons.bar_chart,
             label: 'Report',
@@ -725,7 +922,17 @@ class CalendarBottomNavBar extends StatelessWidget {
             label: 'Subject',
             active: false,
             onTap: () {
-              Navigator.pop(context);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SubjectPageShell(
+                    currentIndex: 2,
+                    onTapNav: onTapNav,
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
+                  ),
+                ),
+              );
             },
           ),
         ],
@@ -734,65 +941,34 @@ class CalendarBottomNavBar extends StatelessWidget {
   }
 }
 
-class _BottomNavIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
+
+class _BottomTomatoItem extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _BottomNavIcon({
-    required this.icon,
-    required this.label,
-    required this.active,
+  const _BottomTomatoItem({
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
-
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Icon(icon, color: color, size: 23),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+      child: SizedBox(
+        width: 46,
+        height: 46,
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/tomato_glasses.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: const Color(0xFFD94C43),
+                child: const Center(
+                  child: Text('🍅', style: TextStyle(fontSize: 24)),
+                ),
+              );
+            },
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomTomatoItem extends StatelessWidget {
-  const _BottomTomatoItem();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 46,
-      height: 46,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/images/tomato_glasses.png',
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: const Color(0xFFD94C43),
-              child: const Center(
-                child: Text('🍅', style: TextStyle(fontSize: 24)),
-              ),
-            );
-          },
         ),
       ),
     );

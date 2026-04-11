@@ -42,7 +42,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<Map<String, String>> purposeOptions = const [
     {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.jpg'},
     {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.jpg'},
-    {'title': '자기계발', 'subtitle': '지격증 · 언어', 'icon': 'assets/images/icon_growth.jpg'},
+    {'title': '자기계발', 'subtitle': '자격증 · 언어', 'icon': 'assets/images/icon_growth.jpg'},
   ];
 
   final List<String> timeOptions = const ['1시간', '2시간', '4시간', '5시간+'];
@@ -249,7 +249,7 @@ class _SplashPageState extends State<SplashPage>
         children: [
           // 배경 토마토 — 투명도 적용
           Opacity(
-            opacity: 0.14,
+            opacity: 0.26, //숫자를 늘릴 수록 진해짐.
             child: Image.asset(
               'assets/images/tomato_splash.png',
               width: double.infinity,
