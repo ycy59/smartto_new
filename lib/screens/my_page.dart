@@ -361,7 +361,7 @@ Widget build(BuildContext context) {
                       child: ElevatedButton(
                         onPressed: _saveNickname,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF6E1DF),
+                          backgroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -376,7 +376,7 @@ Widget build(BuildContext context) {
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFFD49AA0),
+                            color: Color(0xFFEE7E76),
                           ),
                         ),
                       ),
