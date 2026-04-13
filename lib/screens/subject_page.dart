@@ -227,12 +227,6 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
             constraints: const BoxConstraints(maxWidth: 430),
             child: Column(
               children: [
-                const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: _SubjectStatusBar(),
-                ),
-                const SizedBox(height: 10),
                 Expanded(child: body),
                 SubjectBottomNavBar(
                   currentIndex: widget.currentIndex,

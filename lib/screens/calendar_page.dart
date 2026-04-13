@@ -383,12 +383,6 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
             constraints: const BoxConstraints(maxWidth: 430),
             child: Column(
               children: [
-                const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: _CalendarStatusBar(),
-                ),
-                const SizedBox(height: 10),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
@@ -989,35 +983,6 @@ class _BottomTomatoItem extends StatelessWidget {
   }
 }
 
-class _CalendarStatusBar extends StatelessWidget {
-  const _CalendarStatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          '9:41',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        ),
-        Row(
-          children: [
-            Icon(Icons.signal_cellular_alt, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.wifi, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.battery_full, size: 18, color: Colors.black),
-          ],
-        ),
-      ],
-    );
-  }
-}
 
 enum DayFocusLevel {
   high,

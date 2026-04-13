@@ -312,7 +312,6 @@ class IntroGuidePage extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
               child: Column(
                 children: [
-                  const _IntroStatusBar(),
                   const Spacer(),
                   Column(
                     children: [

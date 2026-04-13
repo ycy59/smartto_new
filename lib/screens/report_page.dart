@@ -50,12 +50,6 @@ class _ReportPageShellState extends State<ReportPageShell>
             constraints: const BoxConstraints(maxWidth: 430),
             child: Column(
               children: [
-                const SizedBox(height: 14),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: _ReportStatusBar(),
-                ),
-                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Container(

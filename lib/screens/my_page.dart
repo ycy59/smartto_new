@@ -252,9 +252,6 @@ Widget build(BuildContext context) {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Column(
                   children: [
-                    const SizedBox(height: 8),
-                    const _MyPageStatusBar(),
-                    const SizedBox(height: 14),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [

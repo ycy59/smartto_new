@@ -221,8 +221,6 @@ void _openMyPage() {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Column(
                   children: [
-                    const _StatusBar(),
-                    const SizedBox(height: 14),
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
