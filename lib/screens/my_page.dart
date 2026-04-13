@@ -435,36 +435,6 @@ class _Dot extends StatelessWidget {
   }
 }
 
-class _MyPageStatusBar extends StatelessWidget {
-  const _MyPageStatusBar();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          '9:41',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Colors.black,
-          ),
-        ),
-        Row(
-          children: [
-            Icon(Icons.signal_cellular_alt, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.wifi, size: 16, color: Colors.black),
-            SizedBox(width: 4),
-            Icon(Icons.battery_full, size: 18, color: Colors.black),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 class _MyPageBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
