@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+import '../domain/entities/todo_item.dart' as domain;
+import '../providers/today_plan_provider.dart';
+import '../providers/database_provider.dart';
+import '../providers/stats_provider.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
 import 'my_page.dart';
 import 'camera_page.dart';
 import 'report_page.dart';
 
-List<String> globalTodayTasks = [];
 
 class MainScreen extends StatefulWidget {
   final String nickname;
@@ -71,9 +76,6 @@ void _openMyPage() {
 }
 
   Future<void> _showStartDialog() async {
-    final allTasks = _todayPlanKey.currentState?.getAllTodoTitles() ?? [];
-    globalTodayTasks = allTasks;
-
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -175,29 +177,29 @@ void _openMyPage() {
 
    if (result != true) return;
 
+    final cameraTasks = _todayPlanKey.currentState?.getCameraTasks() ?? [];
+    final selectedCameraTask = cameraTasks
+        .where((t) => t.text == _selectedTaskTitle)
+        .cast<CameraTask?>()
+        .firstOrNull;
+
     final pageResult = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
         builder: (context) => CameraPage(
-          initialSelectedTask: _selectedTaskTitle,
-          allTasks: allTasks,
+          initialSelectedTask: selectedCameraTask,
+          allTasks: cameraTasks,
         ),
       ),
     );
 
     if (pageResult != null) {
       final selectedTask = pageResult['selectedTask'] as String?;
-      final doneMap = pageResult['doneMap'] as Map<String, bool>? ?? {};
-
       if (selectedTask != null && selectedTask.isNotEmpty) {
-        setState(() {
-          _selectedTaskTitle = selectedTask;
-        });
+        setState(() => _selectedTaskTitle = selectedTask);
       }
-
-      doneMap.forEach((task, isDone) {
-        _todayPlanKey.currentState?.markTaskDoneByText(task, isDone);
-      });
+      // DB 갱신은 camera_page 내부에서 완료됨 — 오늘 계획 재로드
+      _todayPlanKey.currentState?._loadTodayPlan();
     }
   }  // ← _showStartDialog 닫는 괄호
 
@@ -259,7 +261,7 @@ void _openMyPage() {
   }
 }
 
-class GreetingCard extends StatelessWidget {
+class GreetingCard extends ConsumerWidget {
   final String nickname;
 
   const GreetingCard({
@@ -268,8 +270,28 @@ class GreetingCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final displayName = nickname.trim();
+    final statsAsync = ref.watch(statsProvider);
+
+    final todayLabel = statsAsync.when(
+      data: (s) => formatMinutes(s.todayMinutes),
+      loading: () => '--',
+      error: (_, __) => '--',
+    );
+    final goalLabel = statsAsync.when(
+      data: (s) => formatMinutes(s.goalMinutes),
+      loading: () => '--',
+      error: (_, __) => '--',
+    );
+    final progress = statsAsync.when(
+      data: (s) => s.goalMinutes > 0
+          ? (s.todayMinutes / s.goalMinutes).clamp(0.0, 1.0)
+          : 0.0,
+      loading: () => 0.0,
+      error: (_, __) => 0.0,
+    );
+    final progressPct = (progress * 100).round();
 
     return Container(
       width: double.infinity,
@@ -299,23 +321,23 @@ class GreetingCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          const Row(
+          Row(
             children: [
               Expanded(
                 child: InfoCard(
                   title: '학습 시간',
-                  value: '1H 25M',
-                  changeText: '▲ 12.5%',
-                  changeColor: Color(0xFFC96B63),
+                  value: todayLabel,
+                  changeText: '$progressPct%',
+                  changeColor: const Color(0xFFC96B63),
                 ),
               ),
-              SizedBox(width: 10),
+              const SizedBox(width: 10),
               Expanded(
                 child: InfoCard(
                   title: '목표 시간',
-                  value: '3H 00M',
-                  changeText: '▼ 3.1%',
-                  changeColor: Color(0xFF6D88D8),
+                  value: goalLabel,
+                  changeText: '오늘 목표',
+                  changeColor: const Color(0xFF6D88D8),
                 ),
               ),
             ],
@@ -388,11 +410,31 @@ class InfoCard extends StatelessWidget {
   }
 }
 
-class WeeklyStatsCard extends StatelessWidget {
+class WeeklyStatsCard extends ConsumerWidget {
   const WeeklyStatsCard({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final statsAsync = ref.watch(statsProvider);
+
+    final totalFocus = statsAsync.when(
+      data: (s) => formatMinutes(s.weeklyMinutes),
+      loading: () => '--',
+      error: (_, __) => '--',
+    );
+    final sessionCount = statsAsync.when(
+      data: (s) => '${s.weeklySessionCount}개',
+      loading: () => '--',
+      error: (_, __) => '--',
+    );
+    final avgFocus = statsAsync.when(
+      data: (s) => s.weeklyAvgFocus != null
+          ? '${s.weeklyAvgFocus!.toInt()}%'
+          : '-%',
+      loading: () => '--',
+      error: (_, __) => '--',
+    );
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -402,8 +444,8 @@ class WeeklyStatsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Row(
-            children: const [
+          const Row(
+            children: [
               Text(
                 '이번주 통계',
                 style: TextStyle(
@@ -426,26 +468,26 @@ class WeeklyStatsCard extends StatelessWidget {
           const SizedBox(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
+            children: [
               StatItem(
-                circleColor: Color(0xFFF1D1CC),
-                iconColor: Color(0xFFC96B63),
+                circleColor: const Color(0xFFF1D1CC),
+                iconColor: const Color(0xFFC96B63),
                 icon: Icons.timer,
-                value: '0분',
+                value: totalFocus,
                 label: '총 집중',
               ),
               StatItem(
-                circleColor: Color(0xFFDCE9CE),
-                iconColor: Color(0xFF789F57),
+                circleColor: const Color(0xFFDCE9CE),
+                iconColor: const Color(0xFF789F57),
                 icon: Icons.check_circle,
-                value: '0개',
+                value: sessionCount,
                 label: '완료 세션',
               ),
               StatItem(
-                circleColor: Color(0xFFF4DEAE),
-                iconColor: Color(0xFFD9A247),
+                circleColor: const Color(0xFFF4DEAE),
+                iconColor: const Color(0xFFD9A247),
                 icon: Icons.group_work_rounded,
-                value: '-%',
+                value: avgFocus,
                 label: '평균 집중도',
               ),
             ],
@@ -513,23 +555,24 @@ class StatItem extends StatelessWidget {
   }
 }
 
-class TodayPlanCard extends StatefulWidget {
+class TodayPlanCard extends ConsumerStatefulWidget {
   final String? selectedTaskTitle;
   final ValueChanged<String> onTaskSelected;
 
-  TodayPlanCard({
+  const TodayPlanCard({
     super.key,
     required this.selectedTaskTitle,
     required this.onTaskSelected,
   });
 
   @override
-  State<TodayPlanCard> createState() => _TodayPlanCardState();
+  ConsumerState<TodayPlanCard> createState() => _TodayPlanCardState();
 }
 
-class _TodayPlanCardState extends State<TodayPlanCard> {
+class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
   bool _isEditing = false;
   int? _paletteOpenIndex;
+  List<MainPlanSubject> _subjects = [];
 
   final List<Color> _subjectColors = const [
     Color(0xFFE06B63),
@@ -540,40 +583,56 @@ class _TodayPlanCardState extends State<TodayPlanCard> {
     Color(0xFFF08AA1),
   ];
 
-  final List<MainPlanSubject> _subjects = [
-    MainPlanSubject(
-      title: '데이터베이스',
-      color: const Color(0xFFE06B63),
-      dday: 17,
-      todos: [
-        MainPlanTodo(text: 'SQLite 실습', done: false),
-        MainPlanTodo(text: 'SQL 기본 쿼리 복습', done: true),
-      ],
-    ),
-    MainPlanSubject(
-      title: '인터넷 프로그래밍',
-      color: const Color(0xFF79B13D),
-      dday: 0,
-      todos: [
-        MainPlanTodo(text: 'map / filter / reduce 연습 문제', done: true),
-      ],
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // 첫 빌드 후 DB에서 오늘의 계획 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTodayPlan());
+  }
 
-  List<String> getAllTodoTitles() {
-    final List<String> result = [];
+  Future<void> _loadTodayPlan() async {
+    ref.invalidate(todayPlanProvider);
+    final entries = await ref.read(todayPlanProvider.future);
+    if (!mounted) return;
+    setState(() => _subjects = _mapEntries(entries));
+  }
 
+  List<MainPlanSubject> _mapEntries(List<TodayPlanEntry> entries) =>
+      entries.map((e) {
+        final dday = e.goal.daysUntilDeadline ?? 0;
+        return MainPlanSubject(
+          subjectId: e.subject.id,
+          goalId: e.goal.id,
+          title: e.subject.name,
+          color: e.subject.color,
+          dday: dday < 0 ? 0 : dday,
+          todos: e.goal.todos
+              .map((t) => MainPlanTodo(id: t.id, text: t.text, done: t.isDone))
+              .toList(),
+        );
+      }).toList();
+
+  /// 카메라 페이지에 넘길 CameraTask 목록 생성
+  List<CameraTask> getCameraTasks() {
+    final result = <CameraTask>[];
     for (final subject in _subjects) {
+      if (subject.goalId == null) continue;
       for (final todo in subject.todos) {
-        final text = todo.text.trim();
-        if (text.isNotEmpty) {
-          result.add(text);
+        if (todo.text.isNotEmpty) {
+          result.add(CameraTask(
+            todoId: todo.id ?? '',
+            goalId: subject.goalId!,
+            subjectId: subject.subjectId ?? '',
+            text: todo.text,
+          ));
         }
       }
     }
-
     return result;
   }
+
+  List<String> getAllTodoTitles() =>
+      getCameraTasks().map((t) => t.text).toList();
 
   void markTaskDoneByText(String taskText, bool done) {
     setState(() {
@@ -581,6 +640,11 @@ class _TodayPlanCardState extends State<TodayPlanCard> {
         for (final todo in subject.todos) {
           if (todo.text.trim() == taskText.trim()) {
             todo.done = done;
+            if (todo.id != null) {
+              ref.read(todoRepoProvider).update(
+                    todo._toDomain(subject.goalId!),
+                  );
+            }
           }
         }
       }
@@ -686,6 +750,15 @@ class _TodayPlanCardState extends State<TodayPlanCard> {
 
   @override
   Widget build(BuildContext context) {
+    // Provider 변경 시 자동으로 _subjects 갱신
+    ref.listen(todayPlanProvider, (_, next) {
+      next.whenData((entries) {
+        if (mounted && !_isEditing) {
+          setState(() => _subjects = _mapEntries(entries));
+        }
+      });
+    });
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
@@ -708,10 +781,23 @@ class _TodayPlanCardState extends State<TodayPlanCard> {
               ),
               const Spacer(),
               GestureDetector(
-                onTap: _toggleEdit,
-                child: Text(
-                  _isEditing ? '완료' : '편집',
-                  style: const TextStyle(
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SubjectPageShell(
+                        currentIndex: 2,
+                        onTapNav: (_) {},
+                        nickname: '',
+                      ),
+                    ),
+                  );
+                  // 돌아왔을 때 오늘 계획 갱신
+                  _loadTodayPlan();
+                },
+                child: const Text(
+                  '편집',
+                  style: TextStyle(
                     fontSize: 13,
                     color: Color(0xFFEE7E76),
                     fontWeight: FontWeight.w700,
@@ -721,7 +807,7 @@ class _TodayPlanCardState extends State<TodayPlanCard> {
             ],
           ),
           const SizedBox(height: 12),
-          if (_isEditing)
+          if (false) // 편집 기능 SubjectPage로 이동, 해당 블록 비활성
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: SizedBox(
@@ -795,12 +881,16 @@ class _TodayPlanCardState extends State<TodayPlanCard> {
 }
 
 class MainPlanSubject {
+  final String? subjectId;
+  final String? goalId;
   String title;
   Color color;
   int dday;
   List<MainPlanTodo> todos;
 
   MainPlanSubject({
+    this.subjectId,
+    this.goalId,
     required this.title,
     required this.color,
     required this.dday,
@@ -809,13 +899,23 @@ class MainPlanSubject {
 }
 
 class MainPlanTodo {
+  final String? id;
   String text;
   bool done;
 
   MainPlanTodo({
+    this.id,
     required this.text,
     required this.done,
   });
+
+  domain.TodoItem _toDomain(String goalId) => domain.TodoItem(
+        id: id ?? const Uuid().v4(),
+        goalId: goalId,
+        text: text,
+        isDone: done,
+        position: 0,
+      );
 }
 
 class _EditableSubjectBlock extends StatelessWidget {
@@ -1333,12 +1433,3 @@ class TomatoNavItem extends StatelessWidget {
 }
 
 
-class TodoItem {
-  String title;
-  bool isDone;
-
-  TodoItem({
-    required this.title,
-    this.isDone = false,
-  });
-}

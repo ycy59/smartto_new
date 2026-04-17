@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../domain/entities/study_session.dart';
+import '../providers/study_session_provider.dart';
 
-class CameraPage extends StatefulWidget {
-  final String? initialSelectedTask;
-  final List<String> allTasks;
+/// 카메라 화면에서 사용하는 할일 단위
+class CameraTask {
+  final String todoId;
+  final String goalId;
+  final String subjectId;
+  final String text;
+
+  const CameraTask({
+    required this.todoId,
+    required this.goalId,
+    required this.subjectId,
+    required this.text,
+  });
+}
+
+class CameraPage extends ConsumerStatefulWidget {
+  final CameraTask? initialSelectedTask;
+  final List<CameraTask> allTasks;
 
   const CameraPage({
     super.key,
@@ -11,45 +29,68 @@ class CameraPage extends StatefulWidget {
   });
 
   @override
-  State<CameraPage> createState() => _CameraPageState();
+  ConsumerState<CameraPage> createState() => _CameraPageState();
 }
 
-class _CameraPageState extends State<CameraPage> {
-  late String? _selectedTask;
-  late Map<String, bool> _doneMap;
+class _CameraPageState extends ConsumerState<CameraPage> {
+  CameraTask? _selectedTask;
+  late Map<String, bool> _doneMap; // todoId → done
+  StudySession? _activeSession;
 
   @override
   void initState() {
     super.initState();
     _selectedTask = widget.initialSelectedTask;
-    // 각 할 일의 완료 상태를 개별 관리
-    _doneMap = {for (final t in widget.allTasks) t: false};
+    _doneMap = {for (final t in widget.allTasks) t.todoId: false};
+    if (_selectedTask != null) _startSession(_selectedTask!);
   }
 
-  // 현재 선택된 할 일의 완료 여부
-  bool get _currentTaskDone =>
-      _selectedTask != null && (_doneMap[_selectedTask] ?? false);
+  Future<void> _startSession(CameraTask task) async {
+    if (task.goalId.isEmpty) return;
+    _activeSession = await ref
+        .read(studySessionProvider.notifier)
+        .startSession(task.goalId);
+  }
 
-  // 완료/미완료 토글
+  Future<void> _endSession() async {
+    if (_activeSession == null || _selectedTask == null) return;
+    // TODO: MediaPipe 집중도 점수로 교체 (현재 65% 모의값 = Good 등급)
+    const mockFocusScore = 0.65;
+    await ref.read(studySessionProvider.notifier).endSession(
+          session: _activeSession!,
+          focusScore: mockFocusScore,
+          subjectId: _selectedTask!.subjectId,
+        );
+    _activeSession = null;
+  }
+
+  bool get _currentTaskDone =>
+      _selectedTask != null && (_doneMap[_selectedTask!.todoId] ?? false);
+
   void _toggleDone() {
     if (_selectedTask == null) return;
     setState(() {
-      _doneMap[_selectedTask!] = !(_doneMap[_selectedTask!] ?? false);
+      _doneMap[_selectedTask!.todoId] = !(_doneMap[_selectedTask!.todoId] ?? false);
     });
   }
 
-  // 재선택: 선택 초기화
   void _resetSelection() {
-    setState(() {
-      _selectedTask = null;
-    });
+    setState(() => _selectedTask = null);
+  }
+
+  void _selectTask(CameraTask task) {
+    if (_selectedTask?.goalId != task.goalId) {
+      _endSession().then((_) => _startSession(task));
+    }
+    setState(() => _selectedTask = task);
   }
 
   @override
   Widget build(BuildContext context) {
-    final chipText = (_selectedTask == null || _selectedTask!.trim().isEmpty)
-        ? '과목을 선택하세요'
-        : _selectedTask!;
+    final chipText =
+        (_selectedTask == null || _selectedTask!.text.trim().isEmpty)
+            ? '과목을 선택하세요'
+            : _selectedTask!.text;
 
     final bool canToggle = _selectedTask != null;
 
@@ -108,7 +149,6 @@ class _CameraPageState extends State<CameraPage> {
 
                   const SizedBox(width: 10),
 
-                  // 완료 / 미완료 버튼 (과목 선택 전엔 비활성)
                   GestureDetector(
                     onTap: canToggle ? _toggleDone : null,
                     child: Text(
@@ -117,17 +157,16 @@ class _CameraPageState extends State<CameraPage> {
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: !canToggle
-                            ? const Color(0xFFCBCBCB)   // 비활성
+                            ? const Color(0xFFCBCBCB)
                             : _currentTaskDone
-                                ? const Color(0xFF9A9A9A) // 미완료
-                                : const Color(0xFF232323), // 완료
+                                ? const Color(0xFF9A9A9A)
+                                : const Color(0xFF232323),
                       ),
                     ),
                   ),
 
                   const SizedBox(width: 10),
 
-                  // 재선택 버튼
                   GestureDetector(
                     onTap: _resetSelection,
                     child: const Text(
@@ -183,8 +222,7 @@ class _CameraPageState extends State<CameraPage> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            ...widget.allTasks.map((task) =>
-                                _buildTask(task)),
+                            ...widget.allTasks.map((task) => _buildTask(task)),
                           ],
                         ),
                       ),
@@ -221,11 +259,15 @@ class _CameraPageState extends State<CameraPage> {
                           ),
                           const SizedBox(height: 26),
                           GestureDetector(
-                            onTap: () {
+                            onTap: () async {
+                              await _endSession();
+                              if (!mounted) return;
                               Navigator.pop(context, {
-                                'selectedTask': _selectedTask,
-                                'isCompleted': _currentTaskDone,
-                                'doneMap': _doneMap,
+                                'selectedTask': _selectedTask?.text,
+                                'doneMap': {
+                                  for (final t in widget.allTasks)
+                                    t.text: _doneMap[t.todoId] ?? false,
+                                },
                               });
                             },
                             child: Container(
@@ -280,22 +322,17 @@ class _CameraPageState extends State<CameraPage> {
     );
   }
 
-  Widget _buildTask(String task) {
-    final bool isSelected = _selectedTask == task;
-    final bool isDone = _doneMap[task] ?? false;
+  Widget _buildTask(CameraTask task) {
+    final bool isSelected = _selectedTask?.todoId == task.todoId;
+    final bool isDone = _doneMap[task.todoId] ?? false;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedTask = task;
-          });
-        },
+        onTap: () => _selectTask(task),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 색상 점
             Icon(
               Icons.circle,
               size: 8,
@@ -304,28 +341,22 @@ class _CameraPageState extends State<CameraPage> {
                   : const Color(0xFFD97068),
             ),
             const SizedBox(width: 8),
-
-            // 할 일 텍스트
             Expanded(
               child: Text(
-                task,
+                task.text,
                 style: TextStyle(
                   fontSize: 11,
                   color: isDone
-                      ? const Color(0xFFCBCBCB)   // 완료: #CBCBCB
-                      : const Color(0xFF555555),   // 미완료: 기본
-                  fontWeight: isSelected
-                      ? FontWeight.w700
-                      : FontWeight.w500,
-                  decoration: isDone
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none,
+                      ? const Color(0xFFCBCBCB)
+                      : const Color(0xFF555555),
+                  fontWeight:
+                      isSelected ? FontWeight.w700 : FontWeight.w500,
+                  decoration:
+                      isDone ? TextDecoration.lineThrough : TextDecoration.none,
                   decorationColor: const Color(0xFFCBCBCB),
                 ),
               ),
             ),
-
-            // 완료 체크 아이콘
             if (isDone)
               const Padding(
                 padding: EdgeInsets.only(left: 4),

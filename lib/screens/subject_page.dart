@@ -1,8 +1,31 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
+import '../algorithms/fsrs/fsrs_engine.dart';
+import '../domain/entities/subject.dart' as domain;
+import '../domain/entities/study_goal.dart';
+import '../domain/entities/todo_item.dart' as domain;
+import '../providers/database_provider.dart';
+import '../providers/today_plan_provider.dart';
 import 'camera_page.dart';
 import 'calendar_page.dart';
 import 'main_screen.dart';
 import 'report_page.dart';
+
+/// 앱 전체에서 사용하는 과목 색상 팔레트
+const kSubjectColorPalette = [
+  Color(0xFF7B89FF),
+  Color(0xFF9F88FF),
+  Color(0xFF8BCF6E),
+  Color(0xFFF0C06F),
+  Color(0xFFF08AA1),
+  Color(0xFF90C4FF),
+  Color(0xFFE06B63),
+  Color(0xFF79B13D),
+  Color(0xFFFFB347),
+  Color(0xFF66CDAA),
+];
 
 enum SubjectPageMode {
   empty,
@@ -11,7 +34,7 @@ enum SubjectPageMode {
   detail,
 }
 
-class SubjectPageShell extends StatefulWidget {
+class SubjectPageShell extends ConsumerStatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
   final String nickname;
@@ -26,14 +49,114 @@ class SubjectPageShell extends StatefulWidget {
   });
 
   @override
-  State<SubjectPageShell> createState() => _SubjectPageShellState();
+  ConsumerState<SubjectPageShell> createState() => _SubjectPageShellState();
 }
 
-class _SubjectPageShellState extends State<SubjectPageShell> {
-  final List<SubjectItem> _subjects = [];
+class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
+  List<SubjectItem> _subjects = [];
 
   SubjectPageMode _mode = SubjectPageMode.empty;
   int? _selectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubjectsFromDb();
+  }
+
+  Future<void> _loadSubjectsFromDb() async {
+    final subjectRepo = ref.read(subjectRepoProvider);
+    final goalRepo = ref.read(studyGoalRepoProvider);
+
+    final subjects = await subjectRepo.getAll();
+    final result = <SubjectItem>[];
+
+    for (final subject in subjects) {
+      final goals = await goalRepo.getBySubject(subject.id);
+      if (goals.isEmpty) continue;
+      final goal = goals.first;
+      result.add(SubjectItem(
+        subjectId: subject.id,
+        goalId: goal.id,
+        name: subject.name,
+        mode: goal.mode,
+        date: goal.dueDate ?? DateTime.now(),
+        level: goal.understandingLevel,
+        color: subject.color,
+        todos: goal.todos
+            .map((t) => TodoItem(id: t.id, text: t.text, done: t.isDone))
+            .toList(),
+      ));
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _subjects = result;
+      _mode = result.isEmpty ? SubjectPageMode.empty : SubjectPageMode.list;
+    });
+  }
+
+  Future<void> _saveSubjectToDb(SubjectItem item) async {
+    const uuid = Uuid();
+    final subjectRepo = ref.read(subjectRepoProvider);
+    final goalRepo = ref.read(studyGoalRepoProvider);
+    final todoRepo = ref.read(todoRepoProvider);
+
+    final subjectId = item.subjectId ?? uuid.v4();
+    final goalId = item.goalId ?? uuid.v4();
+
+    await subjectRepo.save(domain.Subject(
+      id: subjectId,
+      name: item.name,
+      color: item.color,
+    ));
+
+    if (item.goalId == null) {
+      final fsrs = FsrsEngine.initFromLevel(item.level.toDbString());
+      await goalRepo.save(StudyGoal(
+        id: goalId,
+        subjectId: subjectId,
+        title: item.name,
+        mode: item.mode,
+        understandingLevel: item.level,
+        dueDate: item.date,
+        stability: fsrs.stability,
+        difficulty: fsrs.difficulty,
+        retrievability: fsrs.retrievability,
+        repetitions: fsrs.repetitions,
+        state: fsrs.state,
+        lastReview: fsrs.lastReview,
+        nextDue: fsrs.nextDue,
+        createdAt: DateTime.now(),
+      ));
+    } else {
+      final existing = await goalRepo.getById(goalId);
+      if (existing != null) {
+        await goalRepo.save(existing.copyWith(
+          title: item.name,
+          mode: item.mode,
+          dueDate: () => item.date,
+          understandingLevel: item.level,
+        ));
+        await todoRepo.deleteByGoal(goalId);
+      }
+    }
+
+    for (int i = 0; i < item.todos.length; i++) {
+      final t = item.todos[i];
+      if (t.text.isNotEmpty) {
+        await todoRepo.save(domain.TodoItem(
+          id: t.id ?? uuid.v4(),
+          goalId: goalId,
+          text: t.text,
+          isDone: t.done,
+          position: i,
+        ));
+      }
+    }
+
+    ref.read(todayPlanProvider.notifier).refresh();
+  }
 
   Future<void> _showStartDialog() async {
   final result = await showDialog<bool>(
@@ -132,19 +255,45 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
   );
 
   if (result != true) return;
-
   if (!mounted) return;
+
+  // 현재 화면의 과목 할일을 CameraTask로 변환
+  final cameraTasks = _subjects
+      .where((s) => s.goalId != null && s.subjectId != null)
+      .expand((s) => s.todos
+          .where((t) => t.text.isNotEmpty)
+          .map((t) => CameraTask(
+                todoId: t.id ?? '',
+                goalId: s.goalId!,
+                subjectId: s.subjectId!,
+                text: t.text,
+              )))
+      .toList();
 
   Navigator.push(
     context,
     MaterialPageRoute(
       builder: (context) => CameraPage(
         initialSelectedTask: null,
-        allTasks: [],
+        allTasks: cameraTasks,
       ),
     ),
   );
 }
+
+  /// 현재 사용 중이지 않은 색상을 랜덤 선택
+  Color _pickUnusedColor() {
+    final used = _subjects.map((s) => s.color.value).toSet();
+    final unused = kSubjectColorPalette
+        .where((c) => !used.contains(c.value))
+        .toList();
+    if (unused.isEmpty) {
+      // 팔레트 색상을 모두 사용한 경우 전체에서 랜덤
+      return kSubjectColorPalette[Random().nextInt(kSubjectColorPalette.length)];
+    }
+    unused.shuffle(Random());
+    return unused.first;
+  }
 
   void _openAddScreen() {
     setState(() {
@@ -161,6 +310,7 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
   }
 
   void _addSubject(SubjectItem item) {
+    _saveSubjectToDb(item);
     setState(() {
       _subjects.add(item);
       _mode = SubjectPageMode.list;
@@ -176,14 +326,31 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
   }
 
   void _updateSubject(int index, SubjectItem updated) {
+    final original = _subjects[index];
+    final withIds = SubjectItem(
+      subjectId: original.subjectId,
+      goalId: original.goalId,
+      name: updated.name,
+      mode: updated.mode,
+      date: updated.date,
+      level: updated.level,
+      color: updated.color,
+      todos: updated.todos,
+    );
+    _saveSubjectToDb(withIds);
     setState(() {
-      _subjects[index] = updated;
+      _subjects[index] = withIds;
       _mode = SubjectPageMode.list;
       _selectedIndex = null;
     });
   }
 
   void _deleteSubject(int index) {
+    final item = _subjects[index];
+    if (item.subjectId != null) {
+      ref.read(subjectRepoProvider).delete(item.subjectId!);
+      ref.read(todayPlanProvider.notifier).refresh();
+    }
     setState(() {
       _subjects.removeAt(index);
       _mode = _subjects.isEmpty ? SubjectPageMode.empty : SubjectPageMode.list;
@@ -203,6 +370,7 @@ class _SubjectPageShellState extends State<SubjectPageShell> {
       body = SubjectAddPage(
         onCancel: _openListScreen,
         onComplete: _addSubject,
+        defaultColor: _pickUnusedColor(),
       );
     } else if (_mode == SubjectPageMode.detail && _selectedIndex != null) {
       body = SubjectDetailPage(
@@ -465,11 +633,13 @@ class _SubjectRow extends StatelessWidget {
 class SubjectAddPage extends StatefulWidget {
   final VoidCallback onCancel;
   final ValueChanged<SubjectItem> onComplete;
+  final Color defaultColor;
 
   const SubjectAddPage({
     super.key,
     required this.onCancel,
     required this.onComplete,
+    required this.defaultColor,
   });
 
   @override
@@ -523,7 +693,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
         mode: _selectedMode!,
         date: _selectedDate!,
         level: _selectedLevel!,
-        color: const Color(0xFF9F88FF),
+        color: widget.defaultColor,
         todos: [
             TodoItem(text: '', done: false),
         ],
@@ -1375,13 +1545,12 @@ class _BottomTomatoItem extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────
-// 데이터 모델
+// 데이터 모델 (StudyMode, UnderstandingLevel은 domain/entities/study_goal.dart에서 import)
 // ──────────────────────────────────────────
-enum StudyMode { study, exam }
-
-enum UnderstandingLevel { hard, normal, easy }
 
 class SubjectItem {
+  final String? subjectId; // DB Subject ID (null = 미저장)
+  final String? goalId;    // DB StudyGoal ID (null = 미저장)
   final String name;
   final StudyMode mode;
   final DateTime date;
@@ -1390,6 +1559,8 @@ class SubjectItem {
   final List<TodoItem> todos;
 
   SubjectItem({
+    this.subjectId,
+    this.goalId,
     required this.name,
     required this.mode,
     required this.date,
@@ -1407,10 +1578,12 @@ class SubjectItem {
 }
 
 class TodoItem {
+  final String? id; // DB todo_items ID (null = 미저장)
   String text;
   bool done;
 
   TodoItem({
+    this.id,
     required this.text,
     required this.done,
   });

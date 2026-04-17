@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:smartto_new/screens/main_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_shell.dart';
 
 void main() {
-  runApp(const SmarttoApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    const ProviderScope(
+      child: SmarttoApp(),
+    ),
+  );
 }
 
 class SmarttoApp extends StatelessWidget {
@@ -18,7 +24,31 @@ class SmarttoApp extends StatelessWidget {
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      home: const OnboardingScreen(),
+      home: const _AppEntry(),
+    );
+  }
+}
+
+class _AppEntry extends StatelessWidget {
+  const _AppEntry();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SharedPreferences>(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(backgroundColor: Colors.white);
+        }
+        final prefs = snapshot.data!;
+        final done = prefs.getBool('onboarding_complete') ?? false;
+        final nickname = prefs.getString('nickname') ?? '';
+
+        if (done && nickname.isNotEmpty) {
+          return HomeShell(nickname: nickname);
+        }
+        return const OnboardingScreen();
+      },
     );
   }
 }
@@ -677,13 +707,17 @@ class CompletePage extends StatelessWidget {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('onboarding_complete', true);
+                  await prefs.setString('nickname', nickname);
+                  await prefs.setString('study_time_goal', selectedStudyTime);
+
+                  if (!context.mounted) return;
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => HomeShell(
-                        nickname: nickname,
-                      ),
+                      builder: (context) => HomeShell(nickname: nickname),
                     ),
                   );
                 },
