@@ -607,7 +607,7 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
           color: e.subject.color,
           dday: dday < 0 ? 0 : dday,
           todos: e.goal.todos
-              .map((t) => MainPlanTodo(id: t.id, text: t.text, done: t.isDone))
+              .map((t) => MainPlanTodo(id: t.id, text: t.text, done: t.isDone, priority: t.priority))
               .toList(),
         );
       }).toList();
@@ -902,11 +902,13 @@ class MainPlanTodo {
   final String? id;
   String text;
   bool done;
+  int priority;
 
   MainPlanTodo({
     this.id,
     required this.text,
     required this.done,
+    this.priority = 0,
   });
 
   domain.TodoItem _toDomain(String goalId) => domain.TodoItem(
@@ -915,6 +917,7 @@ class MainPlanTodo {
         text: text,
         isDone: done,
         position: 0,
+        priority: priority,
       );
 }
 
@@ -1300,15 +1303,17 @@ class BottomNavBar extends StatelessWidget {
             label: 'Calendar',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => CalendarPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => CalendarPageShell(
                     currentIndex: 1,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },
@@ -1319,17 +1324,19 @@ class BottomNavBar extends StatelessWidget {
             label: 'Report',
             active: false,
             onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportPageShell(
-                      currentIndex: 3,
-                      onTapNav: onTapNav,
-                      nickname: nickname,
-                      profileImagePath: profileImagePath,
-                    ),
+              Navigator.pushReplacement(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => ReportPageShell(
+                    currentIndex: 3,
+                    onTapNav: onTapNav,
+                    nickname: nickname,
+                    profileImagePath: profileImagePath,
                   ),
-                );
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
+                ),
+              );
             },
           ),
           NavItem(
@@ -1337,15 +1344,17 @@ class BottomNavBar extends StatelessWidget {
             label: 'Subject',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => SubjectPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => SubjectPageShell(
                     currentIndex: 2,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },

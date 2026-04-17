@@ -30,11 +30,16 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
 
     return PriorityCalculator.todayPlan(goals)
         .where((p) => subjectMap.containsKey(p.goal.subjectId))
-        .map((p) => TodayPlanEntry(
-              subject: subjectMap[p.goal.subjectId]!,
-              goal: p.goal,
-              priorityScore: p.score,
-            ))
+        .map((p) {
+          // 할 일을 priority 높은 순으로 정렬
+          final sortedTodos = List.of(p.goal.todos)
+            ..sort((a, b) => b.priority.compareTo(a.priority));
+          return TodayPlanEntry(
+            subject: subjectMap[p.goal.subjectId]!,
+            goal: p.goal.copyWith(todos: sortedTodos),
+            priorityScore: p.score,
+          );
+        })
         .toList();
   }
 

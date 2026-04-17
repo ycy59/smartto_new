@@ -479,15 +479,17 @@ class _MyPageBottomNav extends StatelessWidget {
             label: 'Calendar',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => CalendarPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => CalendarPageShell(
                     currentIndex: 1,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },
@@ -498,15 +500,17 @@ class _MyPageBottomNav extends StatelessWidget {
             label: 'Report',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ReportPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => ReportPageShell(
                     currentIndex: 3,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },
@@ -516,15 +520,17 @@ class _MyPageBottomNav extends StatelessWidget {
             label: 'Subject',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => SubjectPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => SubjectPageShell(
                     currentIndex: 2,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },

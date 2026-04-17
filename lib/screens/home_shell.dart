@@ -39,11 +39,7 @@ class _HomeShellState extends State<HomeShell> {
       currentIndex = index;
     });
 
-    _pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+    _pageController.jumpToPage(index);
   }
 
   void updateProfile({

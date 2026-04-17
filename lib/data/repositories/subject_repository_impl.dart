@@ -22,7 +22,17 @@ class SubjectRepositoryImpl implements SubjectRepository {
 
   @override
   Future<void> save(Subject subject) async {
-    await _db.insert('subjects', subject.toMap());
+    final existing = await getById(subject.id);
+    if (existing != null) {
+      await _db.update(
+        'subjects',
+        subject.toMap(),
+        where: 'id = ?',
+        whereArgs: [subject.id],
+      );
+    } else {
+      await _db.insert('subjects', subject.toMap());
+    }
   }
 
   @override

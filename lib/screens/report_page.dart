@@ -815,12 +815,20 @@ class _ReportBottomNavBar extends StatelessWidget {
         children: [
           _NavIcon(icon: Icons.home, label: 'Home', active: false, onTap: () {
             Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (context) => MainScreen(nickname: nickname, profileImagePath: profileImagePath, currentIndex: 0, onTapNav: onTapNav)),
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => MainScreen(nickname: nickname, profileImagePath: profileImagePath, currentIndex: 0, onTapNav: onTapNav),
+                transitionDuration: Duration.zero,
+                reverseTransitionDuration: Duration.zero,
+              ),
               (route) => false,
             );
           }),
           _NavIcon(icon: Icons.calendar_month, label: 'Calendar', active: false, onTap: () {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => CalendarPageShell(currentIndex: 1, onTapNav: onTapNav, nickname: nickname, profileImagePath: profileImagePath)));
+            Navigator.pushReplacement(context, PageRouteBuilder(
+              pageBuilder: (_, __, ___) => CalendarPageShell(currentIndex: 1, onTapNav: onTapNav, nickname: nickname, profileImagePath: profileImagePath),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ));
           }),
           GestureDetector(
             onTap: () {},
@@ -829,7 +837,11 @@ class _ReportBottomNavBar extends StatelessWidget {
           ),
           _NavIcon(icon: Icons.bar_chart, label: 'Report', active: true, onTap: () {}),
           _NavIcon(icon: Icons.book, label: 'Subject', active: false, onTap: () {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => SubjectPageShell(currentIndex: 2, onTapNav: onTapNav, nickname: nickname, profileImagePath: profileImagePath)));
+            Navigator.pushReplacement(context, PageRouteBuilder(
+              pageBuilder: (_, __, ___) => SubjectPageShell(currentIndex: 2, onTapNav: onTapNav, nickname: nickname, profileImagePath: profileImagePath),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ));
           }),
         ],
       ),

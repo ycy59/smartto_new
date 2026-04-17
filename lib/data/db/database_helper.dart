@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 
 class DatabaseHelper {
   static const String _dbName = 'smartto.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 3;
 
   static final DatabaseHelper instance = DatabaseHelper._internal();
   DatabaseHelper._internal();
@@ -22,6 +22,7 @@ class DatabaseHelper {
       path,
       version: _dbVersion,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
       onConfigure: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
     );
   }
@@ -67,7 +68,10 @@ class DatabaseHelper {
           goal_id   TEXT    NOT NULL REFERENCES study_goals(id) ON DELETE CASCADE,
           text      TEXT    NOT NULL,
           is_done   INTEGER NOT NULL DEFAULT 0,
-          position  INTEGER NOT NULL DEFAULT 0
+          position  INTEGER NOT NULL DEFAULT 0,
+          priority  INTEGER NOT NULL DEFAULT 0,
+          mode      TEXT    NOT NULL DEFAULT 'study',
+          due_date  INTEGER
         )
       ''');
       await txn.execute(
@@ -92,6 +96,22 @@ class DatabaseHelper {
         'CREATE INDEX idx_sessions_started ON study_sessions(started_at)',
       );
     });
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE todo_items ADD COLUMN priority INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    if (oldVersion < 3) {
+      await db.execute(
+        "ALTER TABLE todo_items ADD COLUMN mode TEXT NOT NULL DEFAULT 'study'",
+      );
+      await db.execute(
+        'ALTER TABLE todo_items ADD COLUMN due_date INTEGER',
+      );
+    }
   }
 
   // ── CRUD 헬퍼 ──────────────────────────────────────────────────────

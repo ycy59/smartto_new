@@ -58,7 +58,17 @@ class StudyGoalRepositoryImpl implements StudyGoalRepository {
 
   @override
   Future<void> save(StudyGoal goal) async {
-    await _db.insert('study_goals', goal.toMap());
+    final existing = await getById(goal.id);
+    if (existing != null) {
+      await _db.update(
+        'study_goals',
+        goal.toMap(),
+        where: 'id = ?',
+        whereArgs: [goal.id],
+      );
+    } else {
+      await _db.insert('study_goals', goal.toMap());
+    }
   }
 
   @override

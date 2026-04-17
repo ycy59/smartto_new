@@ -79,12 +79,17 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
         subjectId: subject.id,
         goalId: goal.id,
         name: subject.name,
-        mode: goal.mode,
-        date: goal.dueDate ?? DateTime.now(),
         level: goal.understandingLevel,
         color: subject.color,
         todos: goal.todos
-            .map((t) => TodoItem(id: t.id, text: t.text, done: t.isDone))
+            .map((t) => TodoItem(
+                  id: t.id,
+                  text: t.text,
+                  done: t.isDone,
+                  priority: t.priority,
+                  mode: t.mode,
+                  dueDate: t.dueDate,
+                ))
             .toList(),
       ));
     }
@@ -111,15 +116,19 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       color: item.color,
     ));
 
+    // 할 일에서 모드/시험일자 파생
+    final derivedMode = item.derivedMode;
+    final derivedDate = item.earliestExamDate;
+
     if (item.goalId == null) {
       final fsrs = FsrsEngine.initFromLevel(item.level.toDbString());
       await goalRepo.save(StudyGoal(
         id: goalId,
         subjectId: subjectId,
         title: item.name,
-        mode: item.mode,
+        mode: derivedMode,
         understandingLevel: item.level,
-        dueDate: item.date,
+        dueDate: derivedDate,
         stability: fsrs.stability,
         difficulty: fsrs.difficulty,
         retrievability: fsrs.retrievability,
@@ -134,8 +143,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       if (existing != null) {
         await goalRepo.save(existing.copyWith(
           title: item.name,
-          mode: item.mode,
-          dueDate: () => item.date,
+          mode: derivedMode,
+          dueDate: () => derivedDate,
           understandingLevel: item.level,
         ));
         await todoRepo.deleteByGoal(goalId);
@@ -151,6 +160,9 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
           text: t.text,
           isDone: t.done,
           position: i,
+          priority: t.priority,
+          mode: t.mode,
+          dueDate: t.mode == StudyMode.exam ? t.dueDate : null,
         ));
       }
     }
@@ -331,8 +343,6 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       subjectId: original.subjectId,
       goalId: original.goalId,
       name: updated.name,
-      mode: updated.mode,
-      date: updated.date,
       level: updated.level,
       color: updated.color,
       todos: updated.todos,
@@ -648,63 +658,79 @@ class SubjectAddPage extends StatefulWidget {
 
 class _SubjectAddPageState extends State<SubjectAddPage> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController();
 
-  StudyMode? _selectedMode;
   UnderstandingLevel? _selectedLevel;
-  DateTime? _selectedDate;
+
+  List<TodoItem> _todos = [TodoItem(text: '', done: false)];
+  List<TextEditingController> _todoControllers = [TextEditingController()];
 
   @override
   void dispose() {
     _nameController.dispose();
-    _dateController.dispose();
+    for (final c in _todoControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void _insertNextTodo(int index) {
+    setState(() {
+      _todos.insert(index + 1, TodoItem(text: '', done: false));
+      _todoControllers.insert(index + 1, TextEditingController());
+    });
   }
 
   bool get _canComplete {
     return _nameController.text.trim().isNotEmpty &&
-        _selectedMode != null &&
-        _selectedDate != null &&
         _selectedLevel != null;
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickTodoDate(int index) async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime(now.year, now.month, now.day),
-      firstDate: DateTime(2024),
+      initialDate: _todos[index].dueDate ?? today,
+      firstDate: today,
       lastDate: DateTime(2035),
     );
     if (picked == null) return;
     setState(() {
-      _selectedDate = picked;
-      _dateController.text =
-          '${picked.year}. ${picked.month.toString().padLeft(2, '0')}. ${picked.day.toString().padLeft(2, '0')}';
+      _todos[index].dueDate = picked;
     });
   }
 
   void _submit() {
     if (!_canComplete) return;
 
+    final cleanedTodos = <TodoItem>[];
+    for (int i = 0; i < _todoControllers.length; i++) {
+      final text = _todoControllers[i].text.trim();
+      if (text.isNotEmpty) {
+        cleanedTodos.add(TodoItem(
+          text: text,
+          done: false,
+          mode: _todos[i].mode,
+          dueDate: _todos[i].mode == StudyMode.exam ? _todos[i].dueDate : null,
+        ));
+      }
+    }
+    if (cleanedTodos.isEmpty) {
+      cleanedTodos.add(TodoItem(text: '', done: false));
+    }
+
     widget.onComplete(
       SubjectItem(
         name: _nameController.text.trim(),
-        mode: _selectedMode!,
-        date: _selectedDate!,
         level: _selectedLevel!,
         color: widget.defaultColor,
-        todos: [
-            TodoItem(text: '', done: false),
-        ],
+        todos: cleanedTodos,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = _selectedMode == StudyMode.study ? '학습일자' : '시험일자';
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Container(
@@ -739,9 +765,9 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             Container(
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFEFD), // ✅ 변경
+                color: const Color(0xFFFFFEFD),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE6E2D8)), // ✅ 변경
+                border: Border.all(color: const Color(0xFFE6E2D8)),
               ),
               child: TextField(
                 controller: _nameController,
@@ -752,72 +778,6 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                       TextStyle(color: Color(0xFFBEBEBE), fontSize: 14),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 22),
-
-            // 모드 설정
-            const Text('모드 설정',
-                style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF7A7A7A),
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _ModeButton(
-                    title: '학습 모드',
-                    selected: _selectedMode == StudyMode.study,
-                    onTap: () => setState(() => _selectedMode = StudyMode.study),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: _ModeButton(
-                    title: '시험 모드',
-                    selected: _selectedMode == StudyMode.exam,
-                    onTap: () => setState(() => _selectedMode = StudyMode.exam),
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 18),
-
-            // 날짜
-            Text(dateLabel,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF7A7A7A),
-                    fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _selectedMode == null ? null : _pickDate,
-              child: AbsorbPointer(
-                child: Container(
-                  height: 34,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE7DED1)),
-                  ),
-                  child: TextField(
-                    controller: _dateController,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 14),
-                      hintText: '날짜 선택',
-                      hintStyle: TextStyle(
-                          color: Color(0xFFBEBEBE), fontSize: 14),
-                    ),
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF444444)),
-                  ),
                 ),
               ),
             ),
@@ -865,7 +825,135 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
               ],
             ),
 
-            const Spacer(),
+            const SizedBox(height: 22),
+
+            // 할 일 추가
+            const Text('할 일',
+                style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF7A7A7A),
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(height: 10),
+            Expanded(
+              child: ListView.builder(
+                itemCount: _todoControllers.length,
+                itemBuilder: (context, index) {
+                  final todo = _todos[index];
+                  final isExam = todo.mode == StudyMode.exam;
+                  final dateText = todo.dueDate != null
+                      ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
+                      : null;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFE0E0E0),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: _todoControllers[index],
+                                onChanged: (value) {
+                                  _todos[index].text = value;
+                                },
+                                onSubmitted: (_) {
+                                  _insertNextTodo(index);
+                                },
+                                decoration: const InputDecoration(
+                                  isDense: true,
+                                  hintText: '할 일 입력',
+                                  hintStyle: TextStyle(
+                                      color: Color(0xFFBEBEBE), fontSize: 13),
+                                  border: UnderlineInputBorder(
+                                    borderSide:
+                                        BorderSide(color: Color(0xFFD9D9D9)),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide:
+                                        BorderSide(color: Color(0xFFD9D9D9)),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide:
+                                        BorderSide(color: Color(0xFFBDBDBD)),
+                                  ),
+                                ),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // 모드 토글
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  if (todo.mode == StudyMode.study) {
+                                    todo.mode = StudyMode.exam;
+                                  } else {
+                                    todo.mode = StudyMode.study;
+                                    todo.dueDate = null;
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isExam
+                                      ? const Color(0xFFF08AA1)
+                                      : const Color(0xFFB8DE9D),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  isExam ? '시험' : '학습',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        // 시험 모드일 때 날짜 선택
+                        if (isExam)
+                          Padding(
+                            padding:
+                                const EdgeInsets.only(left: 22, top: 6),
+                            child: GestureDetector(
+                              onTap: () => _pickTodoDate(index),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_today,
+                                      size: 13, color: Color(0xFF9B9B9B)),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    dateText ?? '시험일자 선택',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: dateText != null
+                                          ? const Color(0xFF444444)
+                                          : const Color(0xFFBEBEBE),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
 
             // 완료 버튼
             SizedBox(
@@ -914,9 +1002,7 @@ class SubjectDetailPage extends StatefulWidget {
 
 class _SubjectDetailPageState extends State<SubjectDetailPage> {
   late TextEditingController _nameController;
-  late StudyMode _mode;
   late UnderstandingLevel _level;
-  late DateTime _date;
   late Color _selectedColor;
   late List<TodoItem> _todos;
   late List<TextEditingController> _todoControllers;
@@ -936,14 +1022,19 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.subject.name);
-    _mode = widget.subject.mode;
     _level = widget.subject.level;
-    _date = widget.subject.date;
     _selectedColor = widget.subject.color;
     _todos = widget.subject.todos.isEmpty
         ? [TodoItem(text: '', done: false)]
         : widget.subject.todos
-            .map((e) => TodoItem(text: e.text, done: e.done))
+            .map((e) => TodoItem(
+                  id: e.id,
+                  text: e.text,
+                  done: e.done,
+                  priority: e.priority,
+                  mode: e.mode,
+                  dueDate: e.dueDate,
+                ))
             .toList();
 
     _todoControllers =
@@ -959,11 +1050,21 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     super.dispose();
   }
 
-  int get _dDay {
+  int get _dDay => widget.subject.dDay;
+
+  Future<void> _pickTodoDate(int index) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(_date.year, _date.month, _date.day);
-    return target.difference(today).inDays;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _todos[index].dueDate ?? today,
+      firstDate: today,
+      lastDate: DateTime(2035),
+    );
+    if (picked == null) return;
+    setState(() {
+      _todos[index].dueDate = picked;
+    });
   }
 
   Color get _levelColor {
@@ -1006,8 +1107,12 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
       if (text.isNotEmpty) {
         cleanedTodos.add(
           TodoItem(
+            id: _todos[i].id,
             text: text,
             done: _todos[i].done,
+            priority: _todos[i].priority,
+            mode: _todos[i].mode,
+            dueDate: _todos[i].mode == StudyMode.exam ? _todos[i].dueDate : null,
           ),
         );
       }
@@ -1016,8 +1121,6 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     widget.onSave(
       SubjectItem(
         name: _nameController.text.trim(),
-        mode: _mode,
-        date: _date,
         level: _level,
         color: _selectedColor,
         todos: cleanedTodos,
@@ -1193,60 +1296,127 @@ const SizedBox(height: 10),
                             const SizedBox(height: 10),
                             Column(
                               children: List.generate(_todoControllers.length, (index) {
+                                final todo = _todos[index];
+                                final isExam = todo.mode == StudyMode.exam;
+                                final dateText = todo.dueDate != null
+                                    ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
+                                    : null;
                                 return Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Row(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: Column(
                                     children: [
-                                      GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            _todos[index].done = !_todos[index].done;
-                                          });
-                                        },
-                                        child: Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: _todos[index].done
-                                                ? _selectedColor
-                                                : const Color(0xFFE0E0E0),
-                                            shape: BoxShape.circle,
+                                      Row(
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                _todos[index].done = !_todos[index].done;
+                                              });
+                                            },
+                                            child: Container(
+                                              width: 12,
+                                              height: 12,
+                                              decoration: BoxDecoration(
+                                                color: _todos[index].done
+                                                    ? _selectedColor
+                                                    : const Color(0xFFE0E0E0),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: TextField(
+                                              controller: _todoControllers[index],
+                                              onChanged: (value) {
+                                                _todos[index].text = value;
+                                              },
+                                              onSubmitted: (_) {
+                                                _insertNextTodo(index);
+                                              },
+                                              decoration: const InputDecoration(
+                                                isDense: true,
+                                                border: UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                    color: Color(0xFFD9D9D9),
+                                                  ),
+                                                ),
+                                                enabledBorder: UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                    color: Color(0xFFD9D9D9),
+                                                  ),
+                                                ),
+                                                focusedBorder: UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                    color: Color(0xFFBDBDBD),
+                                                  ),
+                                                ),
+                                              ),
+                                              style: const TextStyle(
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          GestureDetector(
+                                            onTap: () {
+                                              setState(() {
+                                                if (todo.mode == StudyMode.study) {
+                                                  todo.mode = StudyMode.exam;
+                                                } else {
+                                                  todo.mode = StudyMode.study;
+                                                  todo.dueDate = null;
+                                                }
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: isExam
+                                                    ? const Color(0xFFF08AA1)
+                                                    : const Color(0xFFB8DE9D),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                isExam ? '시험' : '학습',
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (isExam)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                              left: 22, top: 4),
+                                          child: GestureDetector(
+                                            onTap: () => _pickTodoDate(index),
+                                            child: Row(
+                                              children: [
+                                                const Icon(Icons.calendar_today,
+                                                    size: 12,
+                                                    color: Color(0xFF9B9B9B)),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  dateText ?? '시험일자 선택',
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: dateText != null
+                                                        ? const Color(0xFF444444)
+                                                        : const Color(0xFFBEBEBE),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _todoControllers[index],
-                                          onChanged: (value) {
-                                            _todos[index].text = value;
-                                          },
-                                          onSubmitted: (_) {
-                                            _insertNextTodo(index);
-                                          },
-                                          decoration: const InputDecoration(
-                                            isDense: true,
-                                            border: UnderlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Color(0xFFD9D9D9),
-                                              ),
-                                            ),
-                                            enabledBorder: UnderlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Color(0xFFD9D9D9),
-                                              ),
-                                            ),
-                                            focusedBorder: UnderlineInputBorder(
-                                              borderSide: BorderSide(
-                                                color: Color(0xFFBDBDBD),
-                                              ),
-                                            ),
-                                          ),
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
                                     ],
                                   ),
                                 );
@@ -1411,13 +1581,15 @@ class SubjectBottomNavBar extends StatelessWidget {
             active: false,
             onTap: () {
                 Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(
-                    builder: (context) => MainScreen(
+                  PageRouteBuilder(
+                    pageBuilder: (_, __, ___) => MainScreen(
                       nickname: nickname,
                       profileImagePath: profileImagePath,
                       currentIndex: 0,
                       onTapNav: onTapNav,
                     ),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
                   ),
                   (route) => false,
                 );
@@ -1428,15 +1600,17 @@ class SubjectBottomNavBar extends StatelessWidget {
               label: 'Calendar',
               active: false,
               onTap: () {
-                Navigator.push(
+                Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => CalendarPageShell(
+                  PageRouteBuilder(
+                    pageBuilder: (_, __, ___) => CalendarPageShell(
                       currentIndex: 1,
                       onTapNav: onTapNav,
                       nickname: nickname,
                       profileImagePath: profileImagePath,
                     ),
+                    transitionDuration: Duration.zero,
+                    reverseTransitionDuration: Duration.zero,
                   ),
                 );
               },
@@ -1447,15 +1621,17 @@ class SubjectBottomNavBar extends StatelessWidget {
             label: 'Report',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ReportPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => ReportPageShell(
                     currentIndex: 3,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },
@@ -1552,8 +1728,6 @@ class SubjectItem {
   final String? subjectId; // DB Subject ID (null = 미저장)
   final String? goalId;    // DB StudyGoal ID (null = 미저장)
   final String name;
-  final StudyMode mode;
-  final DateTime date;
   final UnderstandingLevel level;
   final Color color;
   final List<TodoItem> todos;
@@ -1562,14 +1736,31 @@ class SubjectItem {
     this.subjectId,
     this.goalId,
     required this.name,
-    required this.mode,
-    required this.date,
     required this.level,
     required this.color,
     required this.todos,
   });
 
+  /// 시험 모드인 할 일 중 가장 빠른 시험일자
+  DateTime? get earliestExamDate {
+    DateTime? earliest;
+    for (final t in todos) {
+      if (t.mode == StudyMode.exam && t.dueDate != null) {
+        if (earliest == null || t.dueDate!.isBefore(earliest)) {
+          earliest = t.dueDate;
+        }
+      }
+    }
+    return earliest;
+  }
+
+  /// 시험 모드 할 일이 있으면 exam, 아니면 study
+  StudyMode get derivedMode =>
+      todos.any((t) => t.mode == StudyMode.exam) ? StudyMode.exam : StudyMode.study;
+
   int get dDay {
+    final date = earliestExamDate;
+    if (date == null) return 0;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(date.year, date.month, date.day);
@@ -1581,10 +1772,16 @@ class TodoItem {
   final String? id; // DB todo_items ID (null = 미저장)
   String text;
   bool done;
+  int priority; // 0 = 보통, 1 = 중요, 2 = 매우 중요
+  StudyMode mode;
+  DateTime? dueDate; // 시험 모드일 때만
 
   TodoItem({
     this.id,
     required this.text,
     required this.done,
+    this.priority = 0,
+    this.mode = StudyMode.study,
+    this.dueDate,
   });
 }

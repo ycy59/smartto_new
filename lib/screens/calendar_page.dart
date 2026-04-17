@@ -888,13 +888,15 @@ class CalendarBottomNavBar extends StatelessWidget {
             active: false,
             onTap: () {
               Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (context) => MainScreen(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => MainScreen(
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                     currentIndex: 0,
                     onTapNav: onTapNav,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
                 (route) => false,
               );
@@ -912,15 +914,17 @@ class CalendarBottomNavBar extends StatelessWidget {
             label: 'Report',
             active: false,
             onTap: () {
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => ReportPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => ReportPageShell(
                     currentIndex: 3,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },
@@ -932,13 +936,15 @@ class CalendarBottomNavBar extends StatelessWidget {
             onTap: () {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => SubjectPageShell(
+                PageRouteBuilder(
+                  pageBuilder: (_, __, ___) => SubjectPageShell(
                     currentIndex: 2,
                     onTapNav: onTapNav,
                     nickname: nickname,
                     profileImagePath: profileImagePath,
                   ),
+                  transitionDuration: Duration.zero,
+                  reverseTransitionDuration: Duration.zero,
                 ),
               );
             },
