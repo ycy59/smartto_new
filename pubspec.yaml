@@ -14,17 +14,17 @@ dependencies:
   shared_preferences: ^2.5.5
   smooth_page_indicator: ^1.1.0
   sqflite: ^2.3.2
+  sqflite_common: ^2.5.0
+  sqflite_common_ffi: ^2.3.0
+  sqflite_common_ffi_web: ^0.4.5+2
   path: ^1.9.0
   uuid: ^4.4.0
   flutter_riverpod: ^2.5.1
- 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
-  # 단위 테스트에서 host VM 의 sqflite ffi 백엔드를 쓰기 위해 필요.
-  # (테스트 파일 test/providers/stats_provider_test.dart 가 의존)
-  sqflite_common_ffi: ^2.3.0
 
 flutter:
   uses-material-design: true
