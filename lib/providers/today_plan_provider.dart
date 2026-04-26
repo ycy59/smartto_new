@@ -53,9 +53,8 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
     if (todos == null || todos.isEmpty) return;
 
     final todo = todos.first;
-    await ref
-        .read(todoRepoProvider)
-        .update(todo.copyWith(isDone: isDone));
+    // toggleDone(): is_done 변경에 맞춰 completed_at 자동 갱신
+    await ref.read(todoRepoProvider).update(todo.toggleDone(isDone));
     ref.invalidateSelf();
   }
 }

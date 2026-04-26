@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 
 class DatabaseHelper {
   static const String _dbName = 'smartto.db';
-  static const int _dbVersion = 3;
+  static const int _dbVersion = 4;
 
   static final DatabaseHelper instance = DatabaseHelper._internal();
   DatabaseHelper._internal();
@@ -23,6 +23,18 @@ class DatabaseHelper {
       version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
+      onConfigure: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
+    );
+  }
+
+  /// 테스트용: in-memory DB 인스턴스를 새로 만들어 반환.
+  /// 싱글턴 [instance]와 분리되며, 호출자가 [Database.close]로 종료.
+  static Future<Database> openInMemory() async {
+    return openDatabase(
+      inMemoryDatabasePath,
+      version: _dbVersion,
+      onCreate: (db, _) => instance._onCreate(db, _dbVersion),
+      onUpgrade: (db, o, n) => instance._onUpgrade(db, o, n),
       onConfigure: (db) async => await db.execute('PRAGMA foreign_keys = ON'),
     );
   }
@@ -64,18 +76,22 @@ class DatabaseHelper {
 
       await txn.execute('''
         CREATE TABLE todo_items (
-          id        TEXT    PRIMARY KEY,
-          goal_id   TEXT    NOT NULL REFERENCES study_goals(id) ON DELETE CASCADE,
-          text      TEXT    NOT NULL,
-          is_done   INTEGER NOT NULL DEFAULT 0,
-          position  INTEGER NOT NULL DEFAULT 0,
-          priority  INTEGER NOT NULL DEFAULT 0,
-          mode      TEXT    NOT NULL DEFAULT 'study',
-          due_date  INTEGER
+          id           TEXT    PRIMARY KEY,
+          goal_id      TEXT    NOT NULL REFERENCES study_goals(id) ON DELETE CASCADE,
+          text         TEXT    NOT NULL,
+          is_done      INTEGER NOT NULL DEFAULT 0,
+          position     INTEGER NOT NULL DEFAULT 0,
+          priority     INTEGER NOT NULL DEFAULT 0,
+          mode         TEXT    NOT NULL DEFAULT 'study',
+          due_date     INTEGER,
+          completed_at INTEGER
         )
       ''');
       await txn.execute(
         'CREATE INDEX idx_todos_goal ON todo_items(goal_id)',
+      );
+      await txn.execute(
+        'CREATE INDEX idx_todos_completed_at ON todo_items(completed_at)',
       );
 
       await txn.execute('''
@@ -110,6 +126,16 @@ class DatabaseHelper {
       );
       await db.execute(
         'ALTER TABLE todo_items ADD COLUMN due_date INTEGER',
+      );
+    }
+    if (oldVersion < 4) {
+      // 리포트의 "오늘 완료한 todo" 집계를 위해 완료 시각 추가.
+      // 기존 is_done=1 데이터는 completed_at이 NULL → 일자별 집계에서 자연스럽게 제외됨.
+      await db.execute(
+        'ALTER TABLE todo_items ADD COLUMN completed_at INTEGER',
+      );
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todo_items(completed_at)',
       );
     }
   }
