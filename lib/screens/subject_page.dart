@@ -355,10 +355,10 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     });
   }
 
-  void _deleteSubject(int index) {
+  Future<void> _deleteSubject(int index) async {
     final item = _subjects[index];
     if (item.subjectId != null) {
-      ref.read(subjectRepoProvider).delete(item.subjectId!);
+      await ref.read(subjectRepoProvider).delete(item.subjectId!);
       ref.read(todayPlanProvider.notifier).refresh();
     }
     setState(() {
