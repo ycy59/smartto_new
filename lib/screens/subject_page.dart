@@ -101,7 +101,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     });
   }
 
-  Future<void> _saveSubjectToDb(SubjectItem item) async {
+  Future<SubjectItem> _saveSubjectToDb(SubjectItem item) async {
     const uuid = Uuid();
     final subjectRepo = ref.read(subjectRepoProvider);
     final goalRepo = ref.read(studyGoalRepoProvider);
@@ -168,6 +168,15 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     }
 
     ref.read(todayPlanProvider.notifier).refresh();
+
+    return SubjectItem(
+      subjectId: subjectId,
+      goalId: goalId,
+      name: item.name,
+      level: item.level,
+      color: item.color,
+      todos: item.todos,
+    );
   }
 
   Future<void> _showStartDialog() async {
@@ -321,10 +330,11 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     });
   }
 
-  void _addSubject(SubjectItem item) {
-    _saveSubjectToDb(item);
+  Future<void> _addSubject(SubjectItem item) async {
+    final saved = await _saveSubjectToDb(item);
+    if (!mounted) return;
     setState(() {
-      _subjects.add(item);
+      _subjects.add(saved);
       _mode = SubjectPageMode.list;
       _selectedIndex = null;
     });
@@ -337,7 +347,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     });
   }
 
-  void _updateSubject(int index, SubjectItem updated) {
+  Future<void> _updateSubject(int index, SubjectItem updated) async {
     final original = _subjects[index];
     final withIds = SubjectItem(
       subjectId: original.subjectId,
@@ -347,9 +357,10 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       color: updated.color,
       todos: updated.todos,
     );
-    _saveSubjectToDb(withIds);
+    final saved = await _saveSubjectToDb(withIds);
+    if (!mounted) return;
     setState(() {
-      _subjects[index] = withIds;
+      _subjects[index] = saved;
       _mode = SubjectPageMode.list;
       _selectedIndex = null;
     });
