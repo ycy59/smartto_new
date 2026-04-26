@@ -7,6 +7,8 @@ import '../domain/entities/subject.dart' as domain;
 import '../domain/entities/study_goal.dart';
 import '../domain/entities/todo_item.dart' as domain;
 import '../providers/database_provider.dart';
+import '../providers/stats_provider.dart';
+import '../providers/study_goal_provider.dart';
 import '../providers/today_plan_provider.dart';
 import 'camera_page.dart';
 import 'calendar_page.dart';
@@ -73,7 +75,20 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
     for (final subject in subjects) {
       final goals = await goalRepo.getBySubject(subject.id);
-      if (goals.isEmpty) continue;
+      // goal 이 비정상적으로 비어있더라도 subject 자체는 화면에 노출.
+      // 사용자가 직접 "할 일 추가" 로 복구할 수 있게 함 (이전에는 화면에서
+      // 사라져 마치 과목이 통째로 지워진 것처럼 보였음).
+      if (goals.isEmpty) {
+        result.add(SubjectItem(
+          subjectId: subject.id,
+          goalId: null,
+          name: subject.name,
+          level: UnderstandingLevel.normal,
+          color: subject.color,
+          todos: [],
+        ));
+        continue;
+      }
       final goal = goals.first;
       result.add(SubjectItem(
         subjectId: subject.id,
@@ -168,6 +183,10 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     }
 
     ref.read(todayPlanProvider.notifier).refresh();
+    ref.read(statsProvider.notifier).refresh();
+    if (item.subjectId != null) {
+      ref.invalidate(goalsBySubjectProvider(item.subjectId!));
+    }
 
     return SubjectItem(
       subjectId: subjectId,
@@ -371,6 +390,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     if (item.subjectId != null) {
       await ref.read(subjectRepoProvider).delete(item.subjectId!);
       ref.read(todayPlanProvider.notifier).refresh();
+      ref.read(statsProvider.notifier).refresh();
+      ref.invalidate(goalsBySubjectProvider(item.subjectId!));
     }
     setState(() {
       _subjects.removeAt(index);
@@ -546,6 +567,39 @@ class SubjectListPage extends StatelessWidget {
               return Dismissible(
                 key: ValueKey('${item.name}-$index'),
                 direction: DismissDirection.endToStart,
+                // 옆으로 미는 제스처만으로 즉시 삭제되는 사고를 막기 위한 확인 단계.
+                // false 반환 시 Dismissible 이 원위치로 복귀하므로 onDismissed 도
+                // 호출되지 않음.
+                confirmDismiss: (_) async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    barrierDismissible: true,
+                    builder: (dialogCtx) => AlertDialog(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      title: const Text('과목을 삭제할까요?'),
+                      content: Text(
+                        '"${item.name}" 과 관련된 모든 학습 기록(할 일, 세션 이력)이\n함께 사라지고 되돌릴 수 없습니다.',
+                        style: const TextStyle(fontSize: 13, height: 1.4),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx, false),
+                          child: const Text('취소'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogCtx, true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFD96C5F),
+                          ),
+                          child: const Text('삭제'),
+                        ),
+                      ],
+                    ),
+                  );
+                  return ok ?? false;
+                },
                 onDismissed: (_) => onDelete(index),
                 background: Container(
                   decoration: BoxDecoration(

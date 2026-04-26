@@ -4,6 +4,8 @@ import '../algorithms/fsrs/fsrs_engine.dart';
 import '../domain/entities/study_goal.dart';
 import '../domain/entities/todo_item.dart';
 import 'database_provider.dart';
+import 'stats_provider.dart';
+import 'today_plan_provider.dart';
 
 const _uuid = Uuid();
 
@@ -63,6 +65,8 @@ class GoalsBySubjectNotifier
     }
 
     ref.invalidateSelf();
+    ref.read(todayPlanProvider.notifier).refresh();
+    ref.read(statsProvider.notifier).refresh();
   }
 
   /// 세션 종료 후 집중도 점수로 FSRS 업데이트
@@ -92,5 +96,7 @@ class GoalsBySubjectNotifier
   Future<void> delete(String goalId) async {
     await ref.read(studyGoalRepoProvider).delete(goalId);
     ref.invalidateSelf();
+    ref.read(todayPlanProvider.notifier).refresh();
+    ref.read(statsProvider.notifier).refresh();
   }
 }
