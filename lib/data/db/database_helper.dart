@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 
@@ -16,8 +17,9 @@ class DatabaseHelper {
   }
 
   Future<Database> _init() async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, _dbName);
+    final path = kIsWeb
+        ? _dbName
+        : p.join(await getDatabasesPath(), _dbName);
     return openDatabase(
       path,
       version: _dbVersion,
