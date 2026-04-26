@@ -461,7 +461,7 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
                                 crossAxisCount: 7,
-                                childAspectRatio: 0.9,
+                                childAspectRatio: 0.85,
                               ),
                               itemBuilder: (context, index) {
                                 final day = days[index];
@@ -785,34 +785,28 @@ class _TomatoFace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color bodyColor;
+    String imagePath;
     switch (level) {
       case DayFocusLevel.high:
-        bodyColor = const Color(0xFFD94C43);
+        imagePath = 'assets/images/twemoji_tomato-1.png';
         break;
       case DayFocusLevel.medium:
-        bodyColor = const Color(0xFFD79A42);
+        imagePath = 'assets/images/twemoji_tomato-2.png';
         break;
       case DayFocusLevel.low:
-        bodyColor = const Color(0xFFA8CF63);
+        imagePath = 'assets/images/twemoji_tomato.png';
         break;
       case DayFocusLevel.none:
-        bodyColor = const Color(0xFF5A5A5A);
+        imagePath = 'assets/images/twemoji_tomato-3.png';
         break;
     }
 
-    return Container(
+    return SizedBox(
       width: 22,
       height: 22,
-      decoration: BoxDecoration(
-        color: bodyColor,
-        shape: BoxShape.circle,
-      ),
-      child: const Center(
-        child: Text(
-          '🍅',
-          style: TextStyle(fontSize: 12),
-        ),
+      child: Image.asset(
+        imagePath,
+        fit: BoxFit.contain,
       ),
     );
   }
