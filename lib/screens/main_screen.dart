@@ -1013,13 +1013,7 @@ class _EditableSubjectBlock extends StatelessWidget {
                   color: Color(0xFFCC6B6B),
                 ),
               ),
-            ] else ...[
-              const Icon(
-                Icons.add_circle_outline,
-                size: 17,
-                color: Color(0xFFBDBDBD),
-              ),
-            ],
+            ]
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
