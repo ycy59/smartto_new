@@ -217,8 +217,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
             children: [
               Image.asset(
                 'assets/images/tomato_glasses.png',
-                width: 66,
-                height: 66,
+                width: 52,
+                height: 52,
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 10),

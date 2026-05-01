@@ -220,7 +220,7 @@ void _openMyPage() {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 child: Column(
                   children: [
                     Expanded(
@@ -1420,14 +1420,9 @@ class TomatoNavItem extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Container(
+          SizedBox(
             width: 46,
             height: 46,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.transparent,
-            ),
-            padding: const EdgeInsets.all(1),
             child: ClipOval(
               child: Image.asset(
                 'assets/images/tomato_glasses.png',

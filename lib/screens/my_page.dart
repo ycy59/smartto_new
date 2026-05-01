@@ -249,7 +249,7 @@ Widget build(BuildContext context) {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                 child: Column(
                   children: [
                     Row(
@@ -398,7 +398,7 @@ Widget build(BuildContext context) {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 8),
                     _MyPageBottomNav(
                       currentIndex: widget.currentIndex,
                       onTapNav: widget.onTapNav,
@@ -454,8 +454,8 @@ class _MyPageBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 64,
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      height: 66,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: const BoxDecoration(
         color: Color(0xFFF0F0F0),
         border: Border(
@@ -565,8 +565,8 @@ class _NavIcon extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(height: 2),
+          Icon(icon, color: color, size: 23),
+          const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
@@ -597,8 +597,8 @@ class _TomatoNavItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            width: 48,
-            height: 48,
+            width: 46,
+            height: 46,
             child: ClipOval(
               child: Image.asset(
                 'assets/images/tomato_glasses.png',

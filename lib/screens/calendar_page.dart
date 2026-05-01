@@ -507,7 +507,9 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
                                           ),
                                         ),
                                         const SizedBox(height: 4),
-                                        if (focus != null) _TomatoFace(level: focus),
+                                        if (focus != null) _TomatoFace(level: focus)
+                                        else
+                                          const SizedBox(height: 22),  // 토마토 없는 날 자리 확보
                                         const SizedBox(height: 3),
                                         ..._miniPlanBars(day),
                                       ],
@@ -862,7 +864,7 @@ class CalendarBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 64,
+      height: 66,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       decoration: const BoxDecoration(
         color: Color(0xFFF0F0F0),
