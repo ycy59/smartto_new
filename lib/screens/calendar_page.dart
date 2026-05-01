@@ -335,17 +335,46 @@ class _CalendarPageShellState extends State<CalendarPageShell> {
 
   List<Widget> _miniPlanBars(DateTime day) {
     final plans = _plans[_key(day)] ?? [];
-    return plans.take(3).map((e) {
-      return Container(
-        margin: const EdgeInsets.only(top: 2),
-        width: 26,
-        height: 4,
+    if (plans.isEmpty) return const [];
+
+    final visible = plans.take(4).toList();
+    final extra = plans.length - visible.length;
+
+    final children = <Widget>[];
+    for (int i = 0; i < visible.length; i++) {
+      if (i > 0) children.add(const SizedBox(width: 3));
+      children.add(Container(
+        width: 5,
+        height: 5,
         decoration: BoxDecoration(
-          color: e.color,
-          borderRadius: BorderRadius.circular(10),
+          color: visible[i].color,
+          shape: BoxShape.circle,
         ),
-      );
-    }).toList();
+      ));
+    }
+    if (extra > 0) {
+      children.add(const SizedBox(width: 2));
+      children.add(Text(
+        '+$extra',
+        style: const TextStyle(
+          fontSize: 8,
+          fontWeight: FontWeight.w800,
+          color: Color(0xFF9A9A9A),
+          height: 1,
+        ),
+      ));
+    }
+
+    return [
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: children,
+        ),
+      ),
+    ];
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
