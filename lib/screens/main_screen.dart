@@ -1026,7 +1026,7 @@ class _EditableSubjectBlock extends StatelessWidget {
                   color: Color(0xFFCC6B6B),
                 ),
               ),
-            ]
+            ],
             const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
