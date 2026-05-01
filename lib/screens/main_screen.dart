@@ -859,10 +859,23 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                     subject.dday = parsed;
                   }
                 },
-                onToggleTodo: (todoIndex) {
+                onToggleTodo: (todoIndex) async {
+                  // 1) 화면을 먼저 토글 — 사용자에게 즉각 반응
+                  final todo = subject.todos[todoIndex];
+                  final next = !todo.done;
                   setState(() {
-                    subject.todos[todoIndex].done = !subject.todos[todoIndex].done;
+                    subject.todos[todoIndex].done = next;
                   });
+                  // 2) DB 에 is_done + completed_at 기록.
+                  //    todayPlanProvider.toggleTodoDone() 가 toggleDone() 헬퍼를
+                  //    써서 completed_at 을 정확히 stamp 한다.
+                  if (todo.id != null) {
+                    await ref
+                        .read(todayPlanProvider.notifier)
+                        .toggleTodoDone(todo.id!, next);
+                    // 일간 리포트의 "완료 할일" 카운트 즉시 반영
+                    ref.read(statsProvider.notifier).refresh();
+                  }
                 },
                 onRemoveTodo: (todoIndex) =>
                     _confirmDeleteTodo(subjectIndex, todoIndex),
