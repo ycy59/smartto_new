@@ -1758,14 +1758,9 @@ class _BottomTomatoItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: SizedBox(
         width: 46,
         height: 46,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.transparent,
-        ),
-        padding: const EdgeInsets.all(1),
         child: ClipOval(
           child: Image.asset(
             'assets/images/tomato_glasses.png',

@@ -244,170 +244,176 @@ Widget build(BuildContext context) {
             Navigator.pop(context);
           }
         },
-        child: SafeArea(
+child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-                child: Column(
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: const Color(0xFF1C1C1C),
-                          backgroundImage: _profileImagePath != null
-                              ? FileImage(File(_profileImagePath!))
-                              : null,
-                          child: _profileImagePath == null
-                              ? const Icon(
-                                  Icons.person,
-                                  size: 42,
-                                  color: Colors.white,
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 18),
-                        Expanded(
-                          child: Text(
-                            '🍅 $displayedNickname',
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: OutlinedButton(
-                        onPressed: _pickProfileImage,
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFE0E0E0)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                        ),
-                        child: const Text(
-                          '프로필 이미지 수정',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF666666),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        '닉네임 변경',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD9D9D9),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                      child: Column(
                         children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _nicknameController,
-                              decoration: const InputDecoration(
-                                hintText: '닉네임 입력',
-                                hintStyle: TextStyle(
-                                  color: Color(0xFFB3B3B3),
-                                  fontSize: 14,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              CircleAvatar(
+                                radius: 32,
+                                backgroundColor: const Color(0xFF1C1C1C),
+                                backgroundImage: _profileImagePath != null
+                                    ? FileImage(File(_profileImagePath!))
+                                    : null,
+                                child: _profileImagePath == null
+                                    ? const Icon(
+                                        Icons.person,
+                                        size: 42,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 18),
+                              Expanded(
+                                child: Text(
+                                  '🍅 $displayedNickname',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
+                                  ),
                                 ),
-                                border: InputBorder.none,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: OutlinedButton(
+                              onPressed: _pickProfileImage,
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                              ),
+                              child: const Text(
+                                '프로필 이미지 수정',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF666666),
+                                ),
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              _nicknameController.clear();
-                              setState(() {});
-                            },
-                            icon: const Icon(
-                              Icons.cancel_outlined,
-                              size: 18,
-                              color: Colors.black54,
+                          const SizedBox(height: 28),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              '닉네임 변경',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD9D9D9),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _nicknameController,
+                                    decoration: const InputDecoration(
+                                      hintText: '닉네임 입력',
+                                      hintStyle: TextStyle(
+                                        color: Color(0xFFB3B3B3),
+                                        fontSize: 14,
+                                      ),
+                                      border: InputBorder.none,
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () {
+                                    _nicknameController.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(
+                                    Icons.cancel_outlined,
+                                    size: 18,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Spacer(),
+                          SizedBox(
+                            width: 140,
+                            height: 40,
+                            child: ElevatedButton(
+                              onPressed: _saveNickname,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: const BorderSide(
+                                    color: Color(0xFFF299B2),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              child: const Text(
+                                '저장하기',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFEE7E76),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Container(
+                            width: 34,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAEAEA),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                _Dot(active: false),
+                                SizedBox(width: 4),
+                                _Dot(active: true),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                         ],
                       ),
                     ),
-                    const Spacer(),
-                    SizedBox(
-                      width: 140,
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: _saveNickname,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            side: const BorderSide(
-                              color: Color(0xFFF299B2),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: const Text(
-                          '저장하기',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFFEE7E76),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Container(
-                      width: 34,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEAEAEA),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          _Dot(active: false),
-                          SizedBox(width: 4),
-                          _Dot(active: true),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _MyPageBottomNav(
-                      currentIndex: widget.currentIndex,
-                      onTapNav: widget.onTapNav,
-                      nickname: _currentNickname,
-                      profileImagePath: _profileImagePath,
-                      onTapTomato: _showStartDialog,
-                    ),
-                  ],
-                ),
+                  ),
+                  _MyPageBottomNav(
+                    currentIndex: widget.currentIndex,
+                    onTapNav: widget.onTapNav,
+                    nickname: _currentNickname,
+                    profileImagePath: _profileImagePath,
+                    onTapTomato: _showStartDialog,
+                  ),
+                ],
               ),
             ),
           ),
@@ -592,11 +598,7 @@ class _TomatoNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
+      child: SizedBox(
             width: 46,
             height: 46,
             child: ClipOval(
@@ -606,8 +608,6 @@ class _TomatoNavItem extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
+      );
   }
 }

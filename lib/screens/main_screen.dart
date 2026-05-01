@@ -215,15 +215,15 @@ void _openMyPage() {
             _openMyPage();
           }
         },
-        child: SafeArea(
+child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                child: Column(
-                  children: [
-                    Expanded(
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
@@ -243,15 +243,15 @@ void _openMyPage() {
                         ),
                       ),
                     ),
-                    BottomNavBar(
-                      currentIndex: widget.currentIndex,
-                      onTapNav: widget.onTapNav,
-                      onTapTomato: _showStartDialog,
-                      nickname: _nickname,
-                      profileImagePath: _profileImagePath,
-                    ),
-                  ],
-                ),
+                  ),
+                  BottomNavBar(
+                    currentIndex: widget.currentIndex,
+                    onTapNav: widget.onTapNav,
+                    onTapTomato: _showStartDialog,
+                    nickname: _nickname,
+                    profileImagePath: _profileImagePath,
+                  ),
+                ],
               ),
             ),
           ),
@@ -1417,10 +1417,7 @@ class TomatoNavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          SizedBox(
+      child: SizedBox(
             width: 46,
             height: 46,
             child: ClipOval(
@@ -1430,9 +1427,7 @@ class TomatoNavItem extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
-    );
+      );
   }
 }
 
