@@ -1,3 +1,7 @@
+import 'dart:io' show Platform;
+
+import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_session.dart';
@@ -37,12 +41,57 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   late Map<String, bool> _doneMap; // todoId → done
   StudySession? _activeSession;
 
+  // 카메라 프리뷰 (face detection / ML 없음, 화면에 비추기만 함)
+  CameraController? _camCtrl;
+  bool _camReady = false;
+  String? _camError;
+
   @override
   void initState() {
     super.initState();
     _selectedTask = widget.initialSelectedTask;
     _doneMap = {for (final t in widget.allTasks) t.todoId: false};
     if (_selectedTask != null) _startSession(_selectedTask!);
+    _initCamera();
+  }
+
+  Future<void> _initCamera() async {
+    // 모바일(iOS/Android)에서만 카메라 시도. 웹/데스크탑은 placeholder 유지.
+    if (kIsWeb || !(Platform.isIOS || Platform.isAndroid)) return;
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        if (mounted) setState(() => _camError = '사용 가능한 카메라 없음');
+        return;
+      }
+      // 셀카 우선, 없으면 첫 번째
+      final front = cameras.firstWhere(
+        (c) => c.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
+      final ctrl = CameraController(
+        front,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
+      await ctrl.initialize();
+      if (!mounted) {
+        await ctrl.dispose();
+        return;
+      }
+      setState(() {
+        _camCtrl = ctrl;
+        _camReady = true;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _camError = '카메라 오류: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _camCtrl?.dispose();
+    super.dispose();
   }
 
   Future<void> _startSession(CameraTask task) async {
@@ -301,12 +350,30 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                               color: const Color(0xFFEDEDED),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Center(
-                              child: Icon(
-                                Icons.person_outline,
-                                size: 34,
-                                color: Color(0xFFC7C7C7),
-                              ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: (_camReady && _camCtrl != null)
+                                  ? CameraPreview(_camCtrl!)
+                                  : Center(
+                                      child: _camError != null
+                                          ? Padding(
+                                              padding:
+                                                  const EdgeInsets.all(4),
+                                              child: Text(
+                                                _camError!,
+                                                textAlign: TextAlign.center,
+                                                style: const TextStyle(
+                                                  fontSize: 9,
+                                                  color: Color(0xFF999999),
+                                                ),
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.person_outline,
+                                              size: 34,
+                                              color: Color(0xFFC7C7C7),
+                                            ),
+                                    ),
                             ),
                           ),
                         ],
