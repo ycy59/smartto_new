@@ -307,6 +307,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
                 goalId: s.goalId!,
                 subjectId: s.subjectId!,
                 text: t.text,
+                subjectName: s.name,
+                subjectColor: s.color,
               )))
       .toList();
 

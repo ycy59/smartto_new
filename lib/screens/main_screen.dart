@@ -624,6 +624,8 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
             goalId: subject.goalId!,
             subjectId: subject.subjectId ?? '',
             text: todo.text,
+            subjectName: subject.title,
+            subjectColor: subject.color,
           ));
         }
       }

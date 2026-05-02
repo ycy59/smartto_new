@@ -21,6 +21,13 @@ dependencies:
   uuid: ^4.4.0
   flutter_riverpod: ^2.5.1
   camera: ^0.11.0+2
+  # ── 집중도 측정 (face landmark + ONNX 추론) ──────────────────────────────
+  # MediaPipe Face Mesh 468 + Iris 152 (학습 코드와 동일한 좌표계)
+  face_detection_tflite: ^6.2.4
+  # XGBoost 모델 추론 (Smartto_ml 에서 학습한 xgb_model.onnx 실행)
+  onnxruntime: ^1.4.1
+  # 모델 파일 임시 디렉토리 추출용
+  path_provider: ^2.1.3
 
 dev_dependencies:
   flutter_test:
@@ -39,3 +46,5 @@ flutter:
     - assets/images/twemoji_tomato-1.png
     - assets/images/twemoji_tomato-2.png
     - assets/images/twemoji_tomato-3.png
+    # 집중도 측정 ONNX 모델 (Smartto_ml/models/xgb_model.onnx 사본)
+    - assets/models/xgb_model.onnx
