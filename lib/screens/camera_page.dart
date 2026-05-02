@@ -24,7 +24,7 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_session.dart';
@@ -33,15 +33,16 @@ import '../widgets/concentration_service.dart';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 // 동적 추천 정책 기준값
-//   - 집중 시간 최저 25분 (그 아래로는 사용자가 수동 입력해도 거부)
-//   - 휴식 시간 최저 5분 (단, 점수 낮을 땐 추천 알고리즘이 10분 보장)
-const int _kMinFocusMinutes = 25;
-const int _kMinBreakMinutes = 5;
-const int _kMaxFocusMinutes = 180; // 사용자 설정 최대값 (TODO: 나중에 사용자 조정 가능하게)
+//   - debug 빌드: 1분 / 1분 (개발 테스트용 — flutter run 시 자동 적용)
+//   - release 빌드: 25분 / 5분 (실제 사용자용 — flutter build 시 자동 적용)
+//   → 발표/배포는 release 빌드로
+const int _kMinFocusMinutes = kDebugMode ? 1 : 25;
+const int _kMinBreakMinutes = kDebugMode ? 1 : 5;
+const int _kMaxFocusMinutes = 180;
 const int _kMaxBreakMinutes = 60;
 
-const int _kDefaultFocusMinutes = 25;
-const int _kDefaultBreakMinutes = 5;
+const int _kDefaultFocusMinutes = kDebugMode ? 1 : 25;
+const int _kDefaultBreakMinutes = kDebugMode ? 1 : 5;
 
 const Color _kAccent = Color(0xFFD97068);
 const Color _kAccentDark = Color(0xFFB34C3D);
@@ -269,22 +270,66 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   Future<void> _onTimerComplete() async {
     _ticker?.cancel();
     if (_isBreakMode) {
-      // 휴식 끝 → 집중 모드로
+      // 휴식 끝 → 집중 모드로 (수동 ▶ 대기)
+      // 카메라 image stream 재시작 (휴식 동안 멈춰있었음)
+      if (_camCtrl != null && !(_camCtrl!.value.isStreamingImages)) {
+        await _camCtrl!.startImageStream(_onCameraImage);
+      }
       setState(() {
         _isBreakMode = false;
         _remainingSeconds = _focusMinutes * 60;
         _isRunning = false;
       });
     } else {
-      // 집중 끝 → 세션 저장 + 휴식 모드로
+      // 집중 끝 → 점수 저장 → 평가 팝업 → 추천 적용 → 휴식 자동 시작
+      final avgScore01 =
+          _serviceReady ? _service.averageScore01 : 0.65;
+      final avgScore = (avgScore01 * 100).clamp(0.0, 100.0);
+
+      // 추천 다음 세션 시간 계산
+      final rec = _serviceReady
+          ? _service.recommendNextSession(
+              currentFocusMinutes: _focusMinutes,
+              maxFocusMinutes: _kMaxFocusMinutes,
+              minFocusMinutes: _kMinFocusMinutes,
+              minBreakMinutes: _kMinBreakMinutes,
+            )
+          : (focusMinutes: _focusMinutes, breakMinutes: _breakMinutes);
+
+      // 세션 종료 (DB 저장 + FSRS 갱신)
       await _endSession();
+      if (!mounted) return;
+
+      // 평가 팝업 (확인 누를 때까지 대기)
+      await showDialog(
+        context: context,
+        barrierDismissible: false, // 외부 탭 무시
+        builder: (ctx) => _SessionEvalDialog(
+          avgScore: avgScore,
+          recommendedFocusMinutes: rec.focusMinutes,
+          recommendedBreakMinutes: rec.breakMinutes,
+          currentFocusMinutes: _focusMinutes,
+        ),
+      );
+      if (!mounted) return;
+
+      // 추천 적용 + 다음 세션을 위한 service reset
+      if (_serviceReady) _service.reset();
       if (_selectedTask != null) await _startSession(_selectedTask!);
       if (!mounted) return;
+
+      // 휴식 모드 진입 — 카메라 image stream 멈춤 (CPU 절약)
+      if (_camCtrl?.value.isStreamingImages ?? false) {
+        await _camCtrl!.stopImageStream();
+      }
+
       setState(() {
+        _focusMinutes = rec.focusMinutes;     // 다음 집중 시간 적용
+        _breakMinutes = rec.breakMinutes;     // 휴식 시간 적용
         _isBreakMode = true;
         _remainingSeconds = _breakMinutes * 60;
-        _isRunning = false;
       });
+      _startTimer(); // 휴식 자동 시작
     }
   }
 
@@ -720,7 +765,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 카메라 프리뷰 — 높이 줄임 (100 → 85)
+          // 카메라 프리뷰 — 휴식 모드면 카메라 OFF UI
           SizedBox(
             height: 85,
             child: Container(
@@ -730,7 +775,29 @@ class _CameraPageState extends ConsumerState<CameraPage> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: (_camReady && _camCtrl != null)
+                child: _isBreakMode
+                    ? Container(
+                        color: const Color(0xFFE8F5E9),
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.coffee,
+                                  size: 22, color: Color(0xFF6BAE6B)),
+                              SizedBox(height: 4),
+                              Text(
+                                '휴식 중',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF6BAE6B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : (_camReady && _camCtrl != null)
                     ? LayoutBuilder(
                         builder: (ctx, constraints) {
                           // 카메라의 native aspect ratio 를 유지하면서
@@ -962,6 +1029,206 @@ class _RingPainter extends CustomPainter {
       oldDelegate.color != color ||
       oldDelegate.trackColor != trackColor ||
       oldDelegate.strokeWidth != strokeWidth;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 세션 종료 후 평가 다이얼로그
+//   - 평균 점수 + 상태 라벨
+//   - 다음 세션 추천 시간 안내
+//   - 확인 버튼만 (수정은 휴식 후 타이머에서 가능)
+// ─────────────────────────────────────────────────────────────────────────────
+class _SessionEvalDialog extends StatelessWidget {
+  final double avgScore;
+  final int recommendedFocusMinutes;
+  final int recommendedBreakMinutes;
+  final int currentFocusMinutes;
+
+  const _SessionEvalDialog({
+    required this.avgScore,
+    required this.recommendedFocusMinutes,
+    required this.recommendedBreakMinutes,
+    required this.currentFocusMinutes,
+  });
+
+  // 점수 → 라벨 + 색
+  ({String label, Color color}) _statusInfo() {
+    if (avgScore >= 70) {
+      return (label: '집중', color: const Color(0xFF5AA85A));
+    } else if (avgScore >= 40) {
+      return (label: '보통', color: const Color(0xFFFF9800));
+    } else {
+      return (label: '부진', color: _kAccent);
+    }
+  }
+
+  // 다음 세션 변화 설명 (▲ ▼ −)
+  String _focusDelta() {
+    final diff = recommendedFocusMinutes - currentFocusMinutes;
+    if (diff > 0) return '+$diff분';
+    if (diff < 0) return '$diff분';
+    return '유지';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _statusInfo();
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      // 가로 모드에서도 컴팩트 (280px 카드처럼 보이게)
+      insetPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 280),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$currentFocusMinutes분 집중 완료!',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: Color(0xFF888888),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              // 큰 점수 + 라벨
+              Text(
+                '${avgScore.toInt()}점',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF222222),
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                s.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: s.color,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // 다음 세션 추천
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '다음 세션 추천',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF666666),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _miniStat(
+                          '집중',
+                          '$recommendedFocusMinutes분',
+                          sub: _focusDelta(),
+                        ),
+                        Container(
+                          width: 1,
+                          height: 28,
+                          color: const Color(0xFFE0E0E0),
+                        ),
+                        _miniStat('휴식', '$recommendedBreakMinutes분'),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '※ 휴식 후 타이머 탭하면 시간 변경 가능',
+                      style: TextStyle(
+                        fontSize: 7,
+                        color: Color(0xFF999999),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // 확인 버튼
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _kAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  child: const Text(
+                    '확인 (휴식 시작)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _miniStat(String label, String value, {String? sub}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            color: Color(0xFF888888),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF333333),
+          ),
+        ),
+        if (sub != null && sub.isNotEmpty)
+          Text(
+            sub,
+            style: TextStyle(
+              fontSize: 8,
+              color: sub.contains('+')
+                  ? const Color(0xFF5AA85A)
+                  : (sub.contains('-')
+                      ? _kAccent
+                      : const Color(0xFF888888)),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

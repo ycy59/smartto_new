@@ -64,10 +64,14 @@ const double _kYawnRatio = 1.5;
 const int _kYawnMinFrames = 4;
 const double _kYawnPenalty = 15.0;
 
-// 오랜 눈 감김 (졸음) 감지 — 2초 이상 EAR 임계값 미만이면 졸음
+// 오랜 눈 감김 (졸음) 감지 — 2초 이상 눈 감김이면 졸음
 // 정상 깜빡임은 0.1~0.3초 → 2초는 확실한 졸음 신호
 const int _kLongEyeClosureMinFrames = 20; // 2초 @ 10fps
 const double _kLongEyeClosurePenalty = 25.0;
+
+// ML Kit eyeOpenProbability 기반 감김 임계 (0.4 미만 = 감김)
+// EAR 보다 카메라 각도/노이즈에 robust
+const double _kEyeOpenThreshold = 0.4;
 
 // ── EAR 계산 보정 (sub_develop 검증된 hack) ─────────────────────────────
 // ML Kit contour 의 bbox 기반 EAR 은 표준 EAR(MediaPipe Python) 대비 약 70%
@@ -193,6 +197,11 @@ class ConcentrationService {
   final List<double> _marBaselineSamples = [];
   double? _userMarBaseline;
 
+  // ── ML Kit eyeOpenProbability 버퍼 (깜빡임/졸음 감지용) ────────────
+  // 카메라 각도/노이즈에 robust — EAR 계산보다 안정적
+  // 얼굴 미감지 프레임은 1.0 (떠있음으로 처리, 졸음 트리거 안 됨)
+  final List<double> _eyeOpenProbBuffer = [];
+
   void _updateMarBaseline(double mar) {
     if (_userMarBaseline != null) return;
     if (mar > 0.7) return;
@@ -216,13 +225,13 @@ class ConcentrationService {
   }
 
   /// 오랜 눈 감김 (졸음) 감지
-  /// 최근 N프레임이 모두 face 잡혀있고 EAR < 사용자 임계값이면 졸음
+  /// ML Kit eyeOpenProbability 기반 — 최근 N프레임 모두 prob < 0.4 이면 졸음
+  /// 얼굴 미감지 프레임은 prob 1.0 으로 처리되어 자동 false (졸음 X)
   bool _detectLongEyeClosure() {
-    if (_userEarThreshold == null) return false;
-    if (_buf.length < _kLongEyeClosureMinFrames) return false;
-    final threshold = _userEarThreshold!;
-    final recent = _buf.sublist(_buf.length - _kLongEyeClosureMinFrames);
-    return recent.every((f) => f[9] > 0.5 && f[2] < threshold);
+    if (_eyeOpenProbBuffer.length < _kLongEyeClosureMinFrames) return false;
+    final recent = _eyeOpenProbBuffer
+        .sublist(_eyeOpenProbBuffer.length - _kLongEyeClosureMinFrames);
+    return recent.every((prob) => prob < _kEyeOpenThreshold);
   }
 
   // ── 초기화 ──────────────────────────────────────────────────────────────
@@ -261,12 +270,14 @@ class ConcentrationService {
     _session?.release();
     _ortEnv?.release();
     _buf.clear();
+    _eyeOpenProbBuffer.clear();
     _mlHistory.clear();
     _scoreHistory.clear();
   }
 
   void reset() {
     _buf.clear();
+    _eyeOpenProbBuffer.clear();
     _mlHistory.clear();
     _scoreHistory.clear();
     _stable = true;
@@ -299,6 +310,8 @@ class ConcentrationService {
       if (faces.isEmpty) {
         _faceMissCount++;
         _appendFrame(_emptyFrame());
+        // 얼굴 미감지 시 prob 1.0 (떠있음으로 처리 — 졸음 트리거 X)
+        _appendEyeOpenProb(1.0);
       } else {
         _faceFoundCount++;
         final face = faces.first;
@@ -315,6 +328,21 @@ class ConcentrationService {
           _realMarBuffer.removeAt(0);
         }
         _updateMarBaseline(realMar);
+
+        // ML Kit 의 eyeOpenProbability — 양 눈 평균 (없으면 fallback)
+        final lProb = face.leftEyeOpenProbability;
+        final rProb = face.rightEyeOpenProbability;
+        final double eyeProb;
+        if (lProb != null && rProb != null) {
+          eyeProb = (lProb + rProb) / 2;
+        } else if (lProb != null) {
+          eyeProb = lProb;
+        } else if (rProb != null) {
+          eyeProb = rProb;
+        } else {
+          eyeProb = 1.0; // 측정 못 했으면 떠있음으로 가정
+        }
+        _appendEyeOpenProb(eyeProb);
 
         _appendFrame(frame);
       }
@@ -363,6 +391,13 @@ class ConcentrationService {
   void _appendFrame(List<double> v) {
     _buf.add(v);
     if (_buf.length > _kBufferMaxFrames) _buf.removeAt(0);
+  }
+
+  void _appendEyeOpenProb(double p) {
+    _eyeOpenProbBuffer.add(p);
+    if (_eyeOpenProbBuffer.length > _kBufferMaxFrames) {
+      _eyeOpenProbBuffer.removeAt(0);
+    }
   }
 
   List<double> _emptyFrame() => List<double>.filled(10, 0.0);
@@ -563,13 +598,13 @@ class ConcentrationService {
     );
   }
 
+  /// 30초 버퍼에서 깜빡임 (눈 감김 → 뜸) rising edge 카운트
+  /// ML Kit eyeOpenProbability 기반 — 카메라 각도 영향 적음
   int _countBlinksInBuffer() {
     int count = 0;
     bool prevClosed = false;
-    final threshold = _effectiveEarThreshold;
-    for (final f in _buf) {
-      if (f[9] < 0.5) continue;
-      final closed = f[2] < threshold;
+    for (final prob in _eyeOpenProbBuffer) {
+      final closed = prob < _kEyeOpenThreshold;
       if (closed && !prevClosed) count++;
       prevClosed = closed;
     }
@@ -735,6 +770,41 @@ class ConcentrationService {
   //   0~39   비집중 (빨강)
   static const double focusedThreshold = 70.0;
   static const double mediumThreshold = 40.0;
+
+  /// 평균 집중도 기반 다음 세션 추천 (7주차 발표 자료 알고리즘)
+  ///
+  /// - 70점 이상: 집중 +5분 (사용자 max 안에서) / 휴식 = 집중 ÷ 5
+  /// - 40~69점 : 집중 유지 / 휴식 = 집중 ÷ 5
+  /// - 40점 미만: 집중 -5분 (최소 25분) / 휴식 최소 10분 보장
+  ///
+  /// 반환: (focusMinutes, breakMinutes) — 다음 세션 추천 시간
+  ({int focusMinutes, int breakMinutes}) recommendNextSession({
+    required int currentFocusMinutes,
+    required int maxFocusMinutes,
+    int minFocusMinutes = 25,
+    int minBreakMinutes = 5,
+  }) {
+    final avgScore = (averageScore01 * 100).clamp(0.0, 100.0);
+
+    int recFocus;
+    int recBreak;
+
+    if (avgScore >= focusedThreshold) {
+      // 집중 잘함 → 다음 집중 +5분 (max 한도 내)
+      recFocus = (currentFocusMinutes + 5).clamp(minFocusMinutes, maxFocusMinutes);
+      recBreak = (recFocus / 5).floor().clamp(minBreakMinutes, 60);
+    } else if (avgScore >= mediumThreshold) {
+      // 보통 → 현재 유지
+      recFocus = currentFocusMinutes;
+      recBreak = (recFocus / 5).floor().clamp(minBreakMinutes, 60);
+    } else {
+      // 부진 → 다음 집중 -5분 (최소 보장), 휴식 최소 10분
+      recFocus = (currentFocusMinutes - 5).clamp(minFocusMinutes, maxFocusMinutes);
+      recBreak = math.max(10, (recFocus / 5).floor()).clamp(10, 60);
+    }
+
+    return (focusMinutes: recFocus, breakMinutes: recBreak);
+  }
 
   void _publishResult({int rawPred = -1, double score = 0}) {
     final FocusStatus status;
