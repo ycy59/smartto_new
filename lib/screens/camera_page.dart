@@ -24,7 +24,6 @@ import 'dart:io' show Platform;
 import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
-import 'package:face_detection_tflite/face_detection_tflite.dart' as fdt;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,8 +56,8 @@ class CameraTask {
   final String goalId;
   final String subjectId;
   final String text;
-  final String? subjectName;  // "과목 - 할일" 표시용
-  final Color? subjectColor;  // 과목별 색 (동그라미/게이지에 적용)
+  final String? subjectName; // "과목 - 할일" 표시용
+  final Color? subjectColor; // 과목별 색 (동그라미/게이지에 적용)
 
   const CameraTask({
     required this.todoId,
@@ -101,15 +100,14 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   StudySession? _activeSession;
 
   // ── 타이머 ────────────────────────────────────────────────────────────────
-  bool _isBreakMode = false;                  // false = 집중 / true = 휴식
-  int _focusMinutes = _kDefaultFocusMinutes;  // 사용자 설정값 (집중)
-  int _breakMinutes = _kDefaultBreakMinutes;  // 사용자 설정값 (휴식)
+  bool _isBreakMode = false; // false = 집중 / true = 휴식
+  int _focusMinutes = _kDefaultFocusMinutes; // 사용자 설정값 (집중)
+  int _breakMinutes = _kDefaultBreakMinutes; // 사용자 설정값 (휴식)
   int _remainingSeconds = _kDefaultFocusMinutes * 60;
   bool _isRunning = false;
   Timer? _ticker;
 
-  int get _totalSeconds =>
-      (_isBreakMode ? _breakMinutes : _focusMinutes) * 60;
+  int get _totalSeconds => (_isBreakMode ? _breakMinutes : _focusMinutes) * 60;
 
   // ── 카메라 ────────────────────────────────────────────────────────────────
   CameraController? _camCtrl;
@@ -162,9 +160,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         front,
         ResolutionPreset.medium,
         enableAudio: false,
-        // face_detection_tflite example 기준: iOS도 yuv420 사용
-        // (BGRA8888은 iOS 에서 bytesPerPixel=null 문제로 face detection 안 됨)
-        imageFormatGroup: ImageFormatGroup.yuv420,
+        // ML Kit 은 iOS BGRA8888, Android NV21 가 권장 포맷
+        imageFormatGroup:
+            Platform.isIOS ? ImageFormatGroup.bgra8888 : ImageFormatGroup.nv21,
       );
       await ctrl.initialize();
       if (!mounted) {
@@ -193,61 +191,30 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
   }
 
-  // 회전 자동 탐색: 4가지 시도 → face 잡히는 회전으로 고정
-  static const List<fdt.CameraFrameRotation?> _rotationsToTry = [
-    fdt.CameraFrameRotation.cw90,
-    fdt.CameraFrameRotation.cw270,
-    fdt.CameraFrameRotation.cw180,
-    null, // 회전 안 함
-  ];
-  int _rotationIdx = 0;
-  bool _rotationLocked = false;
-  int _samplesPerRotation = 0;
-  int _foundWithCurrentRotation = 0;
-
   /// 카메라 image stream 콜백 — 타이머 실행 중 + 집중 모드일 때만 측정
+  /// ML Kit 은 InputImage 의 rotation metadata 로 회전 자동 처리
   void _onCameraImage(CameraImage image) {
     if (!_serviceReady) return;
     if (!_isRunning || _isBreakMode) return;
     _frameCounter++;
-    if (_frameCounter % 5 != 0) return; // 6fps 처리
+    if (_frameCounter % 3 != 0) return; // 10fps 처리 (깜빡임 캡처용)
 
-    final rotation = _rotationsToTry[_rotationIdx];
+    final sensorOri = _camCtrl?.description.sensorOrientation ?? 0;
 
-    if (_frameCounter == 5) {
-      final sensorOri = _camCtrl?.description.sensorOrientation ?? 0;
+    if (_frameCounter == 3) {
       debugPrint('[camera_page] 첫 processFrame 호출 — '
           '${image.width}x${image.height} format=${image.format.raw} '
-          'sensorOri=$sensorOri rotation=$rotation (탐색 중)');
+          'sensorOri=$sensorOri');
     }
 
-    _service.processFrame(image, rotation: rotation);
-    _samplesPerRotation++;
-
-    // 회전 탐색: 30 샘플 동안 face 잡히는지 확인
-    if (!_rotationLocked && _samplesPerRotation >= 30) {
-      final foundNow = _service.lastFoundCount - _foundWithCurrentRotation;
-      if (foundNow > 0) {
-        _rotationLocked = true;
-        debugPrint('[camera_page] ✓ rotation 확정: $rotation '
-            '(found=$foundNow / 30)');
-      } else {
-        // 다음 회전 시도
-        _rotationIdx = (_rotationIdx + 1) % _rotationsToTry.length;
-        _samplesPerRotation = 0;
-        _foundWithCurrentRotation = _service.lastFoundCount;
-        debugPrint('[camera_page] rotation 다음 시도: '
-            '${_rotationsToTry[_rotationIdx]}');
-      }
-    }
+    _service.processFrame(image, sensorOrientation: sensorOri);
   }
 
   // ── 세션 ──────────────────────────────────────────────────────────────────
   Future<void> _startSession(CameraTask task) async {
     if (task.goalId.isEmpty) return;
-    _activeSession = await ref
-        .read(studySessionProvider.notifier)
-        .startSession(task.goalId);
+    _activeSession =
+        await ref.read(studySessionProvider.notifier).startSession(task.goalId);
   }
 
   Future<void> _endSession() async {
@@ -359,7 +326,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   void _toggleDone() {
     if (_selectedTask == null) return;
     setState(() {
-      _doneMap[_selectedTask!.todoId] = !(_doneMap[_selectedTask!.todoId] ?? false);
+      _doneMap[_selectedTask!.todoId] =
+          !(_doneMap[_selectedTask!.todoId] ?? false);
     });
   }
 
@@ -399,8 +367,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     Navigator.pop(context, {
       'selectedTask': _selectedTask?.text,
       'doneMap': {
-        for (final t in widget.allTasks)
-          t.text: _doneMap[t.todoId] ?? false,
+        for (final t in widget.allTasks) t.text: _doneMap[t.todoId] ?? false,
       },
     });
   }
@@ -443,11 +410,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   // ─── 상단 바 ──────────────────────────────────────────────────────────────
   Widget _buildTopBar() {
     final hasTask = _selectedTask != null;
-    final chipText =
-        hasTask ? _selectedTask!.displayLabel : '과목을 선택해주세요';
-    final dotColor = hasTask
-        ? _selectedTask!.color
-        : const Color(0xFFCBCBCB);
+    final chipText = hasTask ? _selectedTask!.displayLabel : '과목을 선택해주세요';
+    final dotColor = hasTask ? _selectedTask!.color : const Color(0xFFCBCBCB);
 
     return Row(
       children: [
@@ -472,7 +436,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
             ),
             child: Row(
               children: [
-                Icon(Icons.circle, size: 10, color: dotColor),
+                Icon(Icons.circle, size: 14, color: dotColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -591,7 +555,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           children: [
             Icon(
               Icons.circle,
-              size: 8,
+              size: 11,
               color: isDone ? const Color(0xFFCBCBCB) : task.color,
             ),
             const SizedBox(width: 8),
@@ -606,9 +570,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                       ? const Color(0xFFCBCBCB)
                       : const Color(0xFF555555),
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  decoration: isDone
-                      ? TextDecoration.lineThrough
-                      : TextDecoration.none,
+                  decoration:
+                      isDone ? TextDecoration.lineThrough : TextDecoration.none,
                   decorationColor: const Color(0xFFCBCBCB),
                 ),
               ),
@@ -628,9 +591,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   // ─── 가운데: 타이머 (항상 보이게, 과목 미선택 시 컨트롤 비활성화) ──────
   Widget _buildCenter() {
     final hasTask = _selectedTask != null;
-    final progress = _totalSeconds == 0
-        ? 0.0
-        : 1.0 - (_remainingSeconds / _totalSeconds);
+    final progress =
+        _totalSeconds == 0 ? 0.0 : 1.0 - (_remainingSeconds / _totalSeconds);
     // 게이지/모드 라벨은 과목 색 무시하고 기존 빨강(_kAccentDark) 사용
     // (휴식은 초록, 미선택은 회색)
     final ringColor = hasTask
@@ -645,9 +607,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       children: [
         // 모드 라벨 (또는 안내)
         Text(
-          hasTask
-              ? (_isBreakMode ? '휴식' : '집중')
-              : '과목을 선택해주세요',
+          hasTask ? (_isBreakMode ? '휴식' : '집중') : '과목을 선택해주세요',
           style: TextStyle(
             fontSize: hasTask ? 11 : 12,
             fontWeight: FontWeight.w800,
@@ -681,9 +641,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                         style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w800,
-                          color: hasTask
-                              ? Colors.black
-                              : const Color(0xFFAAAAAA),
+                          color:
+                              hasTask ? Colors.black : const Color(0xFFAAAAAA),
                           letterSpacing: 1.5,
                         ),
                       ),
@@ -752,17 +711,18 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     );
   }
 
-  // ─── 오른쪽: 카메라 + 상태 카드 ──────────────────────────────────────────
-  // 우측 영역 세로 가운데 정렬, 아래/위는 빈 공간
+  // ─── 오른쪽: 카메라 + 상태 배지 ──────────────────────────────────────────
+  // 우측 영역에서 약간 아래에 배치 (Align bottomCenter 가까운 위치)
   Widget _buildRightCamera() {
-    return Center(
+    return Align(
+      alignment: const Alignment(0, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 카메라 프리뷰 — 고정 높이 100, 비율 유지(cover)
+          // 카메라 프리뷰 — 높이 줄임 (100 → 85)
           SizedBox(
-            height: 100,
+            height: 85,
             child: Container(
               decoration: BoxDecoration(
                 color: const Color(0xFFEDEDED),
@@ -810,7 +770,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 10),
 
           // ── 실시간 집중도 결과 ──────────────────────────────────────────
           // 뽀모도로 진행 중(_isRunning && 집중 모드)일 때만 service 값 사용.
@@ -821,10 +781,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
               final active = _isRunning && !_isBreakMode;
               final shownStatus = active ? r.status : FocusStatus.measuring;
               final shownLabel = active ? r.statusKr : '측정 대기';
-              final shownScore =
-                  active && r.status != FocusStatus.measuring
-                      ? '${r.score.toInt()}점'
-                      : '—';
+              // 점수는 UI 에 표시 안 함 (세션 종료 후 평균만 노출 예정)
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -833,7 +790,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                   Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
+                          horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
                         color: _badgeBgColor(shownStatus),
                         borderRadius: BorderRadius.circular(20),
@@ -842,12 +799,12 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.circle,
-                              size: 6, color: _statusColor(shownStatus)),
+                              size: 9, color: _statusColor(shownStatus)),
                           const SizedBox(width: 4),
                           Text(
                             shownLabel,
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 11,
                               fontWeight: FontWeight.w700,
                               color: _statusTextColor(shownStatus),
                             ),
@@ -858,45 +815,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                   ),
                   const SizedBox(height: 6),
 
-                  // 큰 카드
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.circle,
-                                size: 6, color: _statusColor(shownStatus)),
-                            const SizedBox(width: 4),
-                            Text(
-                              shownLabel,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Color(0xFF8B8B8B),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          shownScore,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF333333),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // 큰 카드 제거됨 (작은 배지에 같은 정보 있음)
                 ],
               );
             },
@@ -910,6 +829,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     switch (s) {
       case FocusStatus.focused:
         return const Color(0xFF5AA85A); // 초록
+      case FocusStatus.medium:
+        return const Color(0xFFFF9800); // 주황
       case FocusStatus.distracted:
         return _kAccent; // 빨강
       case FocusStatus.measuring:
@@ -921,6 +842,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     switch (s) {
       case FocusStatus.focused:
         return const Color(0xFFE8F5E9);
+      case FocusStatus.medium:
+        return const Color(0xFFFFF3E0);
       case FocusStatus.distracted:
         return const Color(0xFFFFEEEE);
       case FocusStatus.measuring:
@@ -932,6 +855,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     switch (s) {
       case FocusStatus.focused:
         return const Color(0xFF2E7D32);
+      case FocusStatus.medium:
+        return const Color(0xFFE65100);
       case FocusStatus.distracted:
         return const Color(0xFF8E5A56);
       case FocusStatus.measuring:
@@ -967,9 +892,7 @@ class _SmallChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = enabled
-        ? (textColor ?? Colors.white)
-        : const Color(0xFFCBCBCB);
+    final fg = enabled ? (textColor ?? Colors.white) : const Color(0xFFCBCBCB);
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: Container(
@@ -1144,7 +1067,8 @@ class _DurationPickerDialogState extends State<_DurationPickerDialog> {
                 const SizedBox(height: 4),
                 Text(
                   '타이머 시간을 선택하거나 직접 입력하세요. (최저 ${widget.minMinutes}분)',
-                  style: const TextStyle(fontSize: 11, color: Color(0xFF888888)),
+                  style:
+                      const TextStyle(fontSize: 11, color: Color(0xFF888888)),
                 ),
                 const SizedBox(height: 14),
 
