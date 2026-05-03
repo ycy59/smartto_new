@@ -19,10 +19,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'dart:math' as math;
-import 'dart:typed_data';
-import 'dart:ui' show VoidCallback;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
@@ -457,7 +454,9 @@ class ConcentrationService {
     final rightCheek = face.contours[FaceContourType.rightCheek]?.points;
 
     if (upperTop == null || lowerBottom == null ||
-        upperTop.isEmpty || lowerBottom.isEmpty) return 0.0;
+        upperTop.isEmpty || lowerBottom.isEmpty) {
+      return 0.0;
+    }
 
     final topMid = upperTop[upperTop.length ~/ 2];
     final bottomMid = lowerBottom[lowerBottom.length ~/ 2];
@@ -830,4 +829,3 @@ class ConcentrationService {
   }
 }
 
-typedef _VC = VoidCallback;

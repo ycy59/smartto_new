@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/entities/study_session.dart';
+import 'calendar_provider.dart';
 import 'database_provider.dart';
 import 'stats_provider.dart';
 import 'study_goal_provider.dart';
@@ -55,8 +56,9 @@ class StudySessionNotifier extends AsyncNotifier<List<StudySession>> {
           .applyFocusScore(goal, focusPercent);
     }
 
-    // 오늘 계획 + 통계 갱신
+    // 오늘 계획 + 통계 + 캘린더(FSRS next_due 변경 반영) 갱신
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
+    ref.invalidate(calendarMonthDataProvider);
   }
 }

@@ -24,6 +24,15 @@ class StudyGoalRepositoryImpl implements StudyGoalRepository {
   }
 
   @override
+  Future<List<StudyGoal>> getAll() async {
+    final rows = await _db.query(
+      'study_goals',
+      orderBy: 'next_due ASC',
+    );
+    return Future.wait(rows.map(_withTodos));
+  }
+
+  @override
   Future<List<StudyGoal>> getBySubject(String subjectId) async {
     final rows = await _db.query(
       'study_goals',

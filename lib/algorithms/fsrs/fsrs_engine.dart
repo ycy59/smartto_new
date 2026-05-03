@@ -65,6 +65,12 @@ class FsrsEngine {
     final newStability = _nextStability(stability, r, newDifficulty, rating);
     final nextInterval = _nextInterval(newStability);
 
+    // 다음 복습일: 오늘은 제외하고 내일부터 카운트.
+    // 자정 기준으로 정규화 → 캘린더 셀 매핑 시 시각 차로 인한 오프셋 방지.
+    // 예) 오늘 학습, interval=7  →  next_due = (오늘 자정) + 8일 = 8일 뒤 자정
+    final today0 = DateTime(now.year, now.month, now.day);
+    final nextDueAtMidnight = today0.add(Duration(days: nextInterval + 1));
+
     return FsrsResult(
       stability: newStability,
       difficulty: newDifficulty,
@@ -74,7 +80,7 @@ class FsrsEngine {
           ? StudyGoalState.relearning
           : StudyGoalState.review,
       lastReview: now,
-      nextDue: now.add(Duration(days: nextInterval)),
+      nextDue: nextDueAtMidnight,
     );
   }
 

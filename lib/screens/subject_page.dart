@@ -325,9 +325,9 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
   /// 현재 사용 중이지 않은 색상을 랜덤 선택
   Color _pickUnusedColor() {
-    final used = _subjects.map((s) => s.color.value).toSet();
+    final used = _subjects.map((s) => s.color.toARGB32()).toSet();
     final unused = kSubjectColorPalette
-        .where((c) => !used.contains(c.value))
+        .where((c) => !used.contains(c.toARGB32()))
         .toList();
     if (unused.isEmpty) {
       // 팔레트 색상을 모두 사용한 경우 전체에서 랜덤
@@ -728,8 +728,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
 
   UnderstandingLevel? _selectedLevel;
 
-  List<TodoItem> _todos = [TodoItem(text: '', done: false)];
-  List<TextEditingController> _todoControllers = [TextEditingController()];
+  final List<TodoItem> _todos = [TodoItem(text: '', done: false)];
+  final List<TextEditingController> _todoControllers = [TextEditingController()];
 
   @override
   void dispose() {
@@ -1531,43 +1531,6 @@ const SizedBox(height: 10),
 // ──────────────────────────────────────────
 // 공통 위젯들
 // ──────────────────────────────────────────
-class _ModeButton extends StatelessWidget {
-  final String title;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ModeButton({
-    required this.title,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        height: 106,
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF6E1DF) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE3DDD5)),
-        ),
-        alignment: Alignment.topCenter,
-        padding: const EdgeInsets.only(top: 16),
-        child: Text(
-          title,
-          style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF666666)),
-        ),
-      ),
-    );
-  }
-}
-
 class _LevelButton extends StatelessWidget {
   final String title;
   final Color background;

@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_session.dart';
 import '../providers/study_session_provider.dart';
+import '../providers/today_plan_provider.dart';
 import '../widgets/concentration_service.dart';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
@@ -368,12 +369,23 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   bool get _currentTaskDone =>
       _selectedTask != null && (_doneMap[_selectedTask!.todoId] ?? false);
 
-  void _toggleDone() {
-    if (_selectedTask == null) return;
+  Future<void> _toggleDone() async {
+    final task = _selectedTask;
+    if (task == null) return;
+    final next = !(_doneMap[task.todoId] ?? false);
+
+    // 1) 즉시 로컬 UI 토글 — 사용자에게 instant 반응
     setState(() {
-      _doneMap[_selectedTask!.todoId] =
-          !(_doneMap[_selectedTask!.todoId] ?? false);
+      _doneMap[task.todoId] = next;
     });
+
+    // 2) DB 영속화 — todayPlanProvider.toggleTodoDone() 가
+    //    is_done + completed_at 을 stamp하고 캘린더 invalidate 까지 처리
+    if (task.todoId.isNotEmpty) {
+      await ref
+          .read(todayPlanProvider.notifier)
+          .toggleTodoDone(task.todoId, next);
+    }
   }
 
   Future<void> _resetSelection() async {
