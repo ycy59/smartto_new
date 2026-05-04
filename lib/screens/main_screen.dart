@@ -607,7 +607,7 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
           color: e.subject.color,
           dday: dday < 0 ? 0 : dday,
           todos: e.goal.todos
-              .map((t) => MainPlanTodo(id: t.id, text: t.text, done: t.isDone, priority: t.priority))
+              .map((t) => MainPlanTodo(id: t.id, text: t.text, done: t.isDone, priority: t.priority, dueDate: t.dueDate,))
               .toList(),
         );
       }).toList();
@@ -916,12 +916,14 @@ class MainPlanTodo {
   String text;
   bool done;
   int priority;
+  DateTime? dueDate;
 
   MainPlanTodo({
     this.id,
     required this.text,
     required this.done,
     this.priority = 0,
+    this.dueDate,
   });
 
   domain.TodoItem _toDomain(String goalId) => domain.TodoItem(
@@ -950,6 +952,29 @@ class _EditableSubjectBlock extends StatelessWidget {
   final ValueChanged<int> onRemoveTodo;
   final ValueChanged<int> onSubmittedTodo;
   final void Function(int, String) onChangedTodo;
+
+  String _getDdayText(MainPlanSubject subject) {
+  // 시험 모드인 할일 중 가장 가까운 시험일 찾기
+  DateTime? earliest;
+  for (final todo in subject.todos) {
+    if (todo.dueDate != null) {
+      if (earliest == null || todo.dueDate!.isBefore(earliest)) {
+        earliest = todo.dueDate;
+      }
+    }
+  }
+
+  if (earliest == null) return 'D - ${subject.dday}'; // 시험일 없으면 기존값
+
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(earliest.year, earliest.month, earliest.day);
+  final diff = target.difference(today).inDays;
+
+  if (diff < 0) return 'D + ${diff.abs()}';
+  if (diff == 0) return 'D - 0';
+  return 'D - $diff';
+}
 
   const _EditableSubjectBlock({
     super.key,
@@ -1055,7 +1080,7 @@ class _EditableSubjectBlock extends StatelessWidget {
                       ),
                     )
                   : Text(
-                      'D - ${subject.dday}',
+                      _getDdayText(subject),
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
