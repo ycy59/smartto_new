@@ -31,7 +31,11 @@ enum FsrsRating {
   final int value;
   const FsrsRating(this.value);
 
-  /// MediaPipe 집중도 점수(0~100) → FsrsRating 변환
+  /// 집중도 점수(0~100 스케일) → FsrsRating 변환.
+  ///
+  /// 호출자는 0~1 스케일이면 *100 후 넘길 것.
+  /// (ConcentrationService.averageScore01 기준 변환은
+  ///  StudySessionNotifier.endSession 에서 수행.)
   static FsrsRating fromFocusScore(double score) {
     if (score < 40) return FsrsRating.again;
     if (score < 60) return FsrsRating.hard;

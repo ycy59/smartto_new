@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'camera_page.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
-import 'main_screen.dart';
 import 'report_page.dart';
 
 class MyPage extends StatefulWidget {
@@ -50,10 +49,6 @@ class _MyPageState extends State<MyPage> {
     _nicknameController.dispose();
     super.dispose();
   }
-
-  void _goBackToMain() {
-  Navigator.pop(context);
-}
 
   Future<void> _pickProfileImage() async {
     final result = await FilePicker.platform.pickFiles(
@@ -449,7 +444,6 @@ class _MyPageBottomNav extends StatelessWidget {
   final VoidCallback onTapTomato;
 
   const _MyPageBottomNav({
-    super.key,
     required this.currentIndex,
     required this.onTapNav,
     required this.nickname,

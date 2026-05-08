@@ -467,7 +467,7 @@ class NicknamePage extends StatelessWidget {
           const SizedBox(height: 10),
           if (nickname.isNotEmpty)
             Text(
-              '반갑습니다! ${nickname}님 😊',
+              '반갑습니다! $nickname님 😊',
               style: const TextStyle(
                 fontSize: 12,
                 color: Color(0xFF777777),

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../algorithms/priority_calculator.dart';
 import '../domain/entities/study_goal.dart';
 import '../domain/entities/subject.dart';
+import 'calendar_provider.dart';
 import 'database_provider.dart';
 
 class TodayPlanEntry {
@@ -31,8 +32,11 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
     return PriorityCalculator.todayPlan(goals)
         .where((p) => subjectMap.containsKey(p.goal.subjectId))
         .map((p) {
-          // 할 일을 priority 높은 순으로 정렬
-          final sortedTodos = List.of(p.goal.todos)
+          // 완료(isDone) todo는 화면에서 즉시 사라지도록 제거
+          // priority 높은 순으로 정렬
+          final sortedTodos = p.goal.todos
+              .where((t) => !t.isDone)
+              .toList()
             ..sort((a, b) => b.priority.compareTo(a.priority));
           return TodayPlanEntry(
             subject: subjectMap[p.goal.subjectId]!,
@@ -45,16 +49,51 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
 
   void refresh() => ref.invalidateSelf();
 
+  /// 할 일 토글:
+  /// 1) state 에 해당 todo 가 있으면 옵티미스틱 업데이트 (완료면 리스트에서 제거)
+  ///    → 홈 화면 즉시 반영
+  /// 2) DB 는 [TodoRepository.setDone] 으로 항상 갱신 (state 에 없어도 OK)
+  /// 3) 미완료 토글(isDone=false) 이면 self invalidate → 다음 빌드에서
+  ///    오늘의 계획에 다시 노출
+  /// 4) 캘린더도 갱신 (완료 todo 카운트 반영)
+  ///
+  /// 카메라 페이지에서 완료 후 다시 미완료로 되돌리는 경우, state 의 build()
+  /// 가 이미 done 을 필터링해 todo 가 빠져 있을 수 있음 → 그럴 땐 옵티미스틱
+  /// 업데이트는 스킵하고 DB + invalidate 만 수행.
   Future<void> toggleTodoDone(String todoId, bool isDone) async {
-    final todos = state.valueOrNull
-        ?.expand((e) => e.goal.todos)
-        .where((t) => t.id == todoId)
-        .toList();
-    if (todos == null || todos.isEmpty) return;
+    final current = state.valueOrNull;
 
-    final todo = todos.first;
-    // toggleDone(): is_done 변경에 맞춰 completed_at 자동 갱신
-    await ref.read(todoRepoProvider).update(todo.toggleDone(isDone));
-    ref.invalidateSelf();
+    // 1) state 에 있으면 옵티미스틱 업데이트 (완료된 항목은 화면에서 제거)
+    if (current != null) {
+      final hasInState = current
+          .expand((e) => e.goal.todos)
+          .any((t) => t.id == todoId);
+      if (hasInState) {
+        final updated = current.map((entry) {
+          final newTodos = entry.goal.todos
+              .map((t) => t.id == todoId ? t.toggleDone(isDone) : t)
+              .where((t) => !t.isDone)
+              .toList();
+          return TodayPlanEntry(
+            subject: entry.subject,
+            goal: entry.goal.copyWith(todos: newTodos),
+            priorityScore: entry.priorityScore,
+          );
+        }).toList();
+        state = AsyncData(updated);
+      }
+    }
+
+    // 2) DB 영속화 — todoId 만으로 부분 업데이트. state 에 없어도 항상 동작.
+    await ref.read(todoRepoProvider).setDone(todoId, isDone);
+
+    // 3) 미완료 복귀라면 다음 빌드에서 다시 노출되도록 self invalidate.
+    //    (옵티미스틱 업데이트만으로는 빠진 todo 를 되살릴 수 없음)
+    if (!isDone) {
+      ref.invalidateSelf();
+    }
+
+    // 4) 캘린더의 완료 todo 카운트도 갱신
+    ref.invalidate(calendarMonthDataProvider);
   }
 }

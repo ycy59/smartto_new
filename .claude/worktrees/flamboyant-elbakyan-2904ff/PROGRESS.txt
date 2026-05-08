@@ -1,0 +1,202 @@
+========================================
+SMARTTO 백엔드 구축 진행 사항
+작성일: 2026-04-17
+========================================
+
+----------------------------------------
+1. 의존성 추가 (pubspec.yaml)
+----------------------------------------
+- sqflite: ^2.3.2          → SQLite 로컬 DB
+- path: ^1.9.0             → DB 경로 처리
+- uuid: ^4.4.0             → 고유 ID 생성
+- flutter_riverpod: ^2.5.1 → 상태관리
+- flutter_lints: ^3.0.1    → 코드 품질
+- flutter_test              → 테스트
+
+----------------------------------------
+2. FSRS-5 알고리즘 구현
+   lib/algorithms/fsrs/
+----------------------------------------
+[fsrs_state.dart]
+- StudyGoalState enum: newCard / learning / review / relearning
+- FsrsRating enum: Again(1) / Hard(2) / Good(3) / Easy(4)
+- FsrsRating.fromFocusScore(double score)
+    0~40%  → Again, 40~60% → Hard, 60~80% → Good, 80~100% → Easy
+- FsrsConstants: 가중치(17개), 초기 안정성, 망각 곡선 상수
+- UnderstandingLevel별 초기 stability
+    hard → 2.1173일, normal → 4.2926일, easy → 5.5786일
+
+[fsrs_engine.dart]
+- initFromLevel(understandingLevel)
+    신규 목표 생성 시 초기화 → nextDue = 오늘 자정 (즉시 오늘 계획에 노출)
+- review(stability, difficulty, repetitions, lastReview, focusScore)
+    세션 종료 후 MediaPipe 집중도 점수 기반 FSRS 파라미터 업데이트
+- currentRetrievability(): 현재 기억 잔존율 계산
+
+----------------------------------------
+3. 우선순위 계산기
+   lib/algorithms/priority_calculator.dart
+----------------------------------------
+- PrioritizedGoal: {goal, score}
+- PriorityCalculator.sort(goals)
+  우선순위 기준:
+    1. overdue_days = 오늘 - next_due (초과 일수)
+    2. deadline_bonus = 시험 모드 && 마감 7일 이내 → (7 - 남은일수) 부스트
+  정렬: score 높을수록 우선
+
+----------------------------------------
+4. 도메인 엔티티
+   lib/domain/entities/
+----------------------------------------
+[subject.dart]
+- id, name, color (Color → int로 DB 저장)
+
+[study_goal.dart]
+- id, subjectId, title
+- mode: StudyMode (study / exam)
+- understandingLevel: UnderstandingLevel (hard / normal / easy)
+- dueDate: DateTime? (시험일 or 학습일, null = 자유 학습)
+- FSRS 파라미터: stability, difficulty, retrievability, repetitions,
+                 state, lastReview, nextDue, createdAt
+- todos: List<TodoItem> (DB join 시 채워짐)
+- isDue: 오늘 복습 필요 여부
+- daysUntilDeadline: D-day 계산
+
+[todo_item.dart]
+- id, goalId, text, isDone, position
+
+[study_session.dart]
+- id, goalId, startedAt, endedAt
+- focusScore: 0.0~1.0 (MediaPipe 집중도)
+- durationMinutes
+
+----------------------------------------
+5. SQLite 데이터베이스
+   lib/data/db/database_helper.dart
+----------------------------------------
+테이블 구조:
+  subjects         → id, name, color
+  study_goals      → id, subject_id(FK), title, mode, understanding_level,
+                     due_date, stability, difficulty, retrievability,
+                     repetitions, state, last_review, next_due, created_at
+  todo_items       → id, goal_id(FK), text, is_done, position
+  study_sessions   → id, goal_id(FK), started_at, ended_at,
+                     focus_score, duration_minutes, created_at
+
+인덱스:
+  idx_goals_next_due, idx_goals_subject
+  idx_todos_goal
+  idx_sessions_goal, idx_sessions_started
+
+외래키 CASCADE: subjects 삭제 → goals/todos/sessions 자동 삭제
+
+----------------------------------------
+6. Repository 인터페이스 & 구현체
+   lib/domain/repositories/ (인터페이스)
+   lib/data/repositories/   (구현체)
+----------------------------------------
+SubjectRepository        → getAll, getById, save, delete
+StudyGoalRepository      → getBySubject, getDueToday, getById,
+                           save, updateFsrs, delete
+TodoRepository           → getByGoal, save, saveAll, update,
+                           delete, deleteByGoal
+StudySessionRepository   → getByGoal, getByDateRange, save, update
+
+----------------------------------------
+7. Riverpod Provider
+   lib/providers/
+----------------------------------------
+[database_provider.dart]
+- databaseHelperProvider, subjectRepoProvider,
+  studyGoalRepoProvider, studySessionRepoProvider, todoRepoProvider
+
+[subject_provider.dart]
+- subjectListProvider (AsyncNotifier)
+  add(name, color) / delete(id)
+
+[study_goal_provider.dart]
+- goalsBySubjectProvider (FamilyAsyncNotifier, subjectId 기준)
+  add(subjectId, title, mode, understandingLevel, dueDate, todoTexts)
+  applyFocusScore(goal, focusScore) → FSRS 업데이트
+  delete(goalId)
+
+[today_plan_provider.dart]
+- TodayPlanEntry: {subject, goal, priorityScore}
+- todayPlanProvider → getDueToday() + 우선순위 정렬 + Subject 색상 join
+- toggleTodoDone(todoId, isDone)
+- refresh()
+
+[study_session_provider.dart]
+- startSession(goalId) → DB에 세션 시작 기록
+- endSession(session, focusScore, subjectId)
+    → focusScore * 100 → FsrsRating 변환
+    → FSRS 파라미터 업데이트
+    → todayPlanProvider 갱신
+
+----------------------------------------
+8. UI → 백엔드 연결
+----------------------------------------
+[subject_page.dart]
+- ConsumerStatefulWidget으로 변경
+- SubjectItem에 subjectId?, goalId? 필드 추가
+- TodoItem에 id? 필드 추가
+- StudyMode, UnderstandingLevel 중복 enum 제거 (domain에서 import)
+- 앱 시작 시 _loadSubjectsFromDb() → SQLite 로드
+- 추가: Subject + StudyGoal(FSRS 초기화) + TodoItems DB 저장
+- 수정: FSRS 값 유지 + 제목/모드/날짜/이해도 업데이트
+- 삭제: Subject 삭제 (CASCADE로 Goal, Todo 자동 삭제)
+- 토마토 버튼: 현재 과목 TodoItems → CameraTask 변환 후 전달
+
+[main_screen.dart]
+- TodayPlanCard → ConsumerStatefulWidget
+- 하드코딩 더미 데이터 제거 (데이터베이스, 인터넷 프로그래밍 등)
+- initState + addPostFrameCallback → DB에서 오늘의 계획 로드
+- ref.listen(todayPlanProvider) → Provider 변경 시 자동 갱신
+- getCameraTasks() → CameraTask 목록 생성 (goalId, subjectId 포함)
+- markTaskDoneByText() → DB 즉시 반영
+- globalTodayTasks 전역 변수 제거
+
+[camera_page.dart]
+- CameraTask 클래스 추가: {todoId, goalId, subjectId, text}
+- ConsumerStatefulWidget으로 변경
+- 목표 선택 시 startSession(goalId) → DB 세션 시작 기록
+- 일시정지 버튼 → endSession(focusScore=0.65) → FSRS 자동 업데이트
+  ※ focusScore 0.65는 임시 모의값, 추후 MediaPipe 연동 시 교체
+
+----------------------------------------
+9. 온보딩 상태 저장 (SharedPreferences)
+   main.dart
+----------------------------------------
+- _AppEntry: FutureBuilder로 SharedPreferences 확인
+    onboarding_complete = true && nickname 있음 → HomeShell 바로 이동
+    없음 → OnboardingScreen 표시
+- CompletePage "첫 과목 추가하기" 버튼
+    → SharedPreferences에 onboarding_complete=true, nickname 저장
+    → flutter run 재시작해도 온보딩 반복 없음
+
+----------------------------------------
+10. 버그 수정
+----------------------------------------
+[데이터 사라짐 버그]
+원인: 신규 StudyGoal의 nextDue = 오늘 + 4~5일
+      → getDueToday() 쿼리에서 조회 안 됨 → 홈 화면에 표시 안 됨
+수정: initFromLevel()에서 nextDue = 오늘 자정으로 설정
+     첫 세션 후 review()가 실제 FSRS 간격으로 업데이트
+
+[TodayPlanCard 반응 없음 버그]
+원인: SubjectPage에서 과목 추가 후 홈 화면이 자동 갱신 안 됨
+수정: ref.listen(todayPlanProvider) + ref.invalidate() 적용
+
+----------------------------------------
+11. 남은 작업 (추후 진행)
+----------------------------------------
+- MediaPipe 집중도 점수 → focusScore 실제 연동
+  (camera_page.dart의 mockFocusScore = 0.65 교체)
+- 리포트 페이지 실제 데이터 연동
+  (주간 통계: 총 집중 시간, 완료 세션 수, 평균 집중도)
+- 캘린더 페이지 실제 데이터 연동
+- WeeklyStatsCard 실제 데이터 연동
+  (현재 하드코딩: '0분', '0개', '-%')
+- MyPage 프로필 편집 SharedPreferences 연동
+
+========================================

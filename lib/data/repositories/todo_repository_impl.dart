@@ -40,6 +40,23 @@ class TodoRepositoryImpl implements TodoRepository {
   }
 
   @override
+  Future<void> setDone(String todoId, bool isDone, {DateTime? when}) async {
+    // 전체 row 를 다시 쓰지 않고 두 컬럼만 변경 — TodoItem 인스턴스 없이도
+    // toggle 가능. 완료 직후 화면에서 사라진 todo 의 미완료 복귀 시 사용.
+    await _db.update(
+      'todo_items',
+      {
+        'is_done': isDone ? 1 : 0,
+        'completed_at': isDone
+            ? (when ?? DateTime.now()).millisecondsSinceEpoch
+            : null,
+      },
+      where: 'id = ?',
+      whereArgs: [todoId],
+    );
+  }
+
+  @override
   Future<void> delete(String id) async {
     await _db.delete('todo_items', where: 'id = ?', whereArgs: [id]);
   }

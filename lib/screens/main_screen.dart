@@ -176,6 +176,7 @@ void _openMyPage() {
     );
 
    if (result != true) return;
+    if (!mounted) return;
 
     final cameraTasks = _todayPlanKey.currentState?.getCameraTasks() ?? [];
     final selectedCameraTask = cameraTasks
@@ -304,7 +305,7 @@ class GreetingCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            displayName.isEmpty ? '안녕하세요!' : '안녕하세요 ${displayName}님!',
+            displayName.isEmpty ? '안녕하세요!' : '안녕하세요 $displayName님!',
             style: const TextStyle(
               fontSize: 11,
               color: Color(0xFF444444),
@@ -624,6 +625,8 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
             goalId: subject.goalId!,
             subjectId: subject.subjectId ?? '',
             text: todo.text,
+            subjectName: subject.title,
+            subjectColor: subject.color,
           ));
         }
       }
@@ -648,30 +651,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
           }
         }
       }
-    });
-  }
-
-  void _toggleEdit() {
-    setState(() {
-      _isEditing = !_isEditing;
-      if (!_isEditing) {
-        _paletteOpenIndex = null;
-      }
-    });
-  }
-
-  void _addSubject() {
-    setState(() {
-      _subjects.add(
-        MainPlanSubject(
-          title: '새 과목',
-          color: _subjectColors.first,
-          dday: 0,
-          todos: [
-            MainPlanTodo(text: '', done: false),
-          ],
-        ),
-      );
     });
   }
 
@@ -807,25 +786,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
             ],
           ),
           const SizedBox(height: 12),
-          if (false) // 편집 기능 SubjectPage로 이동, 해당 블록 비활성
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: SizedBox(
-                height: 36,
-                child: OutlinedButton.icon(
-                  onPressed: _addSubject,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('과목 추가'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFEE7E76),
-                    side: const BorderSide(color: Color(0xFFF299B2)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
-            ),
           ...List.generate(_subjects.length, (subjectIndex) {
             final subject = _subjects[subjectIndex];
 
@@ -977,7 +937,6 @@ class _EditableSubjectBlock extends StatelessWidget {
 }
 
   const _EditableSubjectBlock({
-    super.key,
     required this.subject,
     required this.isEditing,
     required this.showPalette,
