@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>이벤트 처리 실습</title>
+<style>
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif;
+    background-color: #ffffff;
+    color: #000000;
+    margin: 0;
+    padding: 30px;
+    transition: background-color 0.4s, color 0.4s;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #000000;
+  }
+  .section {
+    background: #ffffff;
+    border: 1px solid #000000;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px auto;
+    max-width: 600px;
+    transition: background-color 0.4s, color 0.4s, border-color 0.4s;
+  }
+  .section h2 {
+    margin-top: 0;
+    color: #000000;
+  }
+
+  /* Part A */
+  #clickBox {
+    background-color: #ffffff;
+    color: #000000;
+    border: 2px solid #000000;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    font-size: 18px;
+    font-weight: bold;
+    transition: background-color 0.3s, color 0.3s;
+  }
+  #clickCount {
+    margin-top: 10px;
+    font-size: 16px;
+    color: #000000;
+  }
+
+  /* Part B */
+  #textInput {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #000000;
+    border-radius: 8px;
+    box-sizing: border-box;
+    background-color: #ffffff;
+    color: #000000;
+  }
+  #preview {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 8px;
+    background-color: #ffffff;
+    border: 1px solid #000000;
+    min-height: 40px;
+    font-size: 16px;
+    color: #000000;
+  }
+  #charCount {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #000000;
+  }
+
+  /* Part C */
+  #darkBtn {
+    background-color: #000000;
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  #darkBtn:hover { opacity: 0.85; }
+
+  /* 다크모드 스타일 */
+  body.dark {
+    background-color: #000000;
+    color: #ffffff;
+  }
+  body.dark h1,
+  body.dark .section h2 {
+    color: #ffffff;
+  }
+  body.dark .section {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #ffffff;
+  }
+  body.dark #clickBox {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #ffffff;
+  }
+  body.dark #clickCount {
+    color: #ffffff;
+  }
+  body.dark #textInput {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #ffffff;
+  }
+  body.dark #preview {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #ffffff;
+  }
+  body.dark #charCount {
+    color: #ffffff;
+  }
+  body.dark #darkBtn {
+    background-color: #ffffff;
+    color: #000000;
+  }
+</style>
+</head>
+<body>
+  <h1>JavaScript 이벤트 처리 실습</h1>
+
+  <!-- Part A: 클릭 이벤트 -->
+  <div class="section">
+    <h2>Part A. 클릭 횟수 세기</h2>
+    <div id="clickBox">클릭해보세요</div>
+    <p id="clickCount">현재 클릭 횟수: 0</p>
+  </div>
+
+  <!-- Part B: keyup 이벤트 -->
+  <div class="section">
+    <h2>Part B. 실시간 글자 수 감지 & 미리보기</h2>
+    <input type="text" id="textInput" placeholder="여기에 입력해보세요...">
+    <p id="charCount">글자 수: 0</p>
+    <div id="preview">미리보기 영역</div>
+  </div>
+
+  <!-- Part C: 다크모드 토글 -->
+  <div class="section">
+    <h2>Part C. 다크모드 토글</h2>
+    <button id="darkBtn">다크모드 켜기</button>
+  </div>
+
+<script>
+  /* ====== Part A: 클릭 이벤트 ====== */
+  const clickBox = document.getElementById('clickBox');
+  const clickCount = document.getElementById('clickCount');
+  let count = 0;
+
+  clickBox.addEventListener('click', () => {
+    count++;
+    clickCount.textContent = `현재 클릭 횟수: ${count}`;
+    if (count >= 5) {
+      clickBox.style.backgroundColor = '#ffd166';
+      clickBox.textContent = '5회 이상 클릭됨! 색상 변경 완료';
+    }
+  });
+
+  /* ====== Part B: keyup 이벤트 ====== */
+  const textInput = document.getElementById('textInput');
+  const preview = document.getElementById('preview');
+  const charCount = document.getElementById('charCount');
+
+  textInput.addEventListener('keyup', () => {
+    const value = textInput.value;
+    preview.textContent = value || '미리보기 영역';
+    charCount.textContent = `글자 수: ${value.length}`;
+
+    if (value.length > 10) {
+      preview.style.color = 'red';
+      charCount.style.color = 'red';
+    } else {
+      preview.style.color = '';
+      charCount.style.color = '#777';
+    }
+  });
+
+  /* ====== Part C: 다크모드 토글 ====== */
+  const darkBtn = document.getElementById('darkBtn');
+  darkBtn.addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+    if (document.body.classList.contains('dark')) {
+      darkBtn.textContent = '라이트모드 켜기';
+    } else {
+      darkBtn.textContent = '다크모드 켜기';
+    }
+  });
+</script>
+</body>
+</html>

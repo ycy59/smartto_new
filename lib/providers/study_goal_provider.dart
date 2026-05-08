@@ -70,6 +70,10 @@ class GoalsBySubjectNotifier
   }
 
   /// 세션 종료 후 집중도 점수로 FSRS 업데이트
+  ///
+  /// [focusScore] 단위: **0 ~ 100** (FsrsRating.fromFocusScore 기준).
+  /// 0.0~1.0 스케일이 아님 — 호출자(StudySessionNotifier.endSession)에서
+  /// 이미 *100 변환된 값을 넘긴다.
   Future<void> applyFocusScore(StudyGoal goal, double focusScore) async {
     final result = FsrsEngine.review(
       stability: goal.stability,

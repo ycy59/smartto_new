@@ -146,7 +146,18 @@ class DatabaseHelper {
 
   Future<int> insert(String table, Map<String, dynamic> data) async {
     final db = await database;
-    return db.insert(table, data, conflictAlgorithm: ConflictAlgorithm.replace);
+    // ConflictAlgorithm.abort: 동일 PK 로 INSERT 시 예외 발생 → 호출자가 의도된
+    // 갱신을 [update] 로 명시하도록 강제.
+    //
+    // 이전엔 replace 였는데, SQLite REPLACE 는 기존 row 를 DELETE 한 뒤 새로
+    // INSERT 한다. study_goals/subjects 처럼 ON DELETE CASCADE 가 걸린 부모
+    // 테이블에서 같은 id 로 다시 insert 가 발생하면 자식(todo_items,
+    // study_sessions) 이 통째로 사라지는 위험이 있다.
+    //
+    // 현재 코드는 uuid v4 기반이라 실제 충돌이 발생할 일은 없고, save() 들은
+    // 명시적 upsert(존재하면 update, 아니면 insert) 로 동작하므로 안전. 그래도
+    // 잠재적 데이터 손실 경로를 막기 위해 기본값을 보수적으로 둔다.
+    return db.insert(table, data, conflictAlgorithm: ConflictAlgorithm.abort);
   }
 
   Future<List<Map<String, dynamic>>> query(

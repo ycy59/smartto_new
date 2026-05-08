@@ -6,17 +6,20 @@
 //   - _selectedTask != null  → 원형 카운트다운 타이머 + 자동 세션 시작
 //
 // 타이머:
-//   - 기본 25분 / 휴식 5분 (이게 최저값, 늘리기만 가능)
+//   - debug 빌드: 1분 / 1분 (개발 테스트용)
+//   - release 빌드: 25분 / 5분 (이게 최저값, 늘리기만 가능)
 //   - 가운데 원 탭 → 시간 변경 다이얼로그
 //   - 일시정지 / 재개, 리셋 가능
-//   - 0초 도달 시 세션 종료(mock 점수 저장) → 휴식 모드로 전환
+//   - 0초 도달 시 세션 종료(ConcentrationService 평균 점수 저장) → 휴식 모드로 전환
 //
-// 카메라:
-//   - 우측 영역에 셀카 프리뷰 (face detection / ML 없음)
-//   - 상태(집중/비집중)는 일단 placeholder. ML 붙은 후 채움.
+// 카메라 + 집중도 측정:
+//   - 우측 영역에 셀카 프리뷰
+//   - ConcentrationService(ML Kit Face Detection + ONNX) 가 image stream 처리
+//   - averageScore01 (0~1) 누적 → _endSession 에서 endSession 으로 전달
 //
-// 점수:
-//   - mock 0.65 유지 (FSRS 흐름 보존)
+// 점수 fallback:
+//   - ConcentrationService 초기화 실패(예: ONNX 로드 실패) 시 0.65 (Good 등급)
+//   - 측정 데이터 없을 때 안전망. 실제 측정값이 우선.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:async';
@@ -119,7 +122,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   // ── 집중도 측정 ───────────────────────────────────────────────────────────
   final ConcentrationService _service = ConcentrationService();
   bool _serviceReady = false;
-  int _frameCounter = 0; // 매 5번째 프레임만 처리 (≈ 6fps)
+  int _frameCounter = 0; // 매 3번째 프레임만 처리 (≈ 10fps)
 
   @override
   void initState() {
@@ -221,8 +224,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
 
   Future<void> _endSession() async {
     if (_activeSession == null || _selectedTask == null) return;
-    // ConcentrationService 가 누적한 평균 점수 (0~1).
-    // 측정 데이터가 없으면 0.65 fallback (mock 과 동일한 Good 등급)
+    // ConcentrationService 가 누적한 평균 점수 (0~1, endSession 입력 단위).
+    // 서비스 초기화 실패(ONNX 로드 실패 등) 시 0.65 fallback → Good 등급
     final focusScore = _serviceReady ? _service.averageScore01 : 0.65;
     await ref.read(studySessionProvider.notifier).endSession(
           session: _activeSession!,
@@ -262,6 +265,11 @@ class _CameraPageState extends ConsumerState<CameraPage> {
 
   void _resetTimer() {
     _ticker?.cancel();
+    // 사용자 의도: "이번 뽀모도로는 폐기, 처음부터 다시" → 누적 집중도도 초기화.
+    // (안 하면 다음 세션 종료 시 averageScore01 에 이전 점수가 섞여 FSRS 등급이 오염됨)
+    // NOTE: DB 의 _activeSession 은 그대로 두므로 duration 은 전체 경과시간 기준이 됨.
+    //       세션 재시작까지 원하면 _endSession + _startSession 흐름으로 확장.
+    if (_serviceReady) _service.reset();
     setState(() {
       _remainingSeconds = _totalSeconds;
       _isRunning = false;

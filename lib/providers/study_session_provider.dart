@@ -31,24 +31,29 @@ class StudySessionNotifier extends AsyncNotifier<List<StudySession>> {
   }
 
   /// 세션 종료 — 집중도 점수 저장 후 FSRS 업데이트
+  ///
+  /// [focusScore] 입력 단위는 0.0 ~ 1.0 (ConcentrationService.averageScore01).
+  /// study_sessions.focus_score 컬럼에는 0~1 그대로 저장하고, FSRS 엔진에는
+  /// *100 한 0~100 스케일을 넘긴다 (FsrsRating.fromFocusScore 와 일관).
   Future<void> endSession({
     required StudySession session,
-    required double focusScore, // 0.0 ~ 1.0 (MediaPipe 출력)
+    required double focusScore, // 0.0 ~ 1.0 (ConcentrationService 출력)
     required String subjectId,
   }) async {
     final now = DateTime.now();
     final durationMinutes =
         now.difference(session.startedAt).inMinutes;
+    // FSRS 엔진은 0~100 스케일을 기대하므로 변환.
     final focusPercent = (focusScore * 100).clamp(0.0, 100.0);
 
     final updated = session.copyWith(
       endedAt: () => now,
-      focusScore: () => focusScore,
+      focusScore: () => focusScore, // DB 에는 0~1 그대로 저장
       durationMinutes: () => durationMinutes,
     );
     await ref.read(studySessionRepoProvider).update(updated);
 
-    // 집중도 점수로 FSRS 업데이트
+    // 0~100 스케일로 FSRS 업데이트
     final goal = await ref.read(studyGoalRepoProvider).getById(session.goalId);
     if (goal != null) {
       await ref
