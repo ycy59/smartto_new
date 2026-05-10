@@ -5,6 +5,7 @@ import '../providers/stats_provider.dart';
 import 'main_screen.dart';
 import 'calendar_page.dart';
 import 'subject_page.dart';
+import 'camera_page.dart';
 
 class ReportPageShell extends ConsumerStatefulWidget {
   final int currentIndex;
@@ -40,6 +41,88 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
     _tabController.dispose();
     super.dispose();
   }
+
+Future<void> _showStartDialog() async {
+  final result = await showDialog<bool>(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset('assets/images/tomato_glasses.png', width: 66, height: 66, fit: BoxFit.contain),
+              const SizedBox(height: 10),
+              const Text('시작하시겠습니까?',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Color(0xFF232323))),
+              const SizedBox(height: 12),
+              const Text('집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF8F8F8F), fontWeight: FontWeight.w500)),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE5E5E5)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          backgroundColor: const Color(0xFFF8F8F8),
+                          foregroundColor: const Color(0xFF9A9A9A),
+                        ),
+                        child: const Text('취소', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SizedBox(
+                      height: 42,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFD97068),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('시작', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  if (result != true) return;
+  if (!mounted) return;
+
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => CameraPage(
+        initialSelectedTask: null,
+        allTasks: [],
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +180,7 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
                   onTapNav: widget.onTapNav,
                   nickname: widget.nickname,
                   profileImagePath: widget.profileImagePath,
+                  onTapTomato: _showStartDialog,
                 ),
               ],
             ),
@@ -1074,12 +1158,14 @@ class _ReportBottomNavBar extends StatelessWidget {
   final ValueChanged<int> onTapNav;
   final String nickname;
   final String? profileImagePath;
+  final VoidCallback onTapTomato;
 
   const _ReportBottomNavBar({
     required this.currentIndex,
     required this.onTapNav,
     required this.nickname,
     this.profileImagePath,
+    required this.onTapTomato,
   });
 
   @override
@@ -1112,7 +1198,7 @@ class _ReportBottomNavBar extends StatelessWidget {
             ));
           }),
           GestureDetector(
-            onTap: () {},
+            onTap: onTapTomato,
             child: SizedBox(
               width: 46, height: 46,
               child: ClipOval(child: Image.asset(

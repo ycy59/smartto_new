@@ -1012,6 +1012,7 @@ class _EditableSubjectBlock extends StatelessWidget {
               ),
             ],
             const SizedBox(width: 8),
+            if (subject.todos.any((t) => t.dueDate != null))
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
