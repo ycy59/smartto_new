@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_goal.dart';
 import '../providers/calendar_provider.dart';
+import '../providers/theme_provider.dart'; // ✅ 추가
 import 'camera_page.dart';
 import 'main_screen.dart';
 import 'subject_page.dart';
@@ -47,7 +48,9 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
     });
   }
 
-  Future<void> _showStartDialog() async {
+Future<void> _showStartDialog() async {
+    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -58,7 +61,7 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -71,22 +74,22 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   '시작하시겠습니까?',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF232323),
+                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
-                    color: Color(0xFF8F8F8F),
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -99,11 +102,13 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFE5E5E5)),
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: const Color(0xFFF8F8F8),
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
                             foregroundColor: const Color(0xFF9A9A9A),
                           ),
                           child: const Text(
@@ -263,12 +268,13 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
     final days = _buildMonthDays(_focusedMonth);
     final monthAsync = ref.watch(calendarMonthDataProvider(_focusedMonth));
     final data = monthAsync.valueOrNull ?? CalendarMonthData.empty;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -280,7 +286,7 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Column(
@@ -293,32 +299,37 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                               children: [
                                 GestureDetector(
                                   onTap: () => _changeMonth(-1),
-                                  child: const CircleAvatar(
+                                  child: CircleAvatar(
                                     radius: 12,
-                                    backgroundColor: Color(0xFFF1F1F1),
+                                    backgroundColor: isDark
+                                        ? const Color(0xFF3A3A3A)
+                                        : const Color(0xFFF1F1F1), // ✅
                                     child: Icon(
                                       Icons.chevron_left,
                                       size: 16,
-                                      color: Colors.grey,
+                                      color: isDark ? Colors.white70 : Colors.grey, // ✅
                                     ),
                                   ),
                                 ),
                                 Text(
                                   _monthTitle(_focusedMonth),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black, // ✅
                                   ),
                                 ),
                                 GestureDetector(
                                   onTap: () => _changeMonth(1),
-                                  child: const CircleAvatar(
+                                  child: CircleAvatar(
                                     radius: 12,
-                                    backgroundColor: Color(0xFFF1F1F1),
+                                    backgroundColor: isDark
+                                        ? const Color(0xFF3A3A3A)
+                                        : const Color(0xFFF1F1F1), // ✅
                                     child: Icon(
                                       Icons.chevron_right,
                                       size: 16,
-                                      color: Colors.grey,
+                                      color: isDark ? Colors.white70 : Colors.grey, // ✅
                                     ),
                                   ),
                                 ),
@@ -372,7 +383,9 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                                     margin: const EdgeInsets.all(2),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? const Color(0xFFF9F4F4)
+                                          ? isDark
+                                              ? const Color(0xFF3D2B2A) // ✅
+                                              : const Color(0xFFF9F4F4)
                                           : Colors.transparent,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
@@ -388,7 +401,9 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                                                 : day.weekday ==
                                                         DateTime.saturday
                                                     ? const Color(0xFF7EA3FF)
-                                                    : Colors.black,
+                                                    : isDark
+                                                        ? Colors.white // ✅
+                                                        : Colors.black,
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -425,7 +440,8 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
   }
 }
 
-class CalendarDetailPage extends StatefulWidget {
+// ✅ StatefulWidget → ConsumerStatefulWidget
+class CalendarDetailPage extends ConsumerStatefulWidget {
   final DateTime selectedDate;
   final DayFocusStats focusStats;
   final List<CalendarReviewEntry> reviews;
@@ -438,10 +454,10 @@ class CalendarDetailPage extends StatefulWidget {
   });
 
   @override
-  State<CalendarDetailPage> createState() => _CalendarDetailPageState();
+  ConsumerState<CalendarDetailPage> createState() => _CalendarDetailPageState();
 }
 
-class _CalendarDetailPageState extends State<CalendarDetailPage> {
+class _CalendarDetailPageState extends ConsumerState<CalendarDetailPage> {
   double _dragOffset = 0;
 
   String _weekdayKorean(int weekday) {
@@ -467,8 +483,10 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
       body: SafeArea(
         child: GestureDetector(
           onVerticalDragUpdate: (details) {
@@ -493,7 +511,7 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
                   padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Column(
@@ -505,7 +523,9 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
                             width: 36,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD0D0D0),
+                              color: isDark
+                                  ? const Color(0xFF555555)
+                                  : const Color(0xFFD0D0D0), // ✅
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
@@ -515,9 +535,10 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Text(
                             '${widget.selectedDate.month}월 ${widget.selectedDate.day}일 ${_weekdayKorean(widget.selectedDate.weekday)}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : Colors.black, // ✅
                             ),
                           ),
                         ),
@@ -526,7 +547,10 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
                           Padding(
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 16),
-                            child: _FocusSummaryCard(stats: widget.focusStats),
+                            child: _FocusSummaryCard(
+                              stats: widget.focusStats,
+                              isDark: isDark, // ✅
+                            ),
                           ),
                         const SizedBox(height: 14),
                         Padding(
@@ -535,23 +559,27 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
                             widget.reviews.isEmpty
                                 ? '복습 일정 없음'
                                 : '복습 (${widget.reviews.length}건)',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF555555),
+                              color: isDark
+                                  ? const Color(0xFFAAAAAA)
+                                  : const Color(0xFF555555), // ✅
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Expanded(
                           child: widget.reviews.isEmpty
-                              ? const Center(
+                              ? Center(
                                   child: Padding(
-                                    padding: EdgeInsets.only(bottom: 40),
+                                    padding: const EdgeInsets.only(bottom: 40),
                                     child: Text(
                                       '오늘은 복습할 일정이 없어요',
                                       style: TextStyle(
-                                        color: Color(0xFFB3B3B3),
+                                        color: isDark
+                                            ? const Color(0xFF666666)
+                                            : const Color(0xFFB3B3B3), // ✅
                                       ),
                                     ),
                                   ),
@@ -571,6 +599,7 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
                                               r.understandingLevel),
                                       lastReviewLabel:
                                           _lastReviewLabel(r.lastReview),
+                                      isDark: isDark, // ✅
                                     );
                                   },
                                 ),
@@ -590,7 +619,12 @@ class _CalendarDetailPageState extends State<CalendarDetailPage> {
 
 class _FocusSummaryCard extends StatelessWidget {
   final DayFocusStats stats;
-  const _FocusSummaryCard({required this.stats});
+  final bool isDark; // ✅
+
+  const _FocusSummaryCard({
+    required this.stats,
+    required this.isDark, // ✅
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -598,7 +632,7 @@ class _FocusSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCF6F4),
+        color: isDark ? const Color(0xFF2A2020) : const Color(0xFFFCF6F4), // ✅
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -615,7 +649,9 @@ class _FocusSummaryCard extends StatelessWidget {
                   child: CircularProgressIndicator(
                     value: stats.avgFocusScore.clamp(0.0, 1.0),
                     strokeWidth: 6,
-                    backgroundColor: const Color(0xFFF0DDD8),
+                    backgroundColor: isDark
+                        ? const Color(0xFF4A3535)
+                        : const Color(0xFFF0DDD8), // ✅
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Color(0xFFD97068),
                     ),
@@ -634,12 +670,14 @@ class _FocusSummaryCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
+                    Text(
                       '집중도',
                       style: TextStyle(
                         fontSize: 8,
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF999999),
+                        color: isDark
+                            ? const Color(0xFF888888)
+                            : const Color(0xFF999999), // ✅
                       ),
                     ),
                   ],
@@ -653,12 +691,15 @@ class _FocusSummaryCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _StatRow(
-                    label: '총 학습 시간',
-                    value: _formatDuration(stats.totalDurationMinutes)),
+                  label: '총 학습 시간',
+                  value: _formatDuration(stats.totalDurationMinutes),
+                  isDark: isDark, // ✅
+                ),
                 const SizedBox(height: 6),
                 _StatRow(
                   label: '완료 세션',
                   value: '${stats.sessionCount}회',
+                  isDark: isDark, // ✅
                 ),
               ],
             ),
@@ -681,7 +722,13 @@ class _FocusSummaryCard extends StatelessWidget {
 class _StatRow extends StatelessWidget {
   final String label;
   final String value;
-  const _StatRow({required this.label, required this.value});
+  final bool isDark; // ✅
+
+  const _StatRow({
+    required this.label,
+    required this.value,
+    required this.isDark, // ✅
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -694,10 +741,10 @@ class _StatRow extends StatelessWidget {
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF232323),
+            color: isDark ? Colors.white : const Color(0xFF232323), // ✅
           ),
         ),
       ],
@@ -709,11 +756,13 @@ class _ReviewCard extends StatelessWidget {
   final CalendarReviewEntry entry;
   final String understandingLabel;
   final String lastReviewLabel;
+  final bool isDark; // ✅
 
   const _ReviewCard({
     required this.entry,
     required this.understandingLabel,
     required this.lastReviewLabel,
+    required this.isDark, // ✅
   });
 
   @override
@@ -721,7 +770,7 @@ class _ReviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFAFAFA), // ✅
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -741,10 +790,10 @@ class _ReviewCard extends StatelessWidget {
               children: [
                 Text(
                   '${entry.subjectName} · ${entry.goalTitle}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF232323),
+                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -871,7 +920,8 @@ class _BottomNavIcon extends StatelessWidget {
   }
 }
 
-class CalendarBottomNavBar extends StatelessWidget {
+// ✅ StatelessWidget → ConsumerWidget
+class CalendarBottomNavBar extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
   final String nickname;
@@ -888,13 +938,15 @@ class CalendarBottomNavBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Container(
       height: 66,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
+        border: const Border(
           top: BorderSide(color: Color(0xFFE9E9E9), width: 1),
         ),
       ),

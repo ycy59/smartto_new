@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_session.dart';
 import '../providers/study_session_provider.dart';
+import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
 import '../widgets/concentration_service.dart';
 
@@ -440,8 +441,10 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   // ── BUILD ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F3F3),
+      backgroundColor: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF3F3F3), // ✅
       // 다이얼로그 키보드 떠도 카메라 페이지 자체는 줄어들지 않도록
       // (키보드는 다이얼로그가 알아서 회피함)
       resizeToAvoidBottomInset: false,
@@ -450,16 +453,16 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           child: Column(
             children: [
-              _buildTopBar(),
+              _buildTopBar(isDark), // ✅ isDark 전달
               const SizedBox(height: 14),
               Expanded(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 좌측 줄이고 가운데 키워서 타이머가 화면 중앙에 가깝게
-                    Expanded(flex: 28, child: _buildLeftTaskList()),
+                    Expanded(flex: 28, child: _buildLeftTaskList(isDark)), // ✅
                     const SizedBox(width: 14),
-                    Expanded(flex: 38, child: _buildCenter()),
+                    Expanded(flex: 38, child: _buildCenter(isDark)), // ✅
                     const SizedBox(width: 14),
                     Expanded(flex: 22, child: _buildRightCamera()),
                   ],
@@ -473,7 +476,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ─── 상단 바 ──────────────────────────────────────────────────────────────
-  Widget _buildTopBar() {
+  Widget _buildTopBar(bool isDark) { // ✅ isDark 파라미터 추가
     final hasTask = _selectedTask != null;
     final chipText = hasTask ? _selectedTask!.displayLabel : '과목을 선택해주세요';
     final dotColor = hasTask ? _selectedTask!.color : const Color(0xFFCBCBCB);
@@ -483,10 +486,13 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         // 뒤로가기
         GestureDetector(
           onTap: _onBack,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Icon(Icons.arrow_back_ios_new,
-                size: 18, color: Color(0xFF555555)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Icon(
+              Icons.arrow_back_ios_new,
+              size: 18,
+              color: isDark ? Colors.white70 : const Color(0xFF555555), // ✅
+            ),
           ),
         ),
         const SizedBox(width: 4),
@@ -496,7 +502,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF2C2C2C) : Colors.white, // ✅
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
@@ -511,7 +517,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: hasTask
-                          ? const Color(0xFF232323)
+                          ? isDark ? Colors.white : const Color(0xFF232323) // ✅
                           : const Color(0xFFAAAAAA),
                     ),
                   ),
@@ -536,8 +542,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         _SmallChipButton(
           text: '재선택',
           enabled: hasTask,
-          background: Colors.white,
-          textColor: const Color(0xFF555555),
+          background: isDark ? const Color(0xFF2C2C2C) : Colors.white, // ✅
+          textColor: isDark ? Colors.white70 : const Color(0xFF555555), // ✅
           onTap: hasTask ? _resetSelection : null,
         ),
       ],
@@ -545,11 +551,11 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ─── 왼쪽 오늘 할 일 ────────────────────────────────────────────────────
-  Widget _buildLeftTaskList() {
+  Widget _buildLeftTaskList(bool isDark) { // ✅ isDark 파라미터 추가
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF5FB),
+        color: isDark ? const Color(0xFF1E2A35) : const Color(0xFFEFF5FB), // ✅
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -557,12 +563,12 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 '오늘 할 일',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF232323),
+                  color: isDark ? Colors.white : const Color(0xFF232323), // ✅
                 ),
               ),
               const Spacer(),
@@ -581,7 +587,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  ...widget.allTasks.map(_buildTaskRow),
+                  ...widget.allTasks.map((task) => _buildTaskRow(task, isDark)), // ✅
                   if (widget.allTasks.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(8),
@@ -602,7 +608,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     );
   }
 
-  Widget _buildTaskRow(CameraTask task) {
+  Widget _buildTaskRow(CameraTask task, bool isDark) { // ✅ isDark 파라미터 추가
     final isSelected = _selectedTask?.todoId == task.todoId;
     final isDone = _doneMap[task.todoId] ?? false;
 
@@ -612,7 +618,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         margin: const EdgeInsets.only(bottom: 6),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected
+              ? isDark ? const Color(0xFF2C2C2C) : Colors.white // ✅
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -633,7 +641,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                   fontSize: 11,
                   color: isDone
                       ? const Color(0xFFCBCBCB)
-                      : const Color(0xFF555555),
+                      : isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555), // ✅
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   decoration:
                       isDone ? TextDecoration.lineThrough : TextDecoration.none,
@@ -654,7 +662,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ─── 가운데: 타이머 (항상 보이게, 과목 미선택 시 컨트롤 비활성화) ──────
-  Widget _buildCenter() {
+  Widget _buildCenter(bool isDark) { // ✅ isDark 파라미터 추가
     final hasTask = _selectedTask != null;
     final progress =
         _totalSeconds == 0 ? 0.0 : 1.0 - (_remainingSeconds / _totalSeconds);
@@ -692,7 +700,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
               painter: _RingPainter(
                 progress: progress,
                 color: ringColor,
-                trackColor: const Color(0xFFE8E8E8),
+                trackColor: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE8E8E8), // ✅
                 strokeWidth: 7,
               ),
               child: Center(
@@ -706,8 +714,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                         style: TextStyle(
                           fontSize: 30,
                           fontWeight: FontWeight.w800,
-                          color:
-                              hasTask ? Colors.black : const Color(0xFFAAAAAA),
+                          color: hasTask
+                              ? isDark ? Colors.white : Colors.black // ✅
+                              : const Color(0xFFAAAAAA),
                           letterSpacing: 1.5,
                         ),
                       ),
@@ -741,14 +750,14 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: hasTask
-                      ? const Color(0xFFEEEEEE)
-                      : const Color(0xFFF5F5F5),
+                      ? isDark ? const Color(0xFF3A3A3A) : const Color(0xFFEEEEEE) // ✅
+                      : isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
                 ),
                 child: Icon(
                   Icons.refresh,
                   size: 18,
                   color: hasTask
-                      ? const Color(0xFF666666)
+                      ? isDark ? Colors.white70 : const Color(0xFF666666) // ✅
                       : const Color(0xFFCCCCCC),
                 ),
               ),
@@ -761,11 +770,13 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                 height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: hasTask ? Colors.black : const Color(0xFFCCCCCC),
+                  color: hasTask
+                      ? isDark ? Colors.white : Colors.black // ✅
+                      : const Color(0xFFCCCCCC),
                 ),
                 child: Icon(
                   _isRunning ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
+                  color: isDark ? Colors.black : Colors.white, // ✅
                   size: 22,
                 ),
               ),

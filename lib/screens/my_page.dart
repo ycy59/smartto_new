@@ -2,13 +2,16 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ 추가
 import 'package:shared_preferences/shared_preferences.dart';
+import '../providers/theme_provider.dart'; // ✅ 추가
 import 'camera_page.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
 import 'report_page.dart';
 
-class MyPage extends StatefulWidget {
+// ✅ StatefulWidget → ConsumerStatefulWidget
+class MyPage extends ConsumerStatefulWidget {
   final String initialNickname;
   final String? initialProfileImagePath;
   final void Function({
@@ -28,10 +31,11 @@ class MyPage extends StatefulWidget {
   });
 
   @override
-  State<MyPage> createState() => _MyPageState();
+  ConsumerState<MyPage> createState() => _MyPageState();
 }
 
-class _MyPageState extends State<MyPage> {
+// ✅ State → ConsumerState
+class _MyPageState extends ConsumerState<MyPage> {
   late final TextEditingController _nicknameController;
   late String _currentNickname;
   String? _profileImagePath;
@@ -63,116 +67,120 @@ class _MyPageState extends State<MyPage> {
     });
   }
 
-  Future<void> _showStartDialog() async {
-  final result = await showDialog<bool>(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 38),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/tomato_glasses.png',
-                width: 66,
-                height: 66,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '시작하시겠습니까?',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF232323),
+Future<void> _showStartDialog() async {
+    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/tomato_glasses.png',
+                  width: 66,
+                  height: 66,
+                  fit: BoxFit.contain,
                 ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.45,
-                  color: Color(0xFF8F8F8F),
-                  fontWeight: FontWeight.w500,
+                const SizedBox(height: 10),
+                Text(
+                  '시작하시겠습니까?',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFE5E5E5)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 12),
+                Text(
+                  '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            foregroundColor: const Color(0xFF9A9A9A),
                           ),
-                          backgroundColor: const Color(0xFFF8F8F8),
-                          foregroundColor: const Color(0xFF9A9A9A),
-                        ),
-                        child: const Text(
-                          '취소',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD97068),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD97068),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          '시작',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                          child: const Text(
+                            '시작',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
+        );
+      },
+    );
+
+    if (result != true) return;
+
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CameraPage(
+          initialSelectedTask: null,
+          allTasks: [],
         ),
-      );
-    },
-  );
-
-  if (result != true) return;
-
-  if (!mounted) return;
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CameraPage(
-        initialSelectedTask: null,
-        allTasks: [],
       ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> _saveNickname() async {
     final newNickname = _nicknameController.text.trim().isEmpty
@@ -223,14 +231,15 @@ class _MyPageState extends State<MyPage> {
     });
   }
 
-@override
-Widget build(BuildContext context) {
-  final displayedNickname = _nicknameController.text.trim().isEmpty
-      ? _currentNickname
-      : _nicknameController.text.trim();
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+    final displayedNickname = _nicknameController.text.trim().isEmpty
+        ? _currentNickname
+        : _nicknameController.text.trim();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onHorizontalDragEnd: (details) {
@@ -239,7 +248,7 @@ Widget build(BuildContext context) {
             Navigator.pop(context);
           }
         },
-child: SafeArea(
+        child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
@@ -271,10 +280,10 @@ child: SafeArea(
                               Expanded(
                                 child: Text(
                                   '🍅 $displayedNickname',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w700,
-                                    color: Colors.black,
+                                    color: isDark ? Colors.white : Colors.black, // ✅
                                   ),
                                 ),
                               ),
@@ -286,7 +295,11 @@ child: SafeArea(
                             child: OutlinedButton(
                               onPressed: _pickProfileImage,
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                side: BorderSide(
+                                  color: isDark
+                                      ? const Color(0xFF555555)
+                                      : const Color(0xFFE0E0E0), // ✅
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(6),
                                 ),
@@ -295,24 +308,26 @@ child: SafeArea(
                                   vertical: 6,
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 '프로필 이미지 수정',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Color(0xFF666666),
+                                  color: isDark
+                                      ? const Color(0xFFAAAAAA)
+                                      : const Color(0xFF666666), // ✅
                                 ),
                               ),
                             ),
                           ),
                           const SizedBox(height: 28),
-                          const Align(
+                          Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
                               '닉네임 변경',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.black,
+                                color: isDark ? Colors.white : Colors.black, // ✅
                               ),
                             ),
                           ),
@@ -320,7 +335,9 @@ child: SafeArea(
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFD9D9D9),
+                              color: isDark
+                                  ? const Color(0xFF2C2C2C)
+                                  : const Color(0xFFD9D9D9), // ✅
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
@@ -328,10 +345,15 @@ child: SafeArea(
                                 Expanded(
                                   child: TextField(
                                     controller: _nicknameController,
-                                    decoration: const InputDecoration(
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black, // ✅
+                                    ),
+                                    decoration: InputDecoration(
                                       hintText: '닉네임 입력',
                                       hintStyle: TextStyle(
-                                        color: Color(0xFFB3B3B3),
+                                        color: isDark
+                                            ? const Color(0xFF666666)
+                                            : const Color(0xFFB3B3B3), // ✅
                                         fontSize: 14,
                                       ),
                                       border: InputBorder.none,
@@ -343,10 +365,10 @@ child: SafeArea(
                                     _nicknameController.clear();
                                     setState(() {});
                                   },
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.cancel_outlined,
                                     size: 18,
-                                    color: Colors.black54,
+                                    color: isDark ? Colors.white54 : Colors.black54, // ✅
                                   ),
                                 ),
                               ],
@@ -359,7 +381,9 @@ child: SafeArea(
                             child: ElevatedButton(
                               onPressed: _saveNickname,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
+                                backgroundColor: isDark
+                                    ? const Color(0xFF2C2C2C)
+                                    : Colors.white, // ✅
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
@@ -384,7 +408,9 @@ child: SafeArea(
                             width: 34,
                             height: 16,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEAEAEA),
+                              color: isDark
+                                  ? const Color(0xFF3A3A3A)
+                                  : const Color(0xFFEAEAEA), // ✅
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Row(
@@ -436,7 +462,8 @@ class _Dot extends StatelessWidget {
   }
 }
 
-class _MyPageBottomNav extends StatelessWidget {
+// ✅ StatelessWidget → ConsumerWidget
+class _MyPageBottomNav extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
   final String nickname;
@@ -452,13 +479,15 @@ class _MyPageBottomNav extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Container(
       height: 66,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
+        border: const Border(
           top: BorderSide(
             color: Color(0xFFE5E5E5),
             width: 1,
@@ -593,15 +622,15 @@ class _TomatoNavItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-            width: 46,
-            height: 46,
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/tomato_glasses.png',
-                fit: BoxFit.cover,
-              ),
-            ),
+        width: 46,
+        height: 46,
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/tomato_glasses.png',
+            fit: BoxFit.cover,
           ),
-      );
+        ),
+      ),
+    );
   }
 }

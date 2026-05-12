@@ -10,9 +10,10 @@ import 'calendar_page.dart';
 import 'my_page.dart';
 import 'camera_page.dart';
 import 'report_page.dart';
+import '../providers/theme_provider.dart';
 
 
-class MainScreen extends StatefulWidget {
+class MainScreen extends ConsumerStatefulWidget {
   final String nickname;
   final String? profileImagePath;
   final int currentIndex;
@@ -27,10 +28,10 @@ class MainScreen extends StatefulWidget {
   });
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
+  ConsumerState<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
+class _MainScreenState extends ConsumerState<MainScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey<_TodayPlanCardState> _todayPlanKey =
       GlobalKey<_TodayPlanCardState>();
@@ -41,41 +42,43 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void initState() {
-  super.initState();
-  _nickname = widget.nickname;
-  _profileImagePath = widget.profileImagePath;
-}
+    super.initState();
+    _nickname = widget.nickname;
+    _profileImagePath = widget.profileImagePath;
+  }
 
   void _handleTaskSelected(String taskTitle) {
     setState(() {
       _selectedTaskTitle = taskTitle;
-  });
-}
+    });
+  }
 
-void _openMyPage() {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => MyPage(
-        initialNickname: _nickname,
-        initialProfileImagePath: _profileImagePath,
-        currentIndex: widget.currentIndex,
-        onTapNav: widget.onTapNav,
-        onProfileUpdated: ({
-          required String nickname,
-          String? profileImagePath,
-        }) {
-          setState(() {
-            _nickname = nickname;
-            _profileImagePath = profileImagePath;
-          });
-        },
+  void _openMyPage() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MyPage(
+          initialNickname: _nickname,
+          initialProfileImagePath: _profileImagePath,
+          currentIndex: widget.currentIndex,
+          onTapNav: widget.onTapNav,
+          onProfileUpdated: ({
+            required String nickname,
+            String? profileImagePath,
+          }) {
+            setState(() {
+              _nickname = nickname;
+              _profileImagePath = profileImagePath;
+            });
+          },
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  Future<void> _showStartDialog() async {
+Future<void> _showStartDialog() async {
+    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅ 추가
+
     final result = await showDialog<bool>(
       context: context,
       barrierDismissible: true,
@@ -86,7 +89,7 @@ void _openMyPage() {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -99,22 +102,22 @@ void _openMyPage() {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(                         // ✅ const 제거
                   '시작하시겠습니까?',
-                  style: TextStyle(
+                  style: TextStyle(           // ✅ const 제거
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: Color(0xFF232323),
+                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(                         // ✅ const 제거
                   '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: TextStyle(           // ✅ const 제거
                     fontSize: 13,
                     height: 1.45,
-                    color: Color(0xFF8F8F8F),
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -127,11 +130,13 @@ void _openMyPage() {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFFE5E5E5)),
+                            side: BorderSide(  // ✅ const 제거
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                            ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: const Color(0xFFF8F8F8),
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
                           ),
                           child: const Text(
                             '취소',
@@ -175,7 +180,7 @@ void _openMyPage() {
       },
     );
 
-   if (result != true) return;
+    if (result != true) return;
     if (!mounted) return;
 
     final cameraTasks = _todayPlanKey.currentState?.getCameraTasks() ?? [];
@@ -199,16 +204,17 @@ void _openMyPage() {
       if (selectedTask != null && selectedTask.isNotEmpty) {
         setState(() => _selectedTaskTitle = selectedTask);
       }
-      // DB 갱신은 camera_page 내부에서 완료됨 — 오늘 계획 재로드
       _todayPlanKey.currentState?._loadTodayPlan();
     }
-  }  // ← _showStartDialog 닫는 괄호
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: ref.watch(themeProvider) == ThemeMode.dark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF5F5F5),
       body: GestureDetector(
         onHorizontalDragEnd: (details) {
           if (details.primaryVelocity != null &&
@@ -216,7 +222,7 @@ void _openMyPage() {
             _openMyPage();
           }
         },
-child: SafeArea(
+        child: SafeArea(
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
@@ -262,6 +268,9 @@ child: SafeArea(
   }
 }
 
+// ─────────────────────────────────────────────
+// GreetingCard
+// ─────────────────────────────────────────────
 class GreetingCard extends ConsumerWidget {
   final String nickname;
 
@@ -274,6 +283,7 @@ class GreetingCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = nickname.trim();
     final statsAsync = ref.watch(statsProvider);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅ 수정
 
     final todayLabel = statsAsync.when(
       data: (s) => formatMinutes(s.todayMinutes),
@@ -297,8 +307,8 @@ class GreetingCard extends ConsumerWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration( // ✅ const 제거
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -306,26 +316,45 @@ class GreetingCard extends ConsumerWidget {
         children: [
           Text(
             displayName.isEmpty ? '안녕하세요!' : '안녕하세요 $displayName님!',
-            style: const TextStyle(
+            style: TextStyle( // ✅ const 제거
               fontSize: 11,
-              color: Color(0xFF444444),
+              color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444), // ✅ 쉼표 추가
               fontWeight: FontWeight.w500,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            '오늘도 스마트하게!',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
-            ),
+          Row(
+            children: [
+              Text( // ✅ const 제거
+                '오늘도 스마트하게!',
+                style: TextStyle( // ✅ const 제거
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
+              const Spacer(),
+              Consumer(
+                builder: (context, ref, _) {
+                  final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+                  return GestureDetector(
+                    onTap: () => ref.read(themeProvider.notifier).toggle(),
+                    child: Icon(
+                      isDark ? Icons.light_mode : Icons.dark_mode,
+                      color: const Color(0xFF9E9E9E),
+                      size: 20,
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: InfoCard(
+                  isDark: isDark, // ✅ 추가
                   title: '학습 시간',
                   value: todayLabel,
                   changeText: '$progressPct%',
@@ -335,6 +364,7 @@ class GreetingCard extends ConsumerWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: InfoCard(
+                  isDark: isDark, // ✅ 추가
                   title: '목표 시간',
                   value: goalLabel,
                   changeText: '오늘 목표',
@@ -349,7 +379,11 @@ class GreetingCard extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// InfoCard
+// ─────────────────────────────────────────────
 class InfoCard extends StatelessWidget {
+  final bool isDark; // ✅ 추가
   final String title;
   final String value;
   final String changeText;
@@ -357,6 +391,7 @@ class InfoCard extends StatelessWidget {
 
   const InfoCard({
     super.key,
+    required this.isDark, // ✅ 추가
     required this.title,
     required this.value,
     required this.changeText,
@@ -368,8 +403,8 @@ class InfoCard extends StatelessWidget {
     return Container(
       height: 74,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8EAEA),
+      decoration: BoxDecoration( // ✅ const 제거
+        color: isDark ? const Color(0xFF3A2E2E) : const Color(0xFFF8EAEA), // ✅ 쉼표 추가
         borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
@@ -379,9 +414,9 @@ class InfoCard extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle( // ✅ const 제거
                   fontSize: 10,
-                  color: Color(0xFF5E5E5E),
+                  color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF5E5E5E),
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -399,10 +434,10 @@ class InfoCard extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle( // ✅ const 제거
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black, // ✅ 수정
             ),
           ),
         ],
@@ -411,12 +446,16 @@ class InfoCard extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// WeeklyStatsCard
+// ─────────────────────────────────────────────
 class WeeklyStatsCard extends ConsumerWidget {
   const WeeklyStatsCard({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(statsProvider);
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅ 수정
 
     final totalFocus = statsAsync.when(
       data: (s) => formatMinutes(s.weeklyMinutes),
@@ -439,24 +478,24 @@ class WeeklyStatsCard extends ConsumerWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration( // ✅ const 제거
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
         children: [
-          const Row(
+          Row( // ✅ const 제거
             children: [
-              Text(
+              Text( // ✅ const 제거
                 '이번주 통계',
-                style: TextStyle(
+                style: TextStyle( // ✅ const 제거
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: Colors.black,
+                  color: isDark ? Colors.white : Colors.black, // ✅ 수정
                 ),
               ),
-              Spacer(),
-              Text(
+              const Spacer(),
+              const Text(
                 '상세 보기',
                 style: TextStyle(
                   fontSize: 13,
@@ -471,6 +510,7 @@ class WeeklyStatsCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               StatItem(
+                isDark: isDark, // ✅ 추가
                 circleColor: const Color(0xFFF1D1CC),
                 iconColor: const Color(0xFFC96B63),
                 icon: Icons.timer,
@@ -478,6 +518,7 @@ class WeeklyStatsCard extends ConsumerWidget {
                 label: '총 집중',
               ),
               StatItem(
+                isDark: isDark, // ✅ 추가
                 circleColor: const Color(0xFFDCE9CE),
                 iconColor: const Color(0xFF789F57),
                 icon: Icons.check_circle,
@@ -485,6 +526,7 @@ class WeeklyStatsCard extends ConsumerWidget {
                 label: '완료 세션',
               ),
               StatItem(
+                isDark: isDark, // ✅ 추가
                 circleColor: const Color(0xFFF4DEAE),
                 iconColor: const Color(0xFFD9A247),
                 icon: Icons.group_work_rounded,
@@ -499,7 +541,11 @@ class WeeklyStatsCard extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// StatItem
+// ─────────────────────────────────────────────
 class StatItem extends StatelessWidget {
+  final bool isDark; // ✅ 추가
   final Color circleColor;
   final Color iconColor;
   final IconData icon;
@@ -508,6 +554,7 @@ class StatItem extends StatelessWidget {
 
   const StatItem({
     super.key,
+    required this.isDark, // ✅ 추가
     required this.circleColor,
     required this.iconColor,
     required this.icon,
@@ -533,20 +580,20 @@ class StatItem extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle( // ✅ const 제거
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Colors.black,
+              color: isDark ? Colors.white : Colors.black, // ✅ 수정
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle( // ✅ const 제거
               fontSize: 11,
               height: 1.25,
-              color: Color(0xFF555555),
+              color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555), // ✅ 수정
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -556,6 +603,9 @@ class StatItem extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// TodayPlanCard
+// ─────────────────────────────────────────────
 class TodayPlanCard extends ConsumerStatefulWidget {
   final String? selectedTaskTitle;
   final ValueChanged<String> onTaskSelected;
@@ -587,7 +637,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
   @override
   void initState() {
     super.initState();
-    // 첫 빌드 후 DB에서 오늘의 계획 로드
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadTodayPlan());
   }
 
@@ -608,12 +657,17 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
           color: e.subject.color,
           dday: dday < 0 ? 0 : dday,
           todos: e.goal.todos
-              .map((t) => MainPlanTodo(id: t.id, text: t.text, done: t.isDone, priority: t.priority, dueDate: t.dueDate,))
+              .map((t) => MainPlanTodo(
+                    id: t.id,
+                    text: t.text,
+                    done: t.isDone,
+                    priority: t.priority,
+                    dueDate: t.dueDate,
+                  ))
               .toList(),
         );
       }).toList();
 
-  /// 카메라 페이지에 넘길 CameraTask 목록 생성
   List<CameraTask> getCameraTasks() {
     final result = <CameraTask>[];
     for (final subject in _subjects) {
@@ -729,7 +783,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
 
   @override
   Widget build(BuildContext context) {
-    // Provider 변경 시 자동으로 _subjects 갱신
     ref.listen(todayPlanProvider, (_, next) {
       next.whenData((entries) {
         if (mounted && !_isEditing) {
@@ -738,11 +791,12 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
       });
     });
 
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅ 수정
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: BoxDecoration( // ✅ const 제거
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -750,12 +804,12 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
         children: [
           Row(
             children: [
-              const Text(
+              Text( // ✅ const 제거
                 '오늘의 계획',
-                style: TextStyle(
+                style: TextStyle( // ✅ const 제거
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: Colors.black,
+                  color: isDark ? Colors.white : Colors.black, // ✅ 수정
                 ),
               ),
               const Spacer(),
@@ -771,7 +825,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                       ),
                     ),
                   );
-                  // 돌아왔을 때 오늘 계획 갱신
                   _loadTodayPlan();
                 },
                 child: const Text(
@@ -792,6 +845,7 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: _EditableSubjectBlock(
+                isDark: isDark,
                 subject: subject,
                 isEditing: _isEditing,
                 showPalette: _paletteOpenIndex == subjectIndex,
@@ -820,20 +874,15 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                   }
                 },
                 onToggleTodo: (todoIndex) async {
-                  // 1) 화면을 먼저 토글 — 사용자에게 즉각 반응
                   final todo = subject.todos[todoIndex];
                   final next = !todo.done;
                   setState(() {
                     subject.todos[todoIndex].done = next;
                   });
-                  // 2) DB 에 is_done + completed_at 기록.
-                  //    todayPlanProvider.toggleTodoDone() 가 toggleDone() 헬퍼를
-                  //    써서 completed_at 을 정확히 stamp 한다.
                   if (todo.id != null) {
                     await ref
                         .read(todayPlanProvider.notifier)
                         .toggleTodoDone(todo.id!, next);
-                    // 일간 리포트의 "완료 할일" 카운트 즉시 반영
                     ref.read(statsProvider.notifier).refresh();
                   }
                 },
@@ -853,6 +902,9 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
   }
 }
 
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
 class MainPlanSubject {
   final String? subjectId;
   final String? goalId;
@@ -896,7 +948,11 @@ class MainPlanTodo {
       );
 }
 
+// ─────────────────────────────────────────────
+// _EditableSubjectBlock
+// ─────────────────────────────────────────────
 class _EditableSubjectBlock extends StatelessWidget {
+  final bool isDark;
   final MainPlanSubject subject;
   final bool isEditing;
   final bool showPalette;
@@ -914,29 +970,29 @@ class _EditableSubjectBlock extends StatelessWidget {
   final void Function(int, String) onChangedTodo;
 
   String _getDdayText(MainPlanSubject subject) {
-  // 시험 모드인 할일 중 가장 가까운 시험일 찾기
-  DateTime? earliest;
-  for (final todo in subject.todos) {
-    if (todo.dueDate != null) {
-      if (earliest == null || todo.dueDate!.isBefore(earliest)) {
-        earliest = todo.dueDate;
+    DateTime? earliest;
+    for (final todo in subject.todos) {
+      if (todo.dueDate != null) {
+        if (earliest == null || todo.dueDate!.isBefore(earliest)) {
+          earliest = todo.dueDate;
+        }
       }
     }
+
+    if (earliest == null) return 'D - ${subject.dday}';
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(earliest.year, earliest.month, earliest.day);
+    final diff = target.difference(today).inDays;
+
+    if (diff < 0) return 'D + ${diff.abs()}';
+    if (diff == 0) return 'D - 0';
+    return 'D - $diff';
   }
 
-  if (earliest == null) return 'D - ${subject.dday}'; // 시험일 없으면 기존값
-
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final target = DateTime(earliest.year, earliest.month, earliest.day);
-  final diff = target.difference(today).inDays;
-
-  if (diff < 0) return 'D + ${diff.abs()}';
-  if (diff == 0) return 'D - 0';
-  return 'D - $diff';
-}
-
   const _EditableSubjectBlock({
+    required this.isDark,
     required this.subject,
     required this.isEditing,
     required this.showPalette,
@@ -979,16 +1035,18 @@ class _EditableSubjectBlock extends StatelessWidget {
                         isDense: true,
                         border: InputBorder.none,
                       ),
-                      style: const TextStyle(
+                      style: TextStyle( // ✅ const 제거
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     )
                   : Text(
                       subject.title,
-                      style: const TextStyle(
+                      style: TextStyle( // ✅ const 제거
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
             ),
@@ -1013,41 +1071,41 @@ class _EditableSubjectBlock extends StatelessWidget {
             ],
             const SizedBox(width: 8),
             if (subject.todos.any((t) => t.dueDate != null))
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF2E1E2),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: isEditing
-                  ? SizedBox(
-                      width: 42,
-                      child: TextFormField(
-                        initialValue: '${subject.dday}',
-                        onChanged: onChangedDday,
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.zero,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF4A3535) : const Color(0xFFF2E1E2), // ✅ 다크모드 색상
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: isEditing
+                    ? SizedBox(
+                        width: 42,
+                        child: TextFormField(
+                          initialValue: '${subject.dday}',
+                          onChanged: onChangedDday,
+                          textAlign: TextAlign.center,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF8F7177),
+                          ),
                         ),
+                      )
+                    : Text(
+                        _getDdayText(subject),
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFF8F7177),
                         ),
                       ),
-                    )
-                  : Text(
-                      _getDdayText(subject),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF8F7177),
-                      ),
-                    ),
-            ),
+              ),
           ],
         ),
         if (showPalette) ...[
@@ -1106,7 +1164,9 @@ class _EditableSubjectBlock extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFFFFF1EF)
+                      ? isDark
+                          ? const Color(0xFF3D2B2A) // ✅ 다크모드 선택 색상
+                          : const Color(0xFFFFF1EF)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: isSelected
@@ -1123,7 +1183,9 @@ class _EditableSubjectBlock extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: todo.done
                               ? subject.color
-                              : const Color(0xFFE8E8E8),
+                              : isDark
+                                  ? const Color(0xFF4A4A4A) // ✅ 다크모드 체크박스
+                                  : const Color(0xFFE8E8E8),
                           borderRadius: BorderRadius.circular(5),
                         ),
                         child: todo.done
@@ -1161,7 +1223,9 @@ class _EditableSubjectBlock extends StatelessWidget {
                                 fontSize: 13,
                                 color: todo.done
                                     ? const Color(0xFFCBCBCB)
-                                    : const Color(0xFF8A8A8A),
+                                    : isDark
+                                        ? const Color(0xFFAAAAAA)
+                                        : const Color(0xFF8A8A8A),
                               ),
                             )
                           : Text(
@@ -1170,7 +1234,9 @@ class _EditableSubjectBlock extends StatelessWidget {
                                 fontSize: 13,
                                 color: todo.done
                                     ? const Color(0xFFCBCBCB)
-                                    : const Color(0xFF8A8A8A),
+                                    : isDark
+                                        ? const Color(0xFFAAAAAA) // ✅ 다크모드 할일 텍스트
+                                        : const Color(0xFF8A8A8A),
                                 fontWeight: isSelected
                                     ? FontWeight.w700
                                     : FontWeight.w500,
@@ -1209,6 +1275,9 @@ class _EditableSubjectBlock extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// PageIndicatorDots
+// ─────────────────────────────────────────────
 class PageIndicatorDots extends StatelessWidget {
   const PageIndicatorDots({super.key});
 
@@ -1251,7 +1320,10 @@ class _SmallDot extends StatelessWidget {
   }
 }
 
-class BottomNavBar extends StatelessWidget {
+// ─────────────────────────────────────────────
+// BottomNavBar
+// ─────────────────────────────────────────────
+class BottomNavBar extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
   final VoidCallback onTapTomato;
@@ -1268,13 +1340,15 @@ class BottomNavBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
+
     return Container(
       height: 66,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0),
+        border: const Border(
           top: BorderSide(
             color: Color(0xFFE9E9E9),
             width: 1,
@@ -1357,6 +1431,9 @@ class BottomNavBar extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// NavItem
+// ─────────────────────────────────────────────
 class NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1397,6 +1474,9 @@ class NavItem extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────
+// TomatoNavItem
+// ─────────────────────────────────────────────
 class TomatoNavItem extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -1410,17 +1490,15 @@ class TomatoNavItem extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-            width: 46,
-            height: 46,
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/tomato_glasses.png',
-                fit: BoxFit.cover,
-              ),
-            ),
+        width: 46,
+        height: 46,
+        child: ClipOval(
+          child: Image.asset(
+            'assets/images/tomato_glasses.png',
+            fit: BoxFit.cover,
           ),
-      );
+        ),
+      ),
+    );
   }
 }
-
-
