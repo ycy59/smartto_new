@@ -873,19 +873,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                     subject.dday = parsed;
                   }
                 },
-                onToggleTodo: (todoIndex) async {
-                  final todo = subject.todos[todoIndex];
-                  final next = !todo.done;
-                  setState(() {
-                    subject.todos[todoIndex].done = next;
-                  });
-                  if (todo.id != null) {
-                    await ref
-                        .read(todayPlanProvider.notifier)
-                        .toggleTodoDone(todo.id!, next);
-                    ref.read(statsProvider.notifier).refresh();
-                  }
-                },
                 onRemoveTodo: (todoIndex) =>
                     _confirmDeleteTodo(subjectIndex, todoIndex),
                 onSubmittedTodo: (todoIndex) =>
@@ -964,7 +951,6 @@ class _EditableSubjectBlock extends StatelessWidget {
   final ValueChanged<Color> onPickColor;
   final ValueChanged<String> onChangedTitle;
   final ValueChanged<String> onChangedDday;
-  final ValueChanged<int> onToggleTodo;
   final ValueChanged<int> onRemoveTodo;
   final ValueChanged<int> onSubmittedTodo;
   final void Function(int, String) onChangedTodo;
@@ -1004,7 +990,6 @@ class _EditableSubjectBlock extends StatelessWidget {
     required this.onPickColor,
     required this.onChangedTitle,
     required this.onChangedDday,
-    required this.onToggleTodo,
     required this.onRemoveTodo,
     required this.onSubmittedTodo,
     required this.onChangedTodo,
@@ -1175,29 +1160,6 @@ class _EditableSubjectBlock extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => onToggleTodo(todoIndex),
-                      child: Container(
-                        width: 18,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: todo.done
-                              ? subject.color
-                              : isDark
-                                  ? const Color(0xFF4A4A4A) // ✅ 다크모드 체크박스
-                                  : const Color(0xFFE8E8E8),
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: todo.done
-                            ? const Icon(
-                                Icons.check,
-                                size: 13,
-                                color: Colors.white,
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: isEditing
                           ? TextField(
