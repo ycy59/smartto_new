@@ -130,10 +130,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     super.initState();
     _selectedTask = widget.initialSelectedTask;
     _doneMap = {for (final t in widget.allTasks) t.todoId: false};
-    if (_selectedTask != null) {
-      _startSession(_selectedTask!);
-      // 타이머는 사용자가 ▶ 버튼을 누를 때만 시작 (자동 시작 X)
-    }
+    // 세션은 ▶ 누를 때 _startTimer 에서 시작.
+    // (initState 에서 만들면 사용자가 그냥 뒤로가기 누른 경우 focus_score 0 → FSRS Again → 오늘의 계획에서 사라짐)
     _initCamera();
   }
 
