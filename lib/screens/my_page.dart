@@ -175,7 +175,6 @@ Future<void> _showStartDialog() async {
       context,
       MaterialPageRoute(
         builder: (context) => const CameraPage(
-          initialSelectedTask: null,
           allTasks: [],
         ),
       ),
@@ -413,9 +412,9 @@ Future<void> _showStartDialog() async {
                                   : const Color(0xFFEAEAEA), // ✅
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 _Dot(active: false),
                                 SizedBox(width: 4),
                                 _Dot(active: true),

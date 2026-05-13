@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
-import '../domain/entities/todo_item.dart' as domain;
 import '../providers/today_plan_provider.dart';
-import '../providers/database_provider.dart';
 import '../providers/stats_provider.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
@@ -595,7 +592,7 @@ class TodayPlanCard extends ConsumerStatefulWidget {
 }
 
 class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
-  bool _isEditing = false;
+  final bool _isEditing = false;
   int? _paletteOpenIndex;
   List<MainPlanSubject> _subjects = [];
 
@@ -660,26 +657,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
       }
     }
     return result;
-  }
-
-  List<String> getAllTodoTitles() =>
-      getCameraTasks().map((t) => t.text).toList();
-
-  void markTaskDoneByText(String taskText, bool done) {
-    setState(() {
-      for (final subject in _subjects) {
-        for (final todo in subject.todos) {
-          if (todo.text.trim() == taskText.trim()) {
-            todo.done = done;
-            if (todo.id != null) {
-              ref.read(todoRepoProvider).update(
-                    todo._toDomain(subject.goalId!),
-                  );
-            }
-          }
-        }
-      }
-    });
   }
 
   Future<void> _confirmDeleteSubject(int subjectIndex) async {
@@ -896,15 +873,6 @@ class MainPlanTodo {
     this.priority = 0,
     this.dueDate,
   });
-
-  domain.TodoItem _toDomain(String goalId) => domain.TodoItem(
-        id: id ?? const Uuid().v4(),
-        goalId: goalId,
-        text: text,
-        isDone: done,
-        position: 0,
-        priority: priority,
-      );
 }
 
 // ─────────────────────────────────────────────
@@ -1183,9 +1151,9 @@ class PageIndicatorDots extends StatelessWidget {
         color: const Color(0xFFEAEAEA),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           _SmallDot(active: true),
           SizedBox(width: 4),
           _SmallDot(active: false),
