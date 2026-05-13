@@ -333,9 +333,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       if (!mounted) return;
 
       // 추천 적용 + 다음 세션을 위한 service reset
+      // 다음 집중 세션은 휴식 후 사용자가 ▶ 누를 때 _startTimer 에서 시작.
+      // (여기서 미리 만들면 휴식 중 뒤로가기 시 0점 종료 → FSRS Again 되는 동일 버그 발생)
       if (_serviceReady) _service.reset();
-      if (_selectedTask != null) await _startSession(_selectedTask!);
-      if (!mounted) return;
 
       // 휴식 모드 진입 — 카메라 image stream 멈춤 (CPU 절약)
       if (_camCtrl?.value.isStreamingImages ?? false) {
