@@ -237,7 +237,16 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ── 타이머 제어 ──────────────────────────────────────────────────────────
-  void _startTimer() {
+  // ▶ 를 눌러야 비로소 study_sessions 행이 DB 에 생성된다.
+  // (과목 선택만으로 세션을 만들지 않음 — 선택 후 그냥 나가면 focus_score 0 → FSRS Again → 오늘의 계획에서 사라지는 버그 방지.)
+  Future<void> _startTimer() async {
+    if (!_isBreakMode &&
+        _activeSession == null &&
+        _selectedTask != null &&
+        _selectedTask!.goalId.isNotEmpty) {
+      await _startSession(_selectedTask!);
+      if (!mounted) return;
+    }
     _ticker?.cancel();
     setState(() => _isRunning = true);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -412,8 +421,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
 
   Future<void> _selectTask(CameraTask task) async {
     if (_selectedTask?.goalId != task.goalId) {
+      // 이전 task 에 진행 중인 세션이 있으면 종료. 새 세션은 ▶ 누를 때 시작.
       await _endSession();
-      await _startSession(task);
       if (_serviceReady) _service.reset(); // 새 task 선택 시 누적 점수 초기화
     }
     // task 선택만 함. 타이머 시작은 사용자가 ▶ 직접 눌러야 함.
