@@ -149,8 +149,7 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CameraPage(
-          initialSelectedTask: null,
+        builder: (context) => const CameraPage(
           allTasks: [],
         ),
       ),

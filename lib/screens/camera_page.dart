@@ -86,12 +86,10 @@ class CameraTask {
 }
 
 class CameraPage extends ConsumerStatefulWidget {
-  final CameraTask? initialSelectedTask;
   final List<CameraTask> allTasks;
 
   const CameraPage({
     super.key,
-    required this.initialSelectedTask,
     required this.allTasks,
   });
 
@@ -128,10 +126,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   @override
   void initState() {
     super.initState();
-    _selectedTask = widget.initialSelectedTask;
     _doneMap = {for (final t in widget.allTasks) t.todoId: false};
     // 세션은 ▶ 누를 때 _startTimer 에서 시작.
-    // (initState 에서 만들면 사용자가 그냥 뒤로가기 누른 경우 focus_score 0 → FSRS Again → 오늘의 계획에서 사라짐)
+    // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
     _initCamera();
   }
 
@@ -437,12 +434,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   Future<void> _onBack() async {
     await _endSession();
     if (!mounted) return;
-    Navigator.pop(context, {
-      'selectedTask': _selectedTask?.text,
-      'doneMap': {
-        for (final t in widget.allTasks) t.text: _doneMap[t.todoId] ?? false,
-      },
-    });
+    Navigator.pop(context);
   }
 
   // ── BUILD ────────────────────────────────────────────────────────────────
