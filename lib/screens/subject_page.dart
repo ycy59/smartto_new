@@ -9,6 +9,7 @@ import '../domain/entities/todo_item.dart' as domain;
 import '../providers/database_provider.dart';
 import '../providers/stats_provider.dart';
 import '../providers/study_goal_provider.dart';
+import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
 import 'camera_page.dart';
 import 'calendar_page.dart';
@@ -199,129 +200,133 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
   }
 
   Future<void> _showStartDialog() async {
-  final result = await showDialog<bool>(
-    context: context,
-    barrierDismissible: true,
-    builder: (context) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 38),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                'assets/images/tomato_glasses.png',
-                width: 52,
-                height: 52,
-                fit: BoxFit.contain,
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                '시작하시겠습니까?',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF232323),
+    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/tomato_glasses.png',
+                  width: 52,  // subject_page는 52로 유지
+                  height: 52,
+                  fit: BoxFit.contain,
                 ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.45,
-                  color: Color(0xFF8F8F8F),
-                  fontWeight: FontWeight.w500,
+                const SizedBox(height: 10),
+                Text(
+                  '시작하시겠습니까?',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFE5E5E5)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 12),
+                Text(
+                  '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            foregroundColor: const Color(0xFF9A9A9A),
                           ),
-                          backgroundColor: const Color(0xFFF8F8F8),
-                          foregroundColor: const Color(0xFF9A9A9A),
-                        ),
-                        child: const Text(
-                          '취소',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFD97068),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD97068),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                        ),
-                        child: const Text(
-                          '시작',
-                          style: TextStyle(fontWeight: FontWeight.w800),
+                          child: const Text(
+                            '시작',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
+        );
+      },
+    );
+
+    if (result != true) return;
+    if (!mounted) return;
+
+    // 현재 화면의 과목 할일을 CameraTask로 변환
+    final cameraTasks = _subjects
+        .where((s) => s.goalId != null && s.subjectId != null)
+        .expand((s) => s.todos
+            .where((t) => t.text.isNotEmpty)
+            .map((t) => CameraTask(
+                  todoId: t.id ?? '',
+                  goalId: s.goalId!,
+                  subjectId: s.subjectId!,
+                  text: t.text,
+                  subjectName: s.name,
+                  subjectColor: s.color,
+                )))
+        .toList();
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraPage(
+          initialSelectedTask: null,
+          allTasks: cameraTasks,
         ),
-      );
-    },
-  );
-
-  if (result != true) return;
-  if (!mounted) return;
-
-  // 현재 화면의 과목 할일을 CameraTask로 변환
-  final cameraTasks = _subjects
-      .where((s) => s.goalId != null && s.subjectId != null)
-      .expand((s) => s.todos
-          .where((t) => t.text.isNotEmpty)
-          .map((t) => CameraTask(
-                todoId: t.id ?? '',
-                goalId: s.goalId!,
-                subjectId: s.subjectId!,
-                text: t.text,
-                subjectName: s.name,
-                subjectColor: s.color,
-              )))
-      .toList();
-
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => CameraPage(
-        initialSelectedTask: null,
-        allTasks: cameraTasks,
       ),
-    ),
-  );
-}
+    );
+  }
 
   /// 현재 사용 중이지 않은 색상을 랜덤 선택
   Color _pickUnusedColor() {
@@ -404,23 +409,28 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     Widget body;
 
     if (_mode == SubjectPageMode.empty) {
       body = SubjectEmptyPage(
         onAddTap: _openAddScreen,
+        isDark: isDark, // ✅
       );
     } else if (_mode == SubjectPageMode.add) {
       body = SubjectAddPage(
         onCancel: _openListScreen,
         onComplete: _addSubject,
         defaultColor: _pickUnusedColor(),
+        isDark: isDark, // ✅
       );
     } else if (_mode == SubjectPageMode.detail && _selectedIndex != null) {
       body = SubjectDetailPage(
         subject: _subjects[_selectedIndex!],
         onBack: _openListScreen,
         onSave: (updated) => _updateSubject(_selectedIndex!, updated),
+        isDark: isDark, // ✅
       );
     } else {
       body = SubjectListPage(
@@ -428,11 +438,12 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
         onAddTap: _openAddScreen,
         onDetailTap: _openDetailScreen,
         onDelete: _deleteSubject,
+        isDark: isDark, // ✅
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -458,10 +469,12 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
 class SubjectEmptyPage extends StatelessWidget {
   final VoidCallback onAddTap;
+  final bool isDark; // ✅
 
   const SubjectEmptyPage({
     super.key,
     required this.onAddTap,
+    required this.isDark, // ✅
   });
 
   @override
@@ -470,12 +483,12 @@ class SubjectEmptyPage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Text(
+          Text(
             '과목 추가하기',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: Color(0xFFB2B2B2),
+              color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2), // ✅
             ),
           ),
           const SizedBox(height: 18),
@@ -500,6 +513,7 @@ class SubjectEmptyPage extends StatelessWidget {
     );
   }
 }
+
 // ──────────────────────────────────────────
 // 과목 목록 화면
 // ──────────────────────────────────────────
@@ -508,6 +522,7 @@ class SubjectListPage extends StatelessWidget {
   final VoidCallback onAddTap;
   final ValueChanged<int> onDetailTap;
   final ValueChanged<int> onDelete;
+  final bool isDark; // ✅
 
   const SubjectListPage({
     super.key,
@@ -515,6 +530,7 @@ class SubjectListPage extends StatelessWidget {
     required this.onAddTap,
     required this.onDetailTap,
     required this.onDelete,
+    required this.isDark, // ✅
   });
 
   @override
@@ -525,12 +541,12 @@ class SubjectListPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
+            Text(
               '과목 추가하기',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFFB2B2B2),
+                color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2), // ✅
               ),
             ),
             const SizedBox(height: 18),
@@ -619,6 +635,7 @@ class SubjectListPage extends StatelessWidget {
                 child: _SubjectRow(
                   item: item,
                   onDetailTap: () => onDetailTap(index),
+                  isDark: isDark, // ✅
                 ),
               );
             },
@@ -653,10 +670,12 @@ class SubjectListPage extends StatelessWidget {
 class _SubjectRow extends StatelessWidget {
   final SubjectItem item;
   final VoidCallback onDetailTap;
+  final bool isDark; // ✅
 
   const _SubjectRow({
     required this.item,
     required this.onDetailTap,
+    required this.isDark, // ✅
   });
 
   @override
@@ -664,7 +683,7 @@ class _SubjectRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -672,10 +691,10 @@ class _SubjectRow extends StatelessWidget {
           Expanded(
             child: Text(
               item.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF303030),
+                color: isDark ? Colors.white : const Color(0xFF303030), // ✅
               ),
             ),
           ),
@@ -711,12 +730,14 @@ class SubjectAddPage extends StatefulWidget {
   final VoidCallback onCancel;
   final ValueChanged<SubjectItem> onComplete;
   final Color defaultColor;
+  final bool isDark; // ✅
 
   const SubjectAddPage({
     super.key,
     required this.onCancel,
     required this.onComplete,
     required this.defaultColor,
+    required this.isDark, // ✅
   });
 
   @override
@@ -798,11 +819,13 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDark; // ✅
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
@@ -815,7 +838,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFD0D0D0),
+                  color: isDark ? const Color(0xFF555555) : const Color(0xFFD0D0D0), // ✅
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -823,28 +846,38 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             const SizedBox(height: 20),
 
             // 이름 설정
-            const Text('이름 설정',
-                style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF7A7A7A),
-                    fontWeight: FontWeight.w600)),
+            Text(
+              '이름 설정',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A), // ✅
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 8),
             Container(
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFFEFD),
+                color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFEFD), // ✅
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE6E2D8)),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF444444) : const Color(0xFFE6E2D8), // ✅
+                ),
               ),
               child: TextField(
                 controller: _nameController,
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black, // ✅
+                ),
+                decoration: InputDecoration(
                   hintText: '입력',
-                  hintStyle:
-                      TextStyle(color: Color(0xFFBEBEBE), fontSize: 14),
+                  hintStyle: TextStyle(
+                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE), // ✅
+                    fontSize: 14,
+                  ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                 ),
               ),
             ),
@@ -852,11 +885,14 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             const SizedBox(height: 22),
 
             // 이해도
-            const Text('이해도',
-                style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF7A7A7A),
-                    fontWeight: FontWeight.w600)),
+            Text(
+              '이해도',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A), // ✅
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -895,11 +931,14 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             const SizedBox(height: 22),
 
             // 할 일 추가
-            const Text('할 일',
-                style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF7A7A7A),
-                    fontWeight: FontWeight.w600)),
+            Text(
+              '할 일',
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A), // ✅
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
@@ -934,25 +973,30 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                 onSubmitted: (_) {
                                   _insertNextTodo(index);
                                 },
-                                decoration: const InputDecoration(
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? Colors.white : Colors.black, // ✅
+                                ),
+                                decoration: InputDecoration(
                                   isDense: true,
                                   hintText: '할 일 입력',
                                   hintStyle: TextStyle(
-                                      color: Color(0xFFBEBEBE), fontSize: 13),
-                                  border: UnderlineInputBorder(
+                                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE), // ✅
+                                    fontSize: 13,
+                                  ),
+                                  border: const UnderlineInputBorder(
                                     borderSide:
                                         BorderSide(color: Color(0xFFD9D9D9)),
                                   ),
-                                  enabledBorder: UnderlineInputBorder(
+                                  enabledBorder: const UnderlineInputBorder(
                                     borderSide:
                                         BorderSide(color: Color(0xFFD9D9D9)),
                                   ),
-                                  focusedBorder: UnderlineInputBorder(
+                                  focusedBorder: const UnderlineInputBorder(
                                     borderSide:
                                         BorderSide(color: Color(0xFFBDBDBD)),
                                   ),
                                 ),
-                                style: const TextStyle(fontSize: 13),
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -1006,7 +1050,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: dateText != null
-                                          ? const Color(0xFF444444)
+                                          ? isDark ? Colors.white70 : const Color(0xFF444444) // ✅
                                           : const Color(0xFFBEBEBE),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1055,12 +1099,14 @@ class SubjectDetailPage extends StatefulWidget {
   final SubjectItem subject;
   final VoidCallback onBack;
   final ValueChanged<SubjectItem> onSave;
+  final bool isDark; // ✅
 
   const SubjectDetailPage({
     super.key,
     required this.subject,
     required this.onBack,
     required this.onSave,
+    required this.isDark, // ✅
   });
 
   @override
@@ -1157,8 +1203,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
   }
 
   Color _softBackground(Color color) {
-  return Color.lerp(color, Colors.white, 0.88)!;
-}
+    return Color.lerp(color, Colors.white, 0.88)!;
+  }
 
   void _insertNextTodo(int index) {
     setState(() {
@@ -1197,6 +1243,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDark; // ✅
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
@@ -1204,7 +1252,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
           Container(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -1227,9 +1275,10 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                           border: InputBorder.none,
                           isDense: true,
                         ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black, // ✅
                         ),
                       ),
                     ),
@@ -1249,45 +1298,45 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                 ),
                 const SizedBox(height: 10),
                 if (_showColorPalette) ...[
-  const SizedBox(height: 6),
-  Row(
-    mainAxisAlignment: MainAxisAlignment.end,
-    children: _colorOptions.map((color) {
-      final selected = _selectedColor == color;
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: _colorOptions.map((color) {
+                      final selected = _selectedColor == color;
 
-      return GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedColor = color;
-          });
-        },
-        child: Container(
-          margin: const EdgeInsets.only(left: 8),
-          width: 18,
-          height: 18,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: color,
-              width: 2,
-            ),
-          ),
-          child: Center(
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? color : Colors.transparent,
-              ),
-            ),
-          ),
-        ),
-      );
-    }).toList(),
-  ),
-],
-const SizedBox(height: 10),
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedColor = color;
+                          });
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: color,
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selected ? color : Colors.transparent,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     GestureDetector(
@@ -1304,7 +1353,9 @@ const SizedBox(height: 10),
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: _softBackground(_selectedColor),
+                          color: isDark
+                              ? const Color(0xFF2C2C2C) // ✅
+                              : _softBackground(_selectedColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -1315,9 +1366,10 @@ const SizedBox(height: 10),
                                   _nameController.text.trim().isEmpty
                                       ? '과목'
                                       : _nameController.text.trim(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black, // ✅
                                   ),
                                 ),
                                 const Spacer(),
@@ -1401,6 +1453,10 @@ const SizedBox(height: 10),
                                               onSubmitted: (_) {
                                                 _insertNextTodo(index);
                                               },
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: isDark ? Colors.white : Colors.black, // ✅
+                                              ),
                                               decoration: const InputDecoration(
                                                 isDense: true,
                                                 border: UnderlineInputBorder(
@@ -1418,9 +1474,6 @@ const SizedBox(height: 10),
                                                     color: Color(0xFFBDBDBD),
                                                   ),
                                                 ),
-                                              ),
-                                              style: const TextStyle(
-                                                fontSize: 13,
                                               ),
                                             ),
                                           ),
@@ -1475,7 +1528,7 @@ const SizedBox(height: 10),
                                                   style: TextStyle(
                                                     fontSize: 11,
                                                     color: dateText != null
-                                                        ? const Color(0xFF444444)
+                                                        ? isDark ? Colors.white70 : const Color(0xFF444444) // ✅
                                                         : const Color(0xFFBEBEBE),
                                                     fontWeight: FontWeight.w600,
                                                   ),
@@ -1577,7 +1630,9 @@ class _LevelButton extends StatelessWidget {
 // ──────────────────────────────────────────
 // 하단 네비게이션 바
 // ──────────────────────────────────────────
-class SubjectBottomNavBar extends StatelessWidget {
+
+// ✅ StatelessWidget → ConsumerWidget
+class SubjectBottomNavBar extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
   final String nickname;
@@ -1594,13 +1649,15 @@ class SubjectBottomNavBar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Container(
       height: 66,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
+        border: const Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,

@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/stats_provider.dart';
+import '../providers/theme_provider.dart'; // ✅ 추가
 import 'main_screen.dart';
 import 'calendar_page.dart';
 import 'subject_page.dart';
+import 'camera_page.dart';
 
 class ReportPageShell extends ConsumerStatefulWidget {
   final int currentIndex;
@@ -41,10 +43,126 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
     super.dispose();
   }
 
+  Future<void> _showStartDialog() async {
+    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  'assets/images/tomato_glasses.png',
+                  width: 66,
+                  height: 66,
+                  fit: BoxFit.contain,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '시작하시겠습니까?',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.45,
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            foregroundColor: const Color(0xFF9A9A9A),
+                          ),
+                          child: const Text(
+                            '취소',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD97068),
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '시작',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != true) return;
+    if (!mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraPage(
+          initialSelectedTask: null,
+          allTasks: [],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -56,13 +174,13 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
                   child: Container(
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFE8E8E8),
+                      color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE8E8E8), // ✅
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: TabBar(
                       controller: _tabController,
                       indicator: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF3A3A3A) : Colors.white, // ✅
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: [
                           BoxShadow(
@@ -74,7 +192,7 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
                       ),
                       indicatorSize: TabBarIndicatorSize.tab,
                       dividerColor: Colors.transparent,
-                      labelColor: Colors.black,
+                      labelColor: isDark ? Colors.white : Colors.black, // ✅
                       unselectedLabelColor: const Color(0xFF9E9E9E),
                       labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                       unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
@@ -87,8 +205,8 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _DailyTab(),
-                      _WeeklyTab(),
+                      _DailyTab(isDark: isDark), // ✅
+                      _WeeklyTab(isDark: isDark), // ✅
                     ],
                   ),
                 ),
@@ -97,6 +215,7 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
                   onTapNav: widget.onTapNav,
                   nickname: widget.nickname,
                   profileImagePath: widget.profileImagePath,
+                  onTapTomato: _showStartDialog,
                 ),
               ],
             ),
@@ -111,6 +230,10 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
 // 일간 탭
 // ─────────────────────────────────────────────────────────
 class _DailyTab extends ConsumerStatefulWidget {
+  final bool isDark; // ✅
+
+  const _DailyTab({required this.isDark}); // ✅
+
   @override
   ConsumerState<_DailyTab> createState() => _DailyTabState();
 }
@@ -143,6 +266,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDark; // ✅
     final dailyReport = ref.watch(dailyReportProvider(_selectedDate));
     final hourlyBuckets = ref.watch(dailyHourlyBucketsProvider(_selectedDate));
     final modeRatio = ref.watch(dailyModeRatioProvider(_selectedDate));
@@ -163,7 +287,11 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
               const SizedBox(width: 12),
               Text(
                 _formatDateLabel(_selectedDate),
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                ),
               ),
               const SizedBox(width: 12),
               GestureDetector(
@@ -191,6 +319,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                   value: formatMinutes(report.totalMinutes),
                   color: const Color(0xFFF6E1DF),
                   barColor: const Color(0xFFE06B63),
+                  isDark: isDark, // ✅
                 )),
                 const SizedBox(width: 8),
                 Expanded(child: _StatCard(
@@ -198,6 +327,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                   value: '${report.completedTodos}개',
                   color: const Color(0xFFDCF0CE),
                   barColor: const Color(0xFF79B13D),
+                  isDark: isDark, // ✅
                 )),
                 const SizedBox(width: 8),
                 Expanded(child: _StatCard(
@@ -207,6 +337,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                       : '-',
                   color: const Color(0xFFDCE8F7),
                   barColor: const Color(0xFF7B89FF),
+                  isDark: isDark, // ✅
                 )),
               ],
             ),
@@ -216,7 +347,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                   height: 64,
                   margin: const EdgeInsets.only(right: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEEEEEE),
+                    color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFEEEEEE), // ✅
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
@@ -242,7 +373,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: hourlyBuckets.when(
@@ -255,7 +386,14 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                             children: [
                               Row(
                                 children: [
-                                  const Text('시간별 집중도', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF222222))),
+                                  Text(
+                                    '시간별 집중도',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                                    ),
+                                  ),
                                   const Spacer(),
                                   Text(
                                     '${_selectedDate.month}/${_selectedDate.day}',
@@ -265,10 +403,16 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                               ),
                               const SizedBox(height: 16),
                               buckets.isEmpty
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       height: 100,
                                       child: Center(
-                                        child: Text('학습 기록이 없어요', style: TextStyle(fontSize: 13, color: Color(0xFFBBBBBB))),
+                                        child: Text(
+                                          '학습 기록이 없어요',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: isDark ? const Color(0xFF666666) : const Color(0xFFBBBBBB), // ✅
+                                          ),
+                                        ),
                                       ),
                                     )
                                   : _HourlyBarChart(buckets: buckets),
@@ -296,7 +440,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: modeRatio.when(
@@ -304,9 +448,20 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                           children: [
                             Text(
                               formatMinutes(ratio.totalMinutes),
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF222222)),
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                              ),
                             ),
-                            const Text('총 공부 시간', style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E), fontWeight: FontWeight.w500)),
+                            Text(
+                              '총 공부 시간',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? const Color(0xFF888888) : const Color(0xFF9E9E9E), // ✅
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                             const SizedBox(height: 20),
                             SizedBox(
                               width: 200,
@@ -362,7 +517,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                     borderRadius: BorderRadius.circular(18),
                   ),
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -370,7 +525,14 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                     data: (list) => Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Activity', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF222222))),
+                        Text(
+                          'Activity',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           '${_selectedDate.month}월 ${_selectedDate.day}일',
@@ -378,15 +540,24 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                         ),
                         const SizedBox(height: 14),
                         list.isEmpty
-                            ? const Expanded(
+                            ? Expanded(
                                 child: Center(
-                                  child: Text('학습 기록이 없어요', style: TextStyle(fontSize: 13, color: Color(0xFFBBBBBB))),
+                                  child: Text(
+                                    '학습 기록이 없어요',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? const Color(0xFF666666) : const Color(0xFFBBBBBB), // ✅
+                                    ),
+                                  ),
                                 ),
                               )
                             : Expanded(
                                 child: ListView.builder(
                                   itemCount: list.length,
-                                  itemBuilder: (context, i) => _ActivityItem(entry: list[i]),
+                                  itemBuilder: (context, i) => _ActivityItem(
+                                    entry: list[i],
+                                    isDark: isDark, // ✅
+                                  ),
                                 ),
                               ),
                       ],
@@ -427,6 +598,10 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
 // 주간 탭
 // ─────────────────────────────────────────────────────────
 class _WeeklyTab extends ConsumerStatefulWidget {
+  final bool isDark; // ✅
+
+  const _WeeklyTab({required this.isDark}); // ✅
+
   @override
   ConsumerState<_WeeklyTab> createState() => _WeeklyTabState();
 }
@@ -461,6 +636,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.isDark; // ✅
     final weeklyAsync = ref.watch(weeklyReportProvider(_weekStart));
 
     return weeklyAsync.when(
@@ -511,7 +687,11 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                       const SizedBox(width: 8),
                       Text(
                         _weekLabel(),
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                        ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
@@ -535,6 +715,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                         value: formatMinutes(report.totalMinutes),
                         color: const Color(0xFFF6E1DF),
                         barColor: const Color(0xFFE06B63),
+                        isDark: isDark, // ✅
                       )),
                       const SizedBox(width: 8),
                       Expanded(child: _StatCard(
@@ -542,6 +723,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                         value: '${report.completedTodos}개',
                         color: const Color(0xFFDCF0CE),
                         barColor: const Color(0xFF79B13D),
+                        isDark: isDark, // ✅
                       )),
                       const SizedBox(width: 8),
                       Expanded(child: _StatCard(
@@ -551,6 +733,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                             : '-',
                         color: const Color(0xFFDCE8F7),
                         barColor: const Color(0xFF7B89FF),
+                        isDark: isDark, // ✅
                       )),
                     ],
                   ),
@@ -561,7 +744,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Column(
@@ -569,7 +752,14 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                       children: [
                         Row(
                           children: [
-                            const Text('일별 집중도', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF222222))),
+                            Text(
+                              '일별 집중도',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                              ),
+                            ),
                             const Spacer(),
                             Text(_weekLabel(), style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E))),
                           ],
@@ -590,7 +780,11 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                               decoration: BoxDecoration(
-                                color: isSelected ? const Color(0xFFFFF5F5) : Colors.transparent,
+                                color: isSelected
+                                    ? isDark
+                                        ? const Color(0xFF3D2B2A) // ✅
+                                        : const Color(0xFFFFF5F5)
+                                    : Colors.transparent,
                                 borderRadius: BorderRadius.circular(10),
                                 border: isSelected ? Border.all(color: const Color(0xFFF1B0A9)) : null,
                               ),
@@ -602,7 +796,11 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                                       _dayLabel(day),
                                       style: TextStyle(
                                         fontSize: 11,
-                                        color: isSelected ? const Color(0xFFE06B63) : const Color(0xFF666666),
+                                        color: isSelected
+                                            ? const Color(0xFFE06B63)
+                                            : isDark
+                                                ? const Color(0xFFAAAAAA) // ✅
+                                                : const Color(0xFF666666),
                                         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                       ),
                                     ),
@@ -613,7 +811,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                                         ? Container(
                                             height: 14,
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFF0F0F0),
+                                              color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFF0F0F0), // ✅
                                               borderRadius: BorderRadius.circular(6),
                                             ),
                                           )
@@ -638,7 +836,10 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                                     child: Text(
                                       total > 0 ? formatMinutes(total) : '',
                                       textAlign: TextAlign.right,
-                                      style: const TextStyle(fontSize: 10, color: Color(0xFF999999)),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isDark ? const Color(0xFF888888) : const Color(0xFF999999), // ✅
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -666,20 +867,35 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Column(
                       children: [
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
-                          child: Text('과목별 비중', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF222222))),
+                          child: Text(
+                            '과목별 비중',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 16),
                         if (sortedSubjects.isEmpty)
-                          const SizedBox(
+                          SizedBox(
                             height: 100,
-                            child: Center(child: Text('학습 기록이 없어요', style: TextStyle(fontSize: 13, color: Color(0xFFBBBBBB)))),
+                            child: Center(
+                              child: Text(
+                                '학습 기록이 없어요',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark ? const Color(0xFF666666) : const Color(0xFFBBBBBB), // ✅
+                                ),
+                              ),
+                            ),
                           )
                         else ...[
                           SizedBox(
@@ -701,9 +917,19 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                                   children: [
                                     Text(
                                       formatMinutes(report.totalMinutes),
-                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF222222)),
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                                      ),
                                     ),
-                                    const Text('총 공부 시간', style: TextStyle(fontSize: 10, color: Color(0xFF9E9E9E))),
+                                    Text(
+                                      '총 공부 시간',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isDark ? const Color(0xFF888888) : const Color(0xFF9E9E9E), // ✅
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -716,10 +942,22 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                               children: [
                                 Container(width: 10, height: 10, decoration: BoxDecoration(color: s.color, shape: BoxShape.circle)),
                                 const SizedBox(width: 8),
-                                Expanded(child: Text(s.name, style: const TextStyle(fontSize: 13, color: Color(0xFF444444)))),
+                                Expanded(
+                                  child: Text(
+                                    s.name,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444), // ✅
+                                    ),
+                                  ),
+                                ),
                                 Text(
                                   formatMinutes(s.minutes),
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                                  ),
                                 ),
                               ],
                             ),
@@ -743,7 +981,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                   margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 20, offset: const Offset(0, -4)),
@@ -757,7 +995,11 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                         children: [
                           Text(
                             _dayLabel(days[_selectedDayIndex!]),
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF222222)),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                            ),
                           ),
                           const Spacer(),
                           GestureDetector(
@@ -770,7 +1012,16 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                       ...() {
                         final subjects = dayMap[days[_selectedDayIndex!]] ?? {};
                         if (subjects.isEmpty) {
-                          return [const Center(child: Text('학습 기록이 없어요', style: TextStyle(color: Color(0xFFBBBBBB))))];
+                          return [
+                            Center(
+                              child: Text(
+                                '학습 기록이 없어요',
+                                style: TextStyle(
+                                  color: isDark ? const Color(0xFF666666) : const Color(0xFFBBBBBB), // ✅
+                                ),
+                              ),
+                            ),
+                          ];
                         }
                         final total = subjects.values.fold(0, (s, v) => s + v.minutes);
                         return subjects.entries.map((e) => Padding(
@@ -780,11 +1031,22 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                             children: [
                               Row(
                                 children: [
-                                  Text(e.value.name, style: const TextStyle(fontSize: 13, color: Color(0xFF444444), fontWeight: FontWeight.w500)),
+                                  Text(
+                                    e.value.name,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444), // ✅
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                   const Spacer(),
                                   Text(
                                     formatMinutes(e.value.minutes),
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333)),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                                    ),
                                   ),
                                 ],
                               ),
@@ -793,7 +1055,7 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                                 borderRadius: BorderRadius.circular(6),
                                 child: LinearProgressIndicator(
                                   value: total > 0 ? e.value.minutes / total : 0,
-                                  backgroundColor: const Color(0xFFEEEEEE),
+                                  backgroundColor: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFEEEEEE), // ✅
                                   valueColor: AlwaysStoppedAnimation<Color>(e.value.color),
                                   minHeight: 8,
                                 ),
@@ -829,22 +1091,46 @@ class _StatCard extends StatelessWidget {
   final String value;
   final Color color;
   final Color barColor;
+  final bool isDark; // ✅
 
-  const _StatCard({required this.label, required this.value, required this.color, required this.barColor});
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.barColor,
+    required this.isDark, // ✅
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(
+        color: isDark ? color.withValues(alpha: 0.3) : color, // ✅
+        borderRadius: BorderRadius.circular(14),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(width: 3, height: 20, decoration: BoxDecoration(color: barColor, borderRadius: BorderRadius.circular(4))),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 9, color: Color(0xFF666666), fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              color: isDark ? const Color(0xFF888888) : const Color(0xFF666666), // ✅
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF222222))),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+            ),
+          ),
         ],
       ),
     );
@@ -853,7 +1139,12 @@ class _StatCard extends StatelessWidget {
 
 class _ActivityItem extends StatelessWidget {
   final ActivityEntry entry;
-  const _ActivityItem({required this.entry});
+  final bool isDark; // ✅
+
+  const _ActivityItem({
+    required this.entry,
+    required this.isDark, // ✅
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -867,7 +1158,17 @@ class _ActivityItem extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 42, child: Text(timeStr, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333)))),
+          SizedBox(
+            width: 42,
+            child: Text(
+              timeStr,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+              ),
+            ),
+          ),
           const SizedBox(width: 10),
           Container(width: 3, height: 40, decoration: BoxDecoration(color: Color(entry.subjectColor), borderRadius: BorderRadius.circular(10))),
           const SizedBox(width: 10),
@@ -877,7 +1178,14 @@ class _ActivityItem extends StatelessWidget {
               children: [
                 Text(entry.subjectName, style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E), fontWeight: FontWeight.w600)),
                 const SizedBox(height: 3),
-                Text(entry.goalTitle, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF333333))),
+                Text(
+                  entry.goalTitle,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                  ),
+                ),
                 if (focusStr.isNotEmpty)
                   Text(focusStr, style: const TextStyle(fontSize: 10, color: Color(0xFFAAAAAA))),
               ],
@@ -1069,27 +1377,33 @@ class _DonutChartPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────
 // 하단 네비게이션
 // ─────────────────────────────────────────────────────────
-class _ReportBottomNavBar extends StatelessWidget {
+
+// ✅ StatelessWidget → ConsumerWidget
+class _ReportBottomNavBar extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
   final String nickname;
   final String? profileImagePath;
+  final VoidCallback onTapTomato;
 
   const _ReportBottomNavBar({
     required this.currentIndex,
     required this.onTapNav,
     required this.nickname,
     this.profileImagePath,
+    required this.onTapTomato,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+
     return Container(
       height: 66,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF0F0F0),
-        border: Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
+        border: const Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1112,7 +1426,7 @@ class _ReportBottomNavBar extends StatelessWidget {
             ));
           }),
           GestureDetector(
-            onTap: () {},
+            onTap: onTapTomato,
             child: SizedBox(
               width: 46, height: 46,
               child: ClipOval(child: Image.asset(

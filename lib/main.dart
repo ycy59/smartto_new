@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_shell.dart';
 import 'utils/db_platform_init.dart';
+import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,17 +15,25 @@ void main() async {
   );
 }
 
-class SmarttoApp extends StatelessWidget {
+class SmarttoApp extends ConsumerWidget {
   const SmarttoApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeProvider);
+
     return MaterialApp(
       title: 'Smartto',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
+      themeMode: themeMode,
+      theme: ThemeData(  // ← 라이트 테마 (기존)
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
+      ),
+      darkTheme: ThemeData(           // ← 다크 테마 추가
+        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
+        useMaterial3: true,
+        brightness: Brightness.dark,
       ),
       home: const _AppEntry(),
     );
