@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
-import '../domain/entities/todo_item.dart' as domain;
 import '../providers/today_plan_provider.dart';
-import '../providers/database_provider.dart';
 import '../providers/stats_provider.dart';
 import 'subject_page.dart';
 import 'calendar_page.dart';
@@ -38,19 +35,12 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   late String _nickname;
   String? _profileImagePath;
-  String? _selectedTaskTitle;
 
   @override
   void initState() {
     super.initState();
     _nickname = widget.nickname;
     _profileImagePath = widget.profileImagePath;
-  }
-
-  void _handleTaskSelected(String taskTitle) {
-    setState(() {
-      _selectedTaskTitle = taskTitle;
-    });
   }
 
   void _openMyPage() {
@@ -184,28 +174,16 @@ Future<void> _showStartDialog() async {
     if (!mounted) return;
 
     final cameraTasks = _todayPlanKey.currentState?.getCameraTasks() ?? [];
-    final selectedCameraTask = cameraTasks
-        .where((t) => t.text == _selectedTaskTitle)
-        .cast<CameraTask?>()
-        .firstOrNull;
 
-    final pageResult = await Navigator.push<Map<String, dynamic>>(
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CameraPage(
-          initialSelectedTask: selectedCameraTask,
-          allTasks: cameraTasks,
-        ),
+        builder: (context) => CameraPage(allTasks: cameraTasks),
       ),
     );
 
-    if (pageResult != null) {
-      final selectedTask = pageResult['selectedTask'] as String?;
-      if (selectedTask != null && selectedTask.isNotEmpty) {
-        setState(() => _selectedTaskTitle = selectedTask);
-      }
-      _todayPlanKey.currentState?._loadTodayPlan();
-    }
+    if (!mounted) return;
+    _todayPlanKey.currentState?._loadTodayPlan();
   }
 
   @override
@@ -240,8 +218,6 @@ Future<void> _showStartDialog() async {
                             const SizedBox(height: 16),
                             TodayPlanCard(
                               key: _todayPlanKey,
-                              selectedTaskTitle: _selectedTaskTitle,
-                              onTaskSelected: _handleTaskSelected,
                             ),
                             const SizedBox(height: 10),
                             const PageIndicatorDots(),
@@ -607,13 +583,8 @@ class StatItem extends StatelessWidget {
 // TodayPlanCard
 // ─────────────────────────────────────────────
 class TodayPlanCard extends ConsumerStatefulWidget {
-  final String? selectedTaskTitle;
-  final ValueChanged<String> onTaskSelected;
-
   const TodayPlanCard({
     super.key,
-    required this.selectedTaskTitle,
-    required this.onTaskSelected,
   });
 
   @override
@@ -621,7 +592,7 @@ class TodayPlanCard extends ConsumerStatefulWidget {
 }
 
 class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
-  bool _isEditing = false;
+  final bool _isEditing = false;
   int? _paletteOpenIndex;
   List<MainPlanSubject> _subjects = [];
 
@@ -686,26 +657,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
       }
     }
     return result;
-  }
-
-  List<String> getAllTodoTitles() =>
-      getCameraTasks().map((t) => t.text).toList();
-
-  void markTaskDoneByText(String taskText, bool done) {
-    setState(() {
-      for (final subject in _subjects) {
-        for (final todo in subject.todos) {
-          if (todo.text.trim() == taskText.trim()) {
-            todo.done = done;
-            if (todo.id != null) {
-              ref.read(todoRepoProvider).update(
-                    todo._toDomain(subject.goalId!),
-                  );
-            }
-          }
-        }
-      }
-    });
   }
 
   Future<void> _confirmDeleteSubject(int subjectIndex) async {
@@ -849,8 +800,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                 subject: subject,
                 isEditing: _isEditing,
                 showPalette: _paletteOpenIndex == subjectIndex,
-                selectedTaskTitle: widget.selectedTaskTitle,
-                onTaskSelected: widget.onTaskSelected,
                 onTogglePalette: () {
                   setState(() {
                     _paletteOpenIndex =
@@ -924,15 +873,6 @@ class MainPlanTodo {
     this.priority = 0,
     this.dueDate,
   });
-
-  domain.TodoItem _toDomain(String goalId) => domain.TodoItem(
-        id: id ?? const Uuid().v4(),
-        goalId: goalId,
-        text: text,
-        isDone: done,
-        position: 0,
-        priority: priority,
-      );
 }
 
 // ─────────────────────────────────────────────
@@ -943,8 +883,6 @@ class _EditableSubjectBlock extends StatelessWidget {
   final MainPlanSubject subject;
   final bool isEditing;
   final bool showPalette;
-  final String? selectedTaskTitle;
-  final ValueChanged<String> onTaskSelected;
   final VoidCallback onTogglePalette;
   final List<Color> subjectColors;
   final VoidCallback onDeleteSubject;
@@ -982,8 +920,6 @@ class _EditableSubjectBlock extends StatelessWidget {
     required this.subject,
     required this.isEditing,
     required this.showPalette,
-    required this.selectedTaskTitle,
-    required this.onTaskSelected,
     required this.onTogglePalette,
     required this.subjectColors,
     required this.onDeleteSubject,
@@ -1132,102 +1068,65 @@ class _EditableSubjectBlock extends StatelessWidget {
         ...List.generate(subject.todos.length, (todoIndex) {
           final todo = subject.todos[todoIndex];
           final controller = TextEditingController(text: todo.text);
-          final bool isSelected = selectedTaskTitle == todo.text.trim();
 
           return Padding(
             padding: const EdgeInsets.only(left: 18, bottom: 8),
-            child: GestureDetector(
-              onTap: isEditing
-                  ? null
-                  : () {
-                      final text = todo.text.trim();
-                      if (text.isNotEmpty) {
-                        onTaskSelected(text);
-                      }
-                    },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? isDark
-                          ? const Color(0xFF3D2B2A) // ✅ 다크모드 선택 색상
-                          : const Color(0xFFFFF1EF)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                  border: isSelected
-                      ? Border.all(color: const Color(0xFFF1B0A9))
-                      : null,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: isEditing
-                          ? TextField(
-                              controller: controller,
-                              onChanged: (value) => onChangedTodo(todoIndex, value),
-                              onSubmitted: (_) => onSubmittedTodo(todoIndex),
-                              decoration: const InputDecoration(
-                                isDense: true,
-                                border: UnderlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFD9D9D9)),
-                                ),
-                                enabledBorder: UnderlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFD9D9D9)),
-                                ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide:
-                                      BorderSide(color: Color(0xFFBDBDBD)),
-                                ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: isEditing
+                        ? TextField(
+                            controller: controller,
+                            onChanged: (value) => onChangedTodo(todoIndex, value),
+                            onSubmitted: (_) => onSubmittedTodo(todoIndex),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              border: UnderlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Color(0xFFD9D9D9)),
                               ),
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: todo.done
-                                    ? const Color(0xFFCBCBCB)
-                                    : isDark
-                                        ? const Color(0xFFAAAAAA)
-                                        : const Color(0xFF8A8A8A),
+                              enabledBorder: UnderlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Color(0xFFD9D9D9)),
                               ),
-                            )
-                          : Text(
-                              todo.text,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: todo.done
-                                    ? const Color(0xFFCBCBCB)
-                                    : isDark
-                                        ? const Color(0xFFAAAAAA) // ✅ 다크모드 할일 텍스트
-                                        : const Color(0xFF8A8A8A),
-                                fontWeight: isSelected
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
+                              focusedBorder: UnderlineInputBorder(
+                                borderSide:
+                                    BorderSide(color: Color(0xFFBDBDBD)),
                               ),
                             ),
-                    ),
-                    if (todo.done)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 6),
-                        child: Icon(
-                          Icons.check_circle,
-                          size: 17,
-                          color: Color(0xFF8BCB75),
-                        ),
-                      ),
-                    if (isEditing)
-                      GestureDetector(
-                        onTap: () => onRemoveTodo(todoIndex),
-                        child: const Padding(
-                          padding: EdgeInsets.only(left: 8),
-                          child: Icon(
-                            Icons.close,
-                            size: 16,
-                            color: Color(0xFFB3B3B3),
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? const Color(0xFFAAAAAA)
+                                  : const Color(0xFF8A8A8A),
+                            ),
+                          )
+                        : Text(
+                            todo.text,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? const Color(0xFFAAAAAA) // ✅ 다크모드 할일 텍스트
+                                  : const Color(0xFF8A8A8A),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                  ),
+                  if (isEditing)
+                    GestureDetector(
+                      onTap: () => onRemoveTodo(todoIndex),
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Color(0xFFB3B3B3),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
             ),
           );
@@ -1252,9 +1151,9 @@ class PageIndicatorDots extends StatelessWidget {
         color: const Color(0xFFEAEAEA),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
+      child: const Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           _SmallDot(active: true),
           SizedBox(width: 4),
           _SmallDot(active: false),

@@ -320,10 +320,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CameraPage(
-          initialSelectedTask: null,
-          allTasks: cameraTasks,
-        ),
+        builder: (context) => CameraPage(allTasks: cameraTasks),
       ),
     );
   }

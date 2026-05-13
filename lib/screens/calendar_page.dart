@@ -155,7 +155,6 @@ Future<void> _showStartDialog() async {
       context,
       MaterialPageRoute(
         builder: (context) => const CameraPage(
-          initialSelectedTask: null,
           allTasks: [],
         ),
       ),
