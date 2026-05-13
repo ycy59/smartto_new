@@ -765,6 +765,29 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
     });
   }
 
+  void _appendTodo() {
+    setState(() {
+      _todos.add(TodoItem(text: '', done: false));
+      _todoControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeTodo(int index) {
+    if (_todoControllers.length <= 1) {
+      // 마지막 한 줄은 비워서 유지
+      setState(() {
+        _todoControllers[index].clear();
+        _todos[index] = TodoItem(text: '', done: false);
+      });
+      return;
+    }
+    setState(() {
+      _todoControllers[index].dispose();
+      _todoControllers.removeAt(index);
+      _todos.removeAt(index);
+    });
+  }
+
   bool get _canComplete {
     return _nameController.text.trim().isNotEmpty &&
         _selectedLevel != null;
@@ -939,8 +962,48 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             const SizedBox(height: 10),
             Expanded(
               child: ListView.builder(
-                itemCount: _todoControllers.length,
+                itemCount: _todoControllers.length + 1,
                 itemBuilder: (context, index) {
+                  if (index == _todoControllers.length) {
+                    // 하단 "+ 할 일 추가" 버튼
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      child: GestureDetector(
+                        onTap: _appendTodo,
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF2C2C2C)
+                                    : const Color(0xFFF5F0EE),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.add,
+                                size: 15,
+                                color: Color(0xFFD97068),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '할 일 추가',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? const Color(0xFFAFAFAF)
+                                    : const Color(0xFF8A8A8A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
                   final todo = _todos[index];
                   final isExam = todo.mode == StudyMode.exam;
                   final dateText = todo.dueDate != null
@@ -981,17 +1044,26 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                     color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE), // ✅
                                     fontSize: 13,
                                   ),
-                                  border: const UnderlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Color(0xFFD9D9D9)),
+                                  border: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF3D3D3D)
+                                          : const Color(0xFFD9D9D9),
+                                    ),
                                   ),
-                                  enabledBorder: const UnderlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Color(0xFFD9D9D9)),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF3D3D3D)
+                                          : const Color(0xFFD9D9D9),
+                                    ),
                                   ),
-                                  focusedBorder: const UnderlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Color(0xFFBDBDBD)),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: isDark
+                                          ? const Color(0xFF666666)
+                                          : const Color(0xFFBDBDBD),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1025,6 +1097,21 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
                                   ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            // 할 일 삭제
+                            GestureDetector(
+                              onTap: () => _removeTodo(index),
+                              behavior: HitTestBehavior.opaque,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 4, vertical: 4),
+                                child: Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Color(0xFFB3B3B3),
                                 ),
                               ),
                             ),
@@ -1066,22 +1153,27 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             // 완료 버튼
             SizedBox(
               width: double.infinity,
-              height: 44,
+              height: 46,
               child: ElevatedButton(
                 onPressed: _canComplete ? _submit : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF299B2),
-                  disabledBackgroundColor: const Color(0xFFF0D8DF),
+                  backgroundColor: const Color(0xFFD97068),
+                  disabledBackgroundColor: isDark
+                      ? const Color(0xFF3D2A28)
+                      : const Color(0xFFEED7D4),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
+                      borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: const Text(
+                child: Text(
                   '완료',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700),
+                    color: _canComplete
+                        ? Colors.white
+                        : (isDark ? const Color(0xFF8A6A66) : Colors.white),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -1207,6 +1299,28 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
     setState(() {
       _todos.insert(index + 1, TodoItem(text: '', done: false));
       _todoControllers.insert(index + 1, TextEditingController());
+    });
+  }
+
+  void _appendTodo() {
+    setState(() {
+      _todos.add(TodoItem(text: '', done: false));
+      _todoControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeTodo(int index) {
+    if (_todoControllers.length <= 1) {
+      setState(() {
+        _todoControllers[index].clear();
+        _todos[index] = TodoItem(text: '', done: false);
+      });
+      return;
+    }
+    setState(() {
+      _todoControllers[index].dispose();
+      _todoControllers.removeAt(index);
+      _todos.removeAt(index);
     });
   }
 
@@ -1423,21 +1537,14 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                     children: [
                                       Row(
                                         children: [
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                _todos[index].done = !_todos[index].done;
-                                              });
-                                            },
-                                            child: Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: _todos[index].done
-                                                    ? _selectedColor
-                                                    : const Color(0xFFE0E0E0),
-                                                shape: BoxShape.circle,
-                                              ),
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: _todos[index].done
+                                                  ? _selectedColor
+                                                  : const Color(0xFFE0E0E0),
+                                              shape: BoxShape.circle,
                                             ),
                                           ),
                                           const SizedBox(width: 10),
@@ -1454,21 +1561,27 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                                 fontSize: 13,
                                                 color: isDark ? Colors.white : Colors.black, // ✅
                                               ),
-                                              decoration: const InputDecoration(
+                                              decoration: InputDecoration(
                                                 isDense: true,
                                                 border: UnderlineInputBorder(
                                                   borderSide: BorderSide(
-                                                    color: Color(0xFFD9D9D9),
+                                                    color: isDark
+                                                        ? const Color(0xFF3D3D3D)
+                                                        : const Color(0xFFD9D9D9),
                                                   ),
                                                 ),
                                                 enabledBorder: UnderlineInputBorder(
                                                   borderSide: BorderSide(
-                                                    color: Color(0xFFD9D9D9),
+                                                    color: isDark
+                                                        ? const Color(0xFF3D3D3D)
+                                                        : const Color(0xFFD9D9D9),
                                                   ),
                                                 ),
                                                 focusedBorder: UnderlineInputBorder(
                                                   borderSide: BorderSide(
-                                                    color: Color(0xFFBDBDBD),
+                                                    color: isDark
+                                                        ? const Color(0xFF666666)
+                                                        : const Color(0xFFBDBDBD),
                                                   ),
                                                 ),
                                               ),
@@ -1506,6 +1619,21 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                               ),
                                             ),
                                           ),
+                                          const SizedBox(width: 2),
+                                          // 할 일 삭제
+                                          GestureDetector(
+                                            onTap: () => _removeTodo(index),
+                                            behavior: HitTestBehavior.opaque,
+                                            child: const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 4, vertical: 4),
+                                              child: Icon(
+                                                Icons.close,
+                                                size: 15,
+                                                color: Color(0xFFB3B3B3),
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                       if (isExam)
@@ -1539,8 +1667,92 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                 );
                               }),
                             ),
+                            // "+ 할 일 추가" 버튼
+                            Padding(
+                              padding: const EdgeInsets.only(top: 2, bottom: 2),
+                              child: GestureDetector(
+                                onTap: _appendTodo,
+                                behavior: HitTestBehavior.opaque,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: isDark
+                                            ? const Color(0xFF3A2A28)
+                                            : Colors.white.withValues(alpha: 0.7),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.add,
+                                        size: 14,
+                                        color: Color(0xFFD97068),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '할 일 추가',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? const Color(0xFFAFAFAF)
+                                            : const Color(0xFF7A7A7A),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ],
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // 이해도 변경
+                Row(
+                  children: [
+                    Text(
+                      '이해도',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark
+                            ? const Color(0xFF9A9A9A)
+                            : const Color(0xFF7A7A7A),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _LevelButton(
+                        title: '어려움',
+                        background: const Color(0xFFF08AA1),
+                        selected: _level == UnderstandingLevel.hard,
+                        onTap: () => setState(
+                            () => _level = UnderstandingLevel.hard),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _LevelButton(
+                        title: '보통',
+                        background: const Color(0xFFF0C06F),
+                        selected: _level == UnderstandingLevel.normal,
+                        onTap: () => setState(
+                            () => _level = UnderstandingLevel.normal),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _LevelButton(
+                        title: '쉬움',
+                        background: const Color(0xFF97D778),
+                        selected: _level == UnderstandingLevel.easy,
+                        onTap: () => setState(
+                            () => _level = UnderstandingLevel.easy),
                       ),
                     ),
                   ],
@@ -1551,13 +1763,13 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
           const Spacer(),
           SizedBox(
             width: double.infinity,
-            height: 44,
+            height: 46,
             child: ElevatedButton(
               onPressed: _save,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF299B2),
+                backgroundColor: const Color(0xFFD97068),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 elevation: 0,
               ),
