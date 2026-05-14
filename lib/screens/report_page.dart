@@ -816,27 +816,33 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      GestureDetector(
+                      _PressableScale(
                         onTap: () => _changeWeek(-1),
-                        child: const Icon(Icons.chevron_left, color: Color(0xFFAAAAAA)),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _weekLabel(),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.chevron_left, color: Color(0xFFAAAAAA)),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      GestureDetector(
+                      _AnimatedValueText(
+                        value: _weekLabel(),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : const Color(0xFF333333),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _PressableScale(
                         onTap: () => _changeWeek(1),
-                        child: Icon(
-                          Icons.chevron_right,
-                          color: _weekStart.add(const Duration(days: 7)).isAfter(DateTime.now())
-                              ? const Color(0xFFDDDDDD)
-                              : const Color(0xFFAAAAAA),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            Icons.chevron_right,
+                            color: _weekStart.add(const Duration(days: 7)).isAfter(DateTime.now())
+                                ? const Color(0xFFDDDDDD)
+                                : const Color(0xFFAAAAAA),
+                          ),
                         ),
                       ),
                     ],
@@ -846,41 +852,57 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                   // 통계 카드 3종
                   Row(
                     children: [
-                      Expanded(child: _StatCard(
-                        label: '총 집중 시간',
-                        value: formatMinutes(report.totalMinutes),
-                        color: const Color(0xFFF6E1DF),
-                        barColor: const Color(0xFFE06B63),
-                        isDark: isDark, // ✅
-                      )),
+                      Expanded(
+                        child: _FadeSlideIn(
+                          child: _StatCard(
+                            label: '총 집중 시간',
+                            value: formatMinutes(report.totalMinutes),
+                            color: const Color(0xFFF6E1DF),
+                            barColor: const Color(0xFFE06B63),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(child: _StatCard(
-                        label: '완료 할일',
-                        value: '${report.completedTodos}개',
-                        color: const Color(0xFFDCF0CE),
-                        barColor: const Color(0xFF79B13D),
-                        isDark: isDark, // ✅
-                      )),
+                      Expanded(
+                        child: _FadeSlideIn(
+                          delay: const Duration(milliseconds: 80),
+                          child: _StatCard(
+                            label: '완료 할일',
+                            value: '${report.completedTodos}개',
+                            color: const Color(0xFFDCF0CE),
+                            barColor: const Color(0xFF79B13D),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ),
                       const SizedBox(width: 8),
-                      Expanded(child: _StatCard(
-                        label: '최고 집중일',
-                        value: report.maxFocusDay != null
-                            ? '${report.maxFocusDay!.month}/${report.maxFocusDay!.day}'
-                            : '-',
-                        color: const Color(0xFFDCE8F7),
-                        barColor: const Color(0xFF7B89FF),
-                        isDark: isDark, // ✅
-                      )),
+                      Expanded(
+                        child: _FadeSlideIn(
+                          delay: const Duration(milliseconds: 160),
+                          child: _StatCard(
+                            label: '최고 집중일',
+                            value: report.maxFocusDay != null
+                                ? '${report.maxFocusDay!.month}/${report.maxFocusDay!.day}'
+                                : '-',
+                            color: const Color(0xFFDCE8F7),
+                            barColor: const Color(0xFF7B89FF),
+                            isDark: isDark,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
                   // 일별 집중도 바
-                  Container(
+                  _FadeSlideIn(
+                    delay: const Duration(milliseconds: 220),
+                    child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Column(
@@ -947,23 +969,49 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                                         ? Container(
                                             height: 14,
                                             decoration: BoxDecoration(
-                                              color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFF0F0F0), // ✅
+                                              color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFF0F0F0),
                                               borderRadius: BorderRadius.circular(6),
                                             ),
                                           )
-                                        : ClipRRect(
-                                            borderRadius: BorderRadius.circular(6),
-                                            child: SizedBox(
-                                              height: 14,
-                                              child: Row(
-                                                children: subjects.entries.map((e) {
-                                                  return Flexible(
-                                                    flex: e.value.minutes,
-                                                    child: Container(color: e.value.color),
-                                                  );
-                                                }).toList(),
-                                              ),
-                                            ),
+                                        : TweenAnimationBuilder<double>(
+                                            key: ValueKey('$index|${subjects.entries.map((e) => '${e.key}:${e.value.minutes}').join(',')}'),
+                                            tween: Tween(begin: 0.0, end: 1.0),
+                                            duration: Duration(milliseconds: 600 + index * 80),
+                                            curve: Curves.easeOutCubic,
+                                            builder: (context, t, _) {
+                                              return Stack(
+                                                children: [
+                                                  Container(
+                                                    height: 14,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark
+                                                          ? const Color(0xFF2A2A2A)
+                                                          : const Color(0xFFF5F5F5),
+                                                      borderRadius:
+                                                          BorderRadius.circular(6),
+                                                    ),
+                                                  ),
+                                                  FractionallySizedBox(
+                                                    widthFactor: t,
+                                                    child: ClipRRect(
+                                                      borderRadius:
+                                                          BorderRadius.circular(6),
+                                                      child: SizedBox(
+                                                        height: 14,
+                                                        child: Row(
+                                                          children: subjects.entries.map((e) {
+                                                            return Flexible(
+                                                              flex: e.value.minutes,
+                                                              child: Container(color: e.value.color),
+                                                            );
+                                                          }).toList(),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              );
+                                            },
                                           ),
                                   ),
                                   const SizedBox(width: 8),
@@ -996,14 +1044,17 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                       ],
                     ),
                   ),
+                  ),
                   const SizedBox(height: 16),
 
                   // 과목별 도넛 차트
-                  Container(
+                  _FadeSlideIn(
+                    delay: const Duration(milliseconds: 300),
+                    child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Column(
@@ -1040,30 +1091,41 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                             child: Stack(
                               alignment: Alignment.center,
                               children: [
-                                CustomPaint(
-                                  size: const Size(160, 160),
-                                  painter: _DonutChartPainter(
-                                    segments: sortedSubjects.map((s) =>
-                                      _DonutSegment(color: s.color, value: s.minutes.toDouble()),
-                                    ).toList(),
-                                  ),
+                                TweenAnimationBuilder<double>(
+                                  key: ValueKey(sortedSubjects
+                                      .map((s) => '${s.name}:${s.minutes}')
+                                      .join(',')),
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  duration: const Duration(milliseconds: 900),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, t, _) {
+                                    return CustomPaint(
+                                      size: const Size(160, 160),
+                                      painter: _DonutChartPainter(
+                                        segments: sortedSubjects.map((s) =>
+                                          _DonutSegment(color: s.color, value: s.minutes.toDouble()),
+                                        ).toList(),
+                                        progress: t,
+                                      ),
+                                    );
+                                  },
                                 ),
                                 Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Text(
-                                      formatMinutes(report.totalMinutes),
+                                    _AnimatedValueText(
+                                      value: formatMinutes(report.totalMinutes),
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.w800,
-                                        color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                                        color: isDark ? Colors.white : const Color(0xFF222222),
                                       ),
                                     ),
                                     Text(
                                       '총 공부 시간',
                                       style: TextStyle(
                                         fontSize: 10,
-                                        color: isDark ? const Color(0xFF888888) : const Color(0xFF9E9E9E), // ✅
+                                        color: isDark ? const Color(0xFF888888) : const Color(0xFF9E9E9E),
                                       ),
                                     ),
                                   ],
@@ -1072,35 +1134,43 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          ...sortedSubjects.take(5).map((s) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Row(
-                              children: [
-                                Container(width: 10, height: 10, decoration: BoxDecoration(color: s.color, shape: BoxShape.circle)),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    s.name,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444), // ✅
+                          ...sortedSubjects.take(5).toList().asMap().entries.map((entry) {
+                            final i = entry.key;
+                            final s = entry.value;
+                            return _FadeSlideIn(
+                              delay: Duration(milliseconds: 400 + i * 70),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Row(
+                                  children: [
+                                    Container(width: 10, height: 10, decoration: BoxDecoration(color: s.color, shape: BoxShape.circle)),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        s.name,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    Text(
+                                      formatMinutes(s.minutes),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white : const Color(0xFF333333),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  formatMinutes(s.minutes),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : const Color(0xFF333333), // ✅
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )),
+                              ),
+                            );
+                          }),
                         ],
                       ],
                     ),
+                  ),
                   ),
                   const SizedBox(height: 80),
                 ],
@@ -1495,7 +1565,8 @@ class _DonutSegment {
 
 class _DonutChartPainter extends CustomPainter {
   final List<_DonutSegment> segments;
-  _DonutChartPainter({required this.segments});
+  final double progress; // 0..1, sweep 비율
+  _DonutChartPainter({required this.segments, this.progress = 1.0});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1507,7 +1578,7 @@ class _DonutChartPainter extends CustomPainter {
     double startAngle = -math.pi / 2;
 
     for (final segment in segments) {
-      final sweepAngle = (segment.value / total) * 2 * math.pi;
+      final sweepAngle = (segment.value / total) * 2 * math.pi * progress;
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
         startAngle, sweepAngle - 0.02, false,
@@ -1518,6 +1589,7 @@ class _DonutChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_DonutChartPainter old) => false;
+  bool shouldRepaint(_DonutChartPainter old) =>
+      old.progress != progress || old.segments != segments;
 }
 
