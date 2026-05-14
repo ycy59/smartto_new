@@ -524,7 +524,18 @@ class WeeklyStatsCard extends ConsumerWidget {
               ),
               const Spacer(),
               _PressableScale(
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ReportPageShell(
+                        currentIndex: 3,
+                        onTapNav: (_) {},
+                        nickname: '',
+                      ),
+                    ),
+                  );
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
