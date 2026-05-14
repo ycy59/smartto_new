@@ -3,9 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/stats_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
-import 'main_screen.dart';
-import 'calendar_page.dart';
-import 'subject_page.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
 
 // ─────────────────────────────────────────────
@@ -308,9 +306,8 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
                     ],
                   ),
                 ),
-                _ReportBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
+                AppBottomNavBar(
+                  activeTab: AppNavTab.report,
                   nickname: widget.nickname,
                   profileImagePath: widget.profileImagePath,
                   onTapTomato: _showStartDialog,
@@ -1524,106 +1521,3 @@ class _DonutChartPainter extends CustomPainter {
   bool shouldRepaint(_DonutChartPainter old) => false;
 }
 
-// ─────────────────────────────────────────────────────────
-// 하단 네비게이션
-// ─────────────────────────────────────────────────────────
-
-// ✅ StatelessWidget → ConsumerWidget
-class _ReportBottomNavBar extends ConsumerWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTapNav;
-  final String nickname;
-  final String? profileImagePath;
-  final VoidCallback onTapTomato;
-
-  const _ReportBottomNavBar({
-    required this.currentIndex,
-    required this.onTapNav,
-    required this.nickname,
-    this.profileImagePath,
-    required this.onTapTomato,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
-
-    return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
-        border: const Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavIcon(icon: Icons.home, label: 'Home', active: false, onTap: () {
-            Navigator.of(context).pushAndRemoveUntil(
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => MainScreen(nickname: nickname, profileImagePath: profileImagePath, currentIndex: 0, onTapNav: onTapNav),
-                transitionDuration: Duration.zero,
-                reverseTransitionDuration: Duration.zero,
-              ),
-              (route) => false,
-            );
-          }),
-          _NavIcon(icon: Icons.calendar_month, label: 'Calendar', active: false, onTap: () {
-            Navigator.pushReplacement(context, PageRouteBuilder(
-              pageBuilder: (_, __, ___) => CalendarPageShell(currentIndex: 1, onTapNav: onTapNav, nickname: nickname, profileImagePath: profileImagePath),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ));
-          }),
-          GestureDetector(
-            onTap: onTapTomato,
-            child: SizedBox(
-              width: 46, height: 46,
-              child: ClipOval(child: Image.asset(
-                'assets/images/tomato_glasses.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: const Color(0xFFD94C43),
-                  child: const Center(child: Text('🍅', style: TextStyle(fontSize: 24))),
-                ),
-              )),
-            ),
-          ),
-          _NavIcon(icon: Icons.bar_chart, label: 'Report', active: true, onTap: () {}),
-          _NavIcon(icon: Icons.book, label: 'Subject', active: false, onTap: () {
-            Navigator.pushReplacement(context, PageRouteBuilder(
-              pageBuilder: (_, __, ___) => SubjectPageShell(currentIndex: 2, onTapNav: onTapNav, nickname: nickname, profileImagePath: profileImagePath),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ));
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _NavIcon({required this.icon, required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Icon(icon, color: color, size: 23),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}

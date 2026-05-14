@@ -11,10 +11,8 @@ import '../providers/stats_provider.dart';
 import '../providers/study_goal_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
-import 'calendar_page.dart';
-import 'main_screen.dart';
-import 'report_page.dart';
 
 /// 앱 전체에서 사용하는 과목 색상 팔레트
 const kSubjectColorPalette = [
@@ -448,9 +446,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
             child: Column(
               children: [
                 Expanded(child: body),
-                SubjectBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
+                AppBottomNavBar(
+                  activeTab: AppNavTab.subject,
                   nickname: widget.nickname,
                   profileImagePath: widget.profileImagePath,
                   onTapTomato: _showStartDialog,
@@ -1882,180 +1879,6 @@ class _LevelButton extends StatelessWidget {
   }
 }
 
-// ──────────────────────────────────────────
-// 하단 네비게이션 바
-// ──────────────────────────────────────────
-
-// ✅ StatelessWidget → ConsumerWidget
-class SubjectBottomNavBar extends ConsumerWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTapNav;
-  final String nickname;
-  final String? profileImagePath;
-  final VoidCallback onTapTomato;
-
-  const SubjectBottomNavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTapNav,
-    required this.nickname,
-    this.profileImagePath,
-    required this.onTapTomato,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
-
-    return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
-        border: const Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavIcon(
-            icon: Icons.home,
-            label: 'Home',
-            active: false,
-            onTap: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => MainScreen(
-                      nickname: nickname,
-                      profileImagePath: profileImagePath,
-                      currentIndex: 0,
-                      onTapNav: onTapNav,
-                    ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                  (route) => false,
-                );
-            },
-          ),
-            _BottomNavIcon(
-              icon: Icons.calendar_month,
-              label: 'Calendar',
-              active: false,
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => CalendarPageShell(
-                      currentIndex: 1,
-                      onTapNav: onTapNav,
-                      nickname: nickname,
-                      profileImagePath: profileImagePath,
-                    ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
-              },
-            ),
-          _BottomTomatoItem(onTap: onTapTomato),
-          _BottomNavIcon(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => ReportPageShell(
-                    currentIndex: 3,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-          _BottomNavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: currentIndex == 2,
-            onTap: () => onTapNav(2),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomNavIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _BottomNavIcon({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Icon(icon, color: color, size: 23),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomTomatoItem extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _BottomTomatoItem({
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 46,
-        height: 46,
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/tomato_glasses.png',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: const Color(0xFFD94C43),
-                child: const Center(
-                  child: Text('🍅', style: TextStyle(fontSize: 24)),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ──────────────────────────────────────────
 // 데이터 모델 (StudyMode, UnderstandingLevel은 domain/entities/study_goal.dart에서 import)
