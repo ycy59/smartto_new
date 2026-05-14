@@ -34,7 +34,9 @@ import '../domain/entities/study_session.dart';
 import '../providers/study_session_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
+import '../services/alarm_service.dart';
 import '../widgets/concentration_service.dart';
+import 'alarm_settings_screen.dart';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 // 동적 추천 정책 기준값
@@ -123,10 +125,14 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   bool _serviceReady = false;
   int _frameCounter = 0; // 매 3번째 프레임만 처리 (≈ 10fps)
 
+  // ── 알람 (세션 종료 시 사운드 + 진동) ─────────────────────────────────────
+  final AlarmService _alarm = AlarmService();
+
   @override
   void initState() {
     super.initState();
     _doneMap = {for (final t in widget.allTasks) t.todoId: false};
+    _alarm.init();
     // 세션은 ▶ 누를 때 _startTimer 에서 시작.
     // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
     _initCamera();
@@ -141,6 +147,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
     _camCtrl?.dispose();
     _service.dispose();
+    _alarm.dispose();
     super.dispose();
   }
 
@@ -314,6 +321,10 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       await _endSession();
       if (!mounted) return;
 
+      // 세션 종료 알람 (사용자 설정에 따라 소리/진동/무음)
+      await _alarm.play();
+      if (!mounted) return;
+
       // 평가 팝업 (확인 누를 때까지 대기)
       await showDialog(
         context: context,
@@ -325,6 +336,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           currentFocusMinutes: _focusMinutes,
         ),
       );
+      // 평가 팝업 닫히면 알람 중지
+      await _alarm.stop();
       if (!mounted) return;
 
       // 추천 적용 + 다음 세션을 위한 service reset
@@ -544,6 +557,31 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           background: isDark ? const Color(0xFF2C2C2C) : Colors.white, // ✅
           textColor: isDark ? Colors.white70 : const Color(0xFF555555), // ✅
           onTap: hasTask ? _resetSelection : null,
+        ),
+        const SizedBox(width: 6),
+
+        // 알람 설정
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AlarmSettingsScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              Icons.notifications_outlined,
+              size: 16,
+              color: isDark ? Colors.white70 : const Color(0xFF555555),
+            ),
+          ),
         ),
       ],
     );
