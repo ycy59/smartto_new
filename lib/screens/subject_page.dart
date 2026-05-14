@@ -440,7 +440,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -539,26 +539,36 @@ class SubjectListPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '과목 추가하기',
+              '첫 과목을 추가해보세요',
               style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2), // ✅
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? const Color(0xFF888888)
+                    : const Color(0xFF9A9A9A),
+                letterSpacing: -0.2,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 22),
             GestureDetector(
               onTap: onAddTap,
               child: Container(
-                width: 92,
-                height: 92,
+                width: 84,
+                height: 84,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6E1DF),
+                  color: const Color(0xFFD97068),
                   borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFD97068).withValues(alpha: 0.25),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.add,
-                  size: 44,
+                  size: 38,
                   color: Colors.white,
                 ),
               ),
@@ -644,16 +654,23 @@ class SubjectListPage extends StatelessWidget {
             child: GestureDetector(
               onTap: onAddTap,
               child: Container(
-                width: 46,
-                height: 46,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF6E1DF),
-                  borderRadius: BorderRadius.circular(14),
+                  color: const Color(0xFFD97068),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFD97068).withValues(alpha: 0.3),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
                 child: const Icon(
                   Icons.add,
                   color: Colors.white,
-                  size: 28,
+                  size: 26,
                 ),
               ),
             ),
@@ -677,44 +694,55 @@ class _SubjectRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              item.name,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF303030), // ✅
+    return GestureDetector(
+      onTap: onDetailTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF000000).withValues(alpha: 0.04),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: item.color,
+                shape: BoxShape.circle,
               ),
             ),
-          ),
-          GestureDetector(
-            onTap: onDetailTap,
-            child: const Text(
-                'Detail',
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                item.name,
                 style: TextStyle(
-                color: Color(0xFFB7B7B7),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                  letterSpacing: -0.3,
+                ),
+              ),
             ),
-         ),
-     ),
-     const SizedBox(width: 6),
-     GestureDetector(
-      onTap: onDetailTap,
-      child: const Icon(
-        Icons.chevron_right,
-        color: Color(0xFFC7C7C7),
-      ),
-     ),
-        ],
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: isDark
+                  ? const Color(0xFF666666)
+                  : const Color(0xFFBFBFBF),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -846,7 +874,16 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF000000).withValues(alpha: 0.04),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
         ),
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(
@@ -1361,10 +1398,19 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: const Color(0xFF000000).withValues(alpha: 0.04),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
             ),
             child: Column(
               children: [

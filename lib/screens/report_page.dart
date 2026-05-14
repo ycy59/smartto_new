@@ -8,6 +8,105 @@ import 'calendar_page.dart';
 import 'subject_page.dart';
 import 'camera_page.dart';
 
+// ─────────────────────────────────────────────
+// 동적 효과 헬퍼 (file-private)
+// ─────────────────────────────────────────────
+class _FadeSlideIn extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+  const _FadeSlideIn({required this.child, this.delay = Duration.zero});
+
+  @override
+  State<_FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<_FadeSlideIn> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(widget.delay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSlide(
+      offset: _visible ? Offset.zero : const Offset(0, 0.06),
+      duration: const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      child: AnimatedOpacity(
+        opacity: _visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _PressableScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  const _PressableScale({required this.child, this.onTap});
+
+  @override
+  State<_PressableScale> createState() => _PressableScaleState();
+}
+
+class _PressableScaleState extends State<_PressableScale> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: _pressed ? 0.9 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _AnimatedValueText extends StatelessWidget {
+  final String value;
+  final TextStyle? style;
+  const _AnimatedValueText({required this.value, this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 360),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.25),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: Text(
+        value,
+        key: ValueKey(value),
+        style: style,
+      ),
+    );
+  }
+}
+
 class ReportPageShell extends ConsumerStatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onTapNav;
@@ -161,7 +260,7 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
     final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -279,27 +378,33 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GestureDetector(
+              _PressableScale(
                 onTap: () => _changeDate(-1),
-                child: const Icon(Icons.chevron_left, color: Color(0xFFAAAAAA)),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _formatDateLabel(_selectedDate),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF333333), // ✅
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child: Icon(Icons.chevron_left, color: Color(0xFFAAAAAA)),
                 ),
               ),
               const SizedBox(width: 12),
-              GestureDetector(
+              _AnimatedValueText(
+                value: _formatDateLabel(_selectedDate),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF333333),
+                ),
+              ),
+              const SizedBox(width: 12),
+              _PressableScale(
                 onTap: () => _changeDate(1),
-                child: Icon(
-                  Icons.chevron_right,
-                  color: _selectedDate == _stripTime(DateTime.now())
-                      ? const Color(0xFFDDDDDD)
-                      : const Color(0xFFAAAAAA),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.chevron_right,
+                    color: _selectedDate == _stripTime(DateTime.now())
+                        ? const Color(0xFFDDDDDD)
+                        : const Color(0xFFAAAAAA),
+                  ),
                 ),
               ),
             ],
@@ -313,31 +418,45 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
           child: dailyReport.when(
             data: (report) => Row(
               children: [
-                Expanded(child: _StatCard(
-                  label: '총 집중 시간',
-                  value: formatMinutes(report.totalMinutes),
-                  color: const Color(0xFFF6E1DF),
-                  barColor: const Color(0xFFE06B63),
-                  isDark: isDark, // ✅
-                )),
+                Expanded(
+                  child: _FadeSlideIn(
+                    child: _StatCard(
+                      label: '총 집중 시간',
+                      value: formatMinutes(report.totalMinutes),
+                      color: const Color(0xFFF6E1DF),
+                      barColor: const Color(0xFFE06B63),
+                      isDark: isDark,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _StatCard(
-                  label: '완료 할일',
-                  value: '${report.completedTodos}개',
-                  color: const Color(0xFFDCF0CE),
-                  barColor: const Color(0xFF79B13D),
-                  isDark: isDark, // ✅
-                )),
+                Expanded(
+                  child: _FadeSlideIn(
+                    delay: const Duration(milliseconds: 80),
+                    child: _StatCard(
+                      label: '완료 할일',
+                      value: '${report.completedTodos}개',
+                      color: const Color(0xFFDCF0CE),
+                      barColor: const Color(0xFF79B13D),
+                      isDark: isDark,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Expanded(child: _StatCard(
-                  label: '평균 집중도',
-                  value: report.avgFocus != null
-                      ? '${report.avgFocus!.toStringAsFixed(0)}%'
-                      : '-',
-                  color: const Color(0xFFDCE8F7),
-                  barColor: const Color(0xFF7B89FF),
-                  isDark: isDark, // ✅
-                )),
+                Expanded(
+                  child: _FadeSlideIn(
+                    delay: const Duration(milliseconds: 160),
+                    child: _StatCard(
+                      label: '평균 집중도',
+                      value: report.avgFocus != null
+                          ? '${report.avgFocus!.toStringAsFixed(0)}%'
+                          : '-',
+                      color: const Color(0xFFDCE8F7),
+                      barColor: const Color(0xFF7B89FF),
+                      isDark: isDark,
+                    ),
+                  ),
+                ),
               ],
             ),
             loading: () => Row(
@@ -368,7 +487,9 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                 child: Column(
                   children: [
                     // 시간별 집중도
-                    Container(
+                    _FadeSlideIn(
+                      delay: const Duration(milliseconds: 220),
+                      child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                       decoration: BoxDecoration(
@@ -432,10 +553,13 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                         error: (_, __) => const SizedBox(height: 60),
                       ),
                     ),
+                    ),
                     const SizedBox(height: 16),
 
                     // 모드 비율 (시험 vs 학습)
-                    Container(
+                    _FadeSlideIn(
+                      delay: const Duration(milliseconds: 300),
+                      child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                       decoration: BoxDecoration(
@@ -445,12 +569,12 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                       child: modeRatio.when(
                         data: (ratio) => Column(
                           children: [
-                            Text(
-                              formatMinutes(ratio.totalMinutes),
+                            _AnimatedValueText(
+                              value: formatMinutes(ratio.totalMinutes),
                               style: TextStyle(
                                 fontSize: 36,
                                 fontWeight: FontWeight.w900,
-                                color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+                                color: isDark ? Colors.white : const Color(0xFF222222),
                               ),
                             ),
                             Text(
@@ -465,11 +589,20 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                             SizedBox(
                               width: 200,
                               height: 110,
-                              child: CustomPaint(
-                                painter: _SemiDonutPainter(
-                                  studyRatio: ratio.studyRatio,
-                                  examRatio: ratio.examRatio,
-                                ),
+                              child: TweenAnimationBuilder<double>(
+                                key: ValueKey('${ratio.studyRatio}|${ratio.examRatio}'),
+                                tween: Tween(begin: 0.0, end: 1.0),
+                                duration: const Duration(milliseconds: 800),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, t, child) {
+                                  return CustomPaint(
+                                    painter: _SemiDonutPainter(
+                                      studyRatio: ratio.studyRatio * t,
+                                      examRatio: ratio.examRatio * t,
+                                    ),
+                                    child: child,
+                                  );
+                                },
                                 child: const Align(
                                   alignment: Alignment.bottomCenter,
                                   child: Padding(
@@ -505,6 +638,7 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                         loading: () => const SizedBox(height: 160, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
                         error: (_, __) => const SizedBox(height: 60),
                       ),
+                    ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -553,9 +687,12 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                             : Expanded(
                                 child: ListView.builder(
                                   itemCount: list.length,
-                                  itemBuilder: (context, i) => _ActivityItem(
-                                    entry: list[i],
-                                    isDark: isDark, // ✅
+                                  itemBuilder: (context, i) => _FadeSlideIn(
+                                    delay: Duration(milliseconds: 60 * i.clamp(0, 8)),
+                                    child: _ActivityItem(
+                                      entry: list[i],
+                                      isDark: isDark,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -576,12 +713,15 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(2, (index) {
-              return Container(
+              final active = _currentPage == index;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
                 margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: _currentPage == index ? 16 : 6,
+                width: active ? 18 : 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: _currentPage == index ? const Color(0xFFE06B63) : const Color(0xFFD9D9D9),
+                  color: active ? const Color(0xFFD97068) : const Color(0xFFD9D9D9),
                   borderRadius: BorderRadius.circular(10),
                 ),
               );
@@ -1122,12 +1262,12 @@ class _StatCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
+          _AnimatedValueText(
+            value: value,
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF222222), // ✅
+              color: isDark ? Colors.white : const Color(0xFF222222),
             ),
           ),
         ],
@@ -1240,59 +1380,70 @@ class _HourlyBarChart extends StatelessWidget {
 
     if (hours.isEmpty || maxTotal == 0) return const SizedBox(height: 100);
 
-    return SizedBox(
-      height: 160,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    // 데이터 변경 시 바가 0 → 실제 높이로 자라남.
+    // ValueKey 로 buckets 식별 → 데이터 바뀌면 트윈이 다시 시작.
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(buckets.map((b) => '${b.hour}|${b.subjectId}|${b.minutes}').join(',')),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 700),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, _) {
+        return SizedBox(
+          height: 160,
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
-            children: ['75%', '50%', '25%'].map((l) =>
-              Text(l, style: const TextStyle(fontSize: 9, color: Color(0xFFBBBBBB))),
-            ).toList(),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: hours.map((hour) {
-                final subjects = hourMap[hour]!;
-                final total = subjects.values.fold(0, (s, b) => s + b.minutes);
-                final barHeight = (total / maxTotal) * 120;
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: ['75%', '50%', '25%'].map((l) =>
+                  Text(l, style: const TextStyle(fontSize: 9, color: Color(0xFFBBBBBB))),
+                ).toList(),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: hours.map((hour) {
+                    final subjects = hourMap[hour]!;
+                    final total = subjects.values.fold(0, (s, b) => s + b.minutes);
+                    final fullHeight = (total / maxTotal) * 120;
+                    final barHeight = fullHeight * t;
 
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
-                      child: SizedBox(
-                        width: 10,
-                        height: barHeight,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: subjects.values.map((b) {
-                            return Flexible(
-                              flex: b.minutes,
-                              child: Container(color: Color(b.subjectColor)),
-                            );
-                          }).toList(),
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+                          child: SizedBox(
+                            width: 10,
+                            height: barHeight,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: subjects.values.map((b) {
+                                return Flexible(
+                                  flex: b.minutes,
+                                  child: Container(color: Color(b.subjectColor)),
+                                );
+                              }).toList(),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${hour.toString().padLeft(2, '0')}시',
-                      style: const TextStyle(fontSize: 8, color: Color(0xFFBBBBBB)),
-                    ),
-                  ],
-                );
-              }).toList(),
-            ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${hour.toString().padLeft(2, '0')}시',
+                          style: const TextStyle(fontSize: 8, color: Color(0xFFBBBBBB)),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

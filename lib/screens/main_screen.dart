@@ -192,7 +192,7 @@ Future<void> _showStartDialog() async {
       key: _scaffoldKey,
       backgroundColor: ref.watch(themeProvider) == ThemeMode.dark
           ? const Color(0xFF121212)
-          : const Color(0xFFF5F5F5),
+          : const Color(0xFFF7F4F2),
       body: GestureDetector(
         onHorizontalDragEnd: (details) {
           if (details.primaryVelocity != null &&
@@ -212,12 +212,20 @@ Future<void> _showStartDialog() async {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
-                            GreetingCard(nickname: _nickname),
+                            _FadeSlideIn(
+                              child: GreetingCard(nickname: _nickname),
+                            ),
                             const SizedBox(height: 16),
-                            const WeeklyStatsCard(),
+                            const _FadeSlideIn(
+                              delay: Duration(milliseconds: 90),
+                              child: WeeklyStatsCard(),
+                            ),
                             const SizedBox(height: 16),
-                            TodayPlanCard(
-                              key: _todayPlanKey,
+                            _FadeSlideIn(
+                              delay: const Duration(milliseconds: 180),
+                              child: TodayPlanCard(
+                                key: _todayPlanKey,
+                              ),
                             ),
                             const SizedBox(height: 10),
                             const PageIndicatorDots(),
@@ -282,31 +290,43 @@ class GreetingCard extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration( // ✅ const 제거
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF000000).withValues(alpha: 0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            displayName.isEmpty ? '안녕하세요!' : '안녕하세요 $displayName님!',
-            style: TextStyle( // ✅ const 제거
-              fontSize: 11,
-              color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF444444), // ✅ 쉼표 추가
+            displayName.isEmpty ? '안녕하세요!' : '안녕하세요 $displayName님',
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? const Color(0xFF9A9A9A) : const Color(0xFF8A8A8A),
               fontWeight: FontWeight.w500,
+              letterSpacing: -0.1,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Row(
             children: [
-              Text( // ✅ const 제거
-                '오늘도 스마트하게!',
-                style: TextStyle( // ✅ const 제거
-                  fontSize: 18,
+              Text(
+                '오늘도 스마트하게',
+                style: TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                  letterSpacing: -0.4,
+                  height: 1.2,
                 ),
               ),
               const Spacer(),
@@ -325,16 +345,16 @@ class GreetingCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
                 child: InfoCard(
-                  isDark: isDark, // ✅ 추가
+                  isDark: isDark,
                   title: '학습 시간',
                   value: todayLabel,
                   changeText: '$progressPct%',
-                  changeColor: const Color(0xFFC96B63),
+                  changeColor: const Color(0xFFD97068),
                 ),
               ),
               const SizedBox(width: 10),
@@ -377,43 +397,65 @@ class InfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 74,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration( // ✅ const 제거
-        color: isDark ? const Color(0xFF3A2E2E) : const Color(0xFFF8EAEA), // ✅ 쉼표 추가
-        borderRadius: BorderRadius.circular(10),
+      height: 82,
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF252525)
+            : const Color(0xFFFAF7F6),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF323232)
+              : const Color(0xFFF0EBEA),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
-              Text(
-                title,
-                style: TextStyle( // ✅ const 제거
-                  fontSize: 10,
-                  color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF5E5E5E),
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark
+                        ? const Color(0xFF9A9A9A)
+                        : const Color(0xFF8A8A8A),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.1,
+                  ),
                 ),
               ),
-              const SizedBox(width: 6),
-              Text(
-                changeText,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: changeColor,
-                  fontWeight: FontWeight.w700,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: changeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: _AnimatedValueText(
+                  value: changeText,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: changeColor,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.1,
+                  ),
                 ),
               ),
             ],
           ),
-          const Spacer(),
-          Text(
-            value,
-            style: TextStyle( // ✅ const 제거
-              fontSize: 16,
+          _AnimatedValueText(
+            value: value,
+            style: TextStyle(
+              fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : Colors.black, // ✅ 수정
+              color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+              letterSpacing: -0.5,
+              height: 1.0,
             ),
           ),
         ],
@@ -453,35 +495,58 @@ class WeeklyStatsCard extends ConsumerWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      decoration: BoxDecoration( // ✅ const 제거
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF000000).withValues(alpha: 0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Column(
         children: [
-          Row( // ✅ const 제거
+          Row(
             children: [
-              Text( // ✅ const 제거
+              Text(
                 '이번주 통계',
-                style: TextStyle( // ✅ const 제거
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black, // ✅ 수정
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                  letterSpacing: -0.4,
                 ),
               ),
               const Spacer(),
-              const Text(
-                '상세 보기',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFFE27E76),
-                  fontWeight: FontWeight.w700,
+              _PressableScale(
+                onTap: () {},
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF3A2A28)
+                        : const Color(0xFFFDF2F1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '상세 보기',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFD97068),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.1,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -541,36 +606,41 @@ class StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 78,
+      width: 86,
       child: Column(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: circleColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle( // ✅ const 제거
-              fontSize: 16,
+          const SizedBox(height: 12),
+          _AnimatedValueText(
+            value: value,
+            style: TextStyle(
+              fontSize: 17,
               fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : Colors.black, // ✅ 수정
+              color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+              letterSpacing: -0.4,
+              height: 1.1,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle( // ✅ const 제거
+            style: TextStyle(
               fontSize: 11,
               height: 1.25,
-              color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555), // ✅ 수정
+              color: isDark
+                  ? const Color(0xFF9A9A9A)
+                  : const Color(0xFF8A8A8A),
               fontWeight: FontWeight.w500,
+              letterSpacing: -0.1,
             ),
           ),
         ],
@@ -742,29 +812,39 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
       });
     });
 
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅ 수정
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      decoration: BoxDecoration( // ✅ const 제거
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF000000).withValues(alpha: 0.04),
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text( // ✅ const 제거
+              Text(
                 '오늘의 계획',
-                style: TextStyle( // ✅ const 제거
-                  fontSize: 18,
+                style: TextStyle(
+                  fontSize: 20,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? Colors.white : Colors.black, // ✅ 수정
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                  letterSpacing: -0.4,
                 ),
               ),
               const Spacer(),
-              GestureDetector(
+              _PressableScale(
                 onTap: () async {
                   await Navigator.push(
                     context,
@@ -778,18 +858,28 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                   );
                   _loadTodayPlan();
                 },
-                child: const Text(
-                  '편집',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFFEE7E76),
-                    fontWeight: FontWeight.w700,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF3A2A28)
+                        : const Color(0xFFFDF2F1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    '편집',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFD97068),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           ...List.generate(_subjects.length, (subjectIndex) {
             final subject = _subjects[subjectIndex];
 
@@ -1137,6 +1227,125 @@ class _EditableSubjectBlock extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
+// _FadeSlideIn — mount 시 살짝 위로 슬라이드 + 페이드인
+// ─────────────────────────────────────────────
+class _FadeSlideIn extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+
+  const _FadeSlideIn({
+    required this.child,
+    this.delay = Duration.zero,
+  });
+
+  @override
+  State<_FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<_FadeSlideIn> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(widget.delay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSlide(
+      offset: _visible ? Offset.zero : const Offset(0, 0.06),
+      duration: const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      child: AnimatedOpacity(
+        opacity: _visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// _PressableScale — 탭 시 살짝 축소되며 tactile 피드백
+// ─────────────────────────────────────────────
+class _PressableScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _PressableScale({
+    required this.child,
+    this.onTap,
+  });
+
+  @override
+  State<_PressableScale> createState() => _PressableScaleState();
+}
+
+class _PressableScaleState extends State<_PressableScale> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
+// _AnimatedValueText — 값 바뀔 때 슬라이드+페이드 전환
+// ─────────────────────────────────────────────
+class _AnimatedValueText extends StatelessWidget {
+  final String value;
+  final TextStyle? style;
+
+  const _AnimatedValueText({
+    required this.value,
+    this.style,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 360),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.25),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: Text(
+        value,
+        key: ValueKey(value),
+        style: style,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────
 // PageIndicatorDots
 // ─────────────────────────────────────────────
 class PageIndicatorDots extends StatelessWidget {
@@ -1338,7 +1547,7 @@ class NavItem extends StatelessWidget {
 // ─────────────────────────────────────────────
 // TomatoNavItem
 // ─────────────────────────────────────────────
-class TomatoNavItem extends StatelessWidget {
+class TomatoNavItem extends StatefulWidget {
   final VoidCallback onTap;
 
   const TomatoNavItem({
@@ -1347,16 +1556,55 @@ class TomatoNavItem extends StatelessWidget {
   });
 
   @override
+  State<TomatoNavItem> createState() => _TomatoNavItemState();
+}
+
+class _TomatoNavItemState extends State<TomatoNavItem>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final Animation<double> _scale;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      duration: const Duration(milliseconds: 1600),
+      vsync: this,
+    )..repeat(reverse: true);
+    _scale = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 46,
-        height: 46,
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/tomato_glasses.png',
-            fit: BoxFit.cover,
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.92 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: ScaleTransition(
+          scale: _scale,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/tomato_glasses.png',
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
         ),
       ),

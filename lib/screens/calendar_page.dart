@@ -273,7 +273,7 @@ Future<void> _showStartDialog() async {
     final data = monthAsync.valueOrNull ?? CalendarMonthData.empty;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -485,7 +485,7 @@ class _CalendarDetailPageState extends ConsumerState<CalendarDetailPage> {
     final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
       body: SafeArea(
         child: GestureDetector(
           onVerticalDragUpdate: (details) {
