@@ -204,13 +204,15 @@ class _NavItemState extends State<_NavItem> {
           children: [
             Icon(widget.icon, color: color, size: 24),
             const SizedBox(height: 4),
+            // 활성/비활성으로 폰트 굵기가 바뀌면 라벨 폭이 달라져
+            // spaceAround 분포가 변하고 토마토가 좌우로 밀려서 크기 차이처럼 보임.
+            // → 굵기는 고정(w600), 색만 바꿈.
             Text(
               widget.label,
               style: TextStyle(
                 fontSize: 10,
                 color: color,
-                fontWeight:
-                    widget.active ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 letterSpacing: -0.1,
               ),
             ),
