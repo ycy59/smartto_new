@@ -34,7 +34,9 @@ import '../domain/entities/study_session.dart';
 import '../providers/study_session_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
+import '../services/alarm_service.dart';
 import '../widgets/concentration_service.dart';
+import 'alarm_settings_screen.dart';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 // 동적 추천 정책 기준값
@@ -86,12 +88,10 @@ class CameraTask {
 }
 
 class CameraPage extends ConsumerStatefulWidget {
-  final CameraTask? initialSelectedTask;
   final List<CameraTask> allTasks;
 
   const CameraPage({
     super.key,
-    required this.initialSelectedTask,
     required this.allTasks,
   });
 
@@ -125,15 +125,16 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   bool _serviceReady = false;
   int _frameCounter = 0; // 매 3번째 프레임만 처리 (≈ 10fps)
 
+  // ── 알람 (세션 종료 시 사운드 + 진동) ─────────────────────────────────────
+  final AlarmService _alarm = AlarmService();
+
   @override
   void initState() {
     super.initState();
-    _selectedTask = widget.initialSelectedTask;
     _doneMap = {for (final t in widget.allTasks) t.todoId: false};
-    if (_selectedTask != null) {
-      _startSession(_selectedTask!);
-      // 타이머는 사용자가 ▶ 버튼을 누를 때만 시작 (자동 시작 X)
-    }
+    _alarm.init();
+    // 세션은 ▶ 누를 때 _startTimer 에서 시작.
+    // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
     _initCamera();
   }
 
@@ -146,6 +147,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
     _camCtrl?.dispose();
     _service.dispose();
+    _alarm.dispose();
     super.dispose();
   }
 
@@ -237,7 +239,16 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ── 타이머 제어 ──────────────────────────────────────────────────────────
-  void _startTimer() {
+  // ▶ 를 눌러야 비로소 study_sessions 행이 DB 에 생성된다.
+  // (과목 선택만으로 세션을 만들지 않음 — 선택 후 그냥 나가면 focus_score 0 → FSRS Again → 오늘의 계획에서 사라지는 버그 방지.)
+  Future<void> _startTimer() async {
+    if (!_isBreakMode &&
+        _activeSession == null &&
+        _selectedTask != null &&
+        _selectedTask!.goalId.isNotEmpty) {
+      await _startSession(_selectedTask!);
+      if (!mounted) return;
+    }
     _ticker?.cancel();
     setState(() => _isRunning = true);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -310,6 +321,10 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       await _endSession();
       if (!mounted) return;
 
+      // 세션 종료 알람 (사용자 설정에 따라 소리/진동/무음)
+      await _alarm.play();
+      if (!mounted) return;
+
       // 평가 팝업 (확인 누를 때까지 대기)
       await showDialog(
         context: context,
@@ -321,12 +336,14 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           currentFocusMinutes: _focusMinutes,
         ),
       );
+      // 평가 팝업 닫히면 알람 중지
+      await _alarm.stop();
       if (!mounted) return;
 
       // 추천 적용 + 다음 세션을 위한 service reset
+      // 다음 집중 세션은 휴식 후 사용자가 ▶ 누를 때 _startTimer 에서 시작.
+      // (여기서 미리 만들면 휴식 중 뒤로가기 시 0점 종료 → FSRS Again 되는 동일 버그 발생)
       if (_serviceReady) _service.reset();
-      if (_selectedTask != null) await _startSession(_selectedTask!);
-      if (!mounted) return;
 
       // 휴식 모드 진입 — 카메라 image stream 멈춤 (CPU 절약)
       if (_camCtrl?.value.isStreamingImages ?? false) {
@@ -412,8 +429,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
 
   Future<void> _selectTask(CameraTask task) async {
     if (_selectedTask?.goalId != task.goalId) {
+      // 이전 task 에 진행 중인 세션이 있으면 종료. 새 세션은 ▶ 누를 때 시작.
       await _endSession();
-      await _startSession(task);
       if (_serviceReady) _service.reset(); // 새 task 선택 시 누적 점수 초기화
     }
     // task 선택만 함. 타이머 시작은 사용자가 ▶ 직접 눌러야 함.
@@ -430,12 +447,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   Future<void> _onBack() async {
     await _endSession();
     if (!mounted) return;
-    Navigator.pop(context, {
-      'selectedTask': _selectedTask?.text,
-      'doneMap': {
-        for (final t in widget.allTasks) t.text: _doneMap[t.todoId] ?? false,
-      },
-    });
+    Navigator.pop(context);
   }
 
   // ── BUILD ────────────────────────────────────────────────────────────────
@@ -545,6 +557,31 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           background: isDark ? const Color(0xFF2C2C2C) : Colors.white, // ✅
           textColor: isDark ? Colors.white70 : const Color(0xFF555555), // ✅
           onTap: hasTask ? _resetSelection : null,
+        ),
+        const SizedBox(width: 6),
+
+        // 알람 설정
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AlarmSettingsScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              Icons.notifications_outlined,
+              size: 16,
+              color: isDark ? Colors.white70 : const Color(0xFF555555),
+            ),
+          ),
         ),
       ],
     );

@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ 추가
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
+import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
-import 'subject_page.dart';
-import 'calendar_page.dart';
-import 'report_page.dart';
 
 // ✅ StatefulWidget → ConsumerStatefulWidget
 class MyPage extends ConsumerStatefulWidget {
@@ -175,7 +173,6 @@ Future<void> _showStartDialog() async {
       context,
       MaterialPageRoute(
         builder: (context) => const CameraPage(
-          initialSelectedTask: null,
           allTasks: [],
         ),
       ),
@@ -239,7 +236,7 @@ Future<void> _showStartDialog() async {
         : _nicknameController.text.trim();
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onHorizontalDragEnd: (details) {
@@ -259,146 +256,203 @@ Future<void> _showStartDialog() async {
                       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                       child: Column(
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              CircleAvatar(
-                                radius: 32,
-                                backgroundColor: const Color(0xFF1C1C1C),
-                                backgroundImage: _profileImagePath != null
-                                    ? FileImage(File(_profileImagePath!))
-                                    : null,
-                                child: _profileImagePath == null
-                                    ? const Icon(
-                                        Icons.person,
-                                        size: 42,
-                                        color: Colors.white,
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 18),
-                              Expanded(
-                                child: Text(
-                                  '🍅 $displayedNickname',
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : Colors.black, // ✅
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: OutlinedButton(
-                              onPressed: _pickProfileImage,
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: isDark
-                                      ? const Color(0xFF555555)
-                                      : const Color(0xFFE0E0E0), // ✅
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                              ),
-                              child: Text(
-                                '프로필 이미지 수정',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: isDark
-                                      ? const Color(0xFFAAAAAA)
-                                      : const Color(0xFF666666), // ✅
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              '닉네임 변경',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white : Colors.black, // ✅
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF2C2C2C)
-                                  : const Color(0xFFD9D9D9), // ✅
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                          _FadeSlideIn(
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _nicknameController,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black, // ✅
-                                    ),
-                                    decoration: InputDecoration(
-                                      hintText: '닉네임 입력',
-                                      hintStyle: TextStyle(
-                                        color: isDark
-                                            ? const Color(0xFF666666)
-                                            : const Color(0xFFB3B3B3), // ✅
-                                        fontSize: 14,
-                                      ),
-                                      border: InputBorder.none,
-                                    ),
-                                  ),
+                                CircleAvatar(
+                                  radius: 32,
+                                  backgroundColor: isDark
+                                      ? const Color(0xFF2A2A2A)
+                                      : const Color(0xFF1C1C1C),
+                                  backgroundImage: _profileImagePath != null
+                                      ? FileImage(File(_profileImagePath!))
+                                      : null,
+                                  child: _profileImagePath == null
+                                      ? const Icon(
+                                          Icons.person,
+                                          size: 42,
+                                          color: Colors.white,
+                                        )
+                                      : null,
                                 ),
-                                IconButton(
-                                  onPressed: () {
-                                    _nicknameController.clear();
-                                    setState(() {});
-                                  },
-                                  icon: Icon(
-                                    Icons.cancel_outlined,
-                                    size: 18,
-                                    color: isDark ? Colors.white54 : Colors.black54, // ✅
+                                const SizedBox(width: 18),
+                                Expanded(
+                                  child: AnimatedSwitcher(
+                                    duration:
+                                        const Duration(milliseconds: 280),
+                                    child: Text(
+                                      '🍅 $displayedNickname',
+                                      key: ValueKey(displayedNickname),
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF1A1A1A),
+                                        letterSpacing: -0.3,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Spacer(),
-                          SizedBox(
-                            width: 140,
-                            height: 40,
-                            child: ElevatedButton(
-                              onPressed: _saveNickname,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isDark
-                                    ? const Color(0xFF2C2C2C)
-                                    : Colors.white, // ✅
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                  side: const BorderSide(
-                                    color: Color(0xFFF299B2),
-                                    width: 1,
+                          const SizedBox(height: 12),
+                          _FadeSlideIn(
+                            delay: const Duration(milliseconds: 50),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _PressableScale(
+                                onTap: _pickProfileImage,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 7,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF1E1E1E)
+                                        : Colors.white,
+                                    border: Border.all(
+                                      color: isDark
+                                          ? const Color(0xFF2E2E2E)
+                                          : const Color(0xFFEEEEEE),
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '프로필 이미지 수정',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? const Color(0xFFAFAFAF)
+                                          : const Color(0xFF8A8A8A),
+                                      letterSpacing: -0.1,
+                                    ),
                                   ),
                                 ),
                               ),
-                              child: const Text(
-                                '저장하기',
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          _FadeSlideIn(
+                            delay: const Duration(milliseconds: 80),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '닉네임 변경',
                                 style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFEE7E76),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1A1A1A),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _FadeSlideIn(
+                            delay: const Duration(milliseconds: 140),
+                            child: Container(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF1E1E1E)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF2E2E2E)
+                                      : const Color(0xFFEEEEEE),
+                                ),
+                                boxShadow: isDark
+                                    ? null
+                                    : [
+                                        BoxShadow(
+                                          color: const Color(0xFF000000)
+                                              .withValues(alpha: 0.03),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _nicknameController,
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF1A1A1A),
+                                        letterSpacing: -0.2,
+                                      ),
+                                      decoration: InputDecoration(
+                                        hintText: '닉네임 입력',
+                                        hintStyle: TextStyle(
+                                          color: isDark
+                                              ? const Color(0xFF666666)
+                                              : const Color(0xFFBEBEBE),
+                                          fontSize: 14,
+                                        ),
+                                        border: InputBorder.none,
+                                      ),
+                                    ),
+                                  ),
+                                  _PressableScale(
+                                    onTap: () {
+                                      _nicknameController.clear();
+                                      setState(() {});
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(6),
+                                      child: Icon(
+                                        Icons.cancel_outlined,
+                                        size: 18,
+                                        color: isDark
+                                            ? const Color(0xFF888888)
+                                            : const Color(0xFFB3B3B3),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const Spacer(),
+                          _FadeSlideIn(
+                            delay: const Duration(milliseconds: 220),
+                            child: _PressableScale(
+                              onTap: _saveNickname,
+                              child: Container(
+                                width: 160,
+                                height: 46,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD97068),
+                                  borderRadius: BorderRadius.circular(14),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFD97068)
+                                          .withValues(alpha: 0.28),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ],
+                                ),
+                                child: const Text(
+                                  '저장하기',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                    letterSpacing: -0.2,
+                                  ),
                                 ),
                               ),
                             ),
@@ -413,9 +467,9 @@ Future<void> _showStartDialog() async {
                                   : const Color(0xFFEAEAEA), // ✅
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 _Dot(active: false),
                                 SizedBox(width: 4),
                                 _Dot(active: true),
@@ -427,9 +481,8 @@ Future<void> _showStartDialog() async {
                       ),
                     ),
                   ),
-                  _MyPageBottomNav(
-                    currentIndex: widget.currentIndex,
-                    onTapNav: widget.onTapNav,
+                  AppBottomNavBar(
+                    activeTab: AppNavTab.home,
                     nickname: _currentNickname,
                     profileImagePath: _profileImagePath,
                     onTapTomato: _showStartDialog,
@@ -462,174 +515,71 @@ class _Dot extends StatelessWidget {
   }
 }
 
-// ✅ StatelessWidget → ConsumerWidget
-class _MyPageBottomNav extends ConsumerWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTapNav;
-  final String nickname;
-  final String? profileImagePath;
-  final VoidCallback onTapTomato;
 
-  const _MyPageBottomNav({
-    required this.currentIndex,
-    required this.onTapNav,
-    required this.nickname,
-    this.profileImagePath,
-    required this.onTapTomato,
-  });
+// ─────────────────────────────────────────────
+// 동적 효과 헬퍼 (file-private)
+// ─────────────────────────────────────────────
+class _FadeSlideIn extends StatefulWidget {
+  final Widget child;
+  final Duration delay;
+  const _FadeSlideIn({required this.child, this.delay = Duration.zero});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+  State<_FadeSlideIn> createState() => _FadeSlideInState();
+}
 
-    return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
-        border: const Border(
-          top: BorderSide(
-            color: Color(0xFFE5E5E5),
-            width: 1,
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _NavIcon(
-            icon: Icons.home,
-            label: 'Home',
-            active: currentIndex == 0,
-            onTap: () => onTapNav(0),
-          ),
-          _NavIcon(
-            icon: Icons.calendar_month,
-            label: 'Calendar',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => CalendarPageShell(
-                    currentIndex: 1,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-          _TomatoNavItem(onTap: onTapTomato),
-          _NavIcon(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => ReportPageShell(
-                    currentIndex: 3,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-          _NavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => SubjectPageShell(
-                    currentIndex: 2,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-        ],
+class _FadeSlideInState extends State<_FadeSlideIn> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(widget.delay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSlide(
+      offset: _visible ? Offset.zero : const Offset(0, 0.06),
+      duration: const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      child: AnimatedOpacity(
+        opacity: _visible ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }
 }
 
-class _NavIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _NavIcon({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.active = false,
-  });
+class _PressableScale extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+  const _PressableScale({required this.child, this.onTap});
 
   @override
-  Widget build(BuildContext context) {
-    final color =
-        active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 23),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_PressableScale> createState() => _PressableScaleState();
 }
 
-class _TomatoNavItem extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _TomatoNavItem({
-    required this.onTap,
-  });
+class _PressableScaleState extends State<_PressableScale> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 46,
-        height: 46,
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/tomato_glasses.png',
-            fit: BoxFit.cover,
-          ),
-        ),
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 110),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }
