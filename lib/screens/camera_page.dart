@@ -30,6 +30,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/entities/study_session.dart';
 import '../providers/study_session_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
@@ -37,6 +38,23 @@ import '../providers/today_plan_provider.dart';
 import '../services/alarm_service.dart';
 import '../widgets/concentration_service.dart';
 import 'alarm_settings_screen.dart';
+
+// ─────────────────────────────────────────────
+// 진행 중 세션 SharedPreferences 키
+// (▶ 누른 뒤 사용자가 백아웃해도 다음 카메라 진입 시 같은 위치에서 복원)
+// ─────────────────────────────────────────────
+const _kPrefSessionId = 's_paused.session_id';
+const _kPrefSessionStartedAtMs = 's_paused.session_started_at_ms';
+const _kPrefGoalId = 's_paused.goal_id';
+const _kPrefSubjectId = 's_paused.subject_id';
+const _kPrefTodoId = 's_paused.todo_id';
+const _kPrefTaskText = 's_paused.task_text';
+const _kPrefSubjectName = 's_paused.subject_name';
+const _kPrefSubjectColor = 's_paused.subject_color_argb';
+const _kPrefFocusMinutes = 's_paused.focus_minutes';
+const _kPrefBreakMinutes = 's_paused.break_minutes';
+const _kPrefIsBreakMode = 's_paused.is_break_mode';
+const _kPrefRemainingSeconds = 's_paused.remaining_seconds';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 // 동적 추천 정책 기준값
@@ -85,6 +103,25 @@ class CameraTask {
 
   /// 색 fallback (지정 안 됐으면 기본 액센트)
   Color get color => subjectColor ?? _kAccent;
+
+  /// 오늘의 계획(TodayPlanEntry 리스트) 을 카메라용 CameraTask 리스트로 변환.
+  /// 모든 페이지(홈/캘린더/리포트/과목/내 페이지) 에서 카메라 진입 시 동일한
+  /// 데이터 소스를 보장하기 위한 단일 헬퍼.
+  static List<CameraTask> fromTodayPlan(List<TodayPlanEntry> entries) {
+    return [
+      for (final e in entries)
+        for (final t in e.goal.todos)
+          if (t.text.isNotEmpty)
+            CameraTask(
+              todoId: t.id,
+              goalId: e.goal.id,
+              subjectId: e.subject.id,
+              text: t.text,
+              subjectName: e.subject.name,
+              subjectColor: e.subject.color,
+            ),
+    ];
+  }
 }
 
 class CameraPage extends ConsumerStatefulWidget {
@@ -136,6 +173,85 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     // 세션은 ▶ 누를 때 _startTimer 에서 시작.
     // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
     _initCamera();
+    // 직전에 ▶ 누르고 백아웃한 진행 중 세션이 있으면 복원 (paused 상태로).
+    _restorePausedState();
+  }
+
+  // ── 진행 중 세션 영속화 (SharedPreferences) ───────────────────────────────
+  Future<void> _savePausedState() async {
+    if (_activeSession == null || _selectedTask == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final t = _selectedTask!;
+    await prefs.setString(_kPrefSessionId, _activeSession!.id);
+    await prefs.setInt(
+        _kPrefSessionStartedAtMs, _activeSession!.startedAt.millisecondsSinceEpoch);
+    await prefs.setString(_kPrefGoalId, t.goalId);
+    await prefs.setString(_kPrefSubjectId, t.subjectId);
+    await prefs.setString(_kPrefTodoId, t.todoId);
+    await prefs.setString(_kPrefTaskText, t.text);
+    await prefs.setString(_kPrefSubjectName, t.subjectName ?? '');
+    await prefs.setInt(_kPrefSubjectColor, t.subjectColor?.toARGB32() ?? 0);
+    await prefs.setInt(_kPrefFocusMinutes, _focusMinutes);
+    await prefs.setInt(_kPrefBreakMinutes, _breakMinutes);
+    await prefs.setBool(_kPrefIsBreakMode, _isBreakMode);
+    await prefs.setInt(_kPrefRemainingSeconds, _remainingSeconds);
+  }
+
+  Future<void> _clearPausedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final k in const [
+      _kPrefSessionId,
+      _kPrefSessionStartedAtMs,
+      _kPrefGoalId,
+      _kPrefSubjectId,
+      _kPrefTodoId,
+      _kPrefTaskText,
+      _kPrefSubjectName,
+      _kPrefSubjectColor,
+      _kPrefFocusMinutes,
+      _kPrefBreakMinutes,
+      _kPrefIsBreakMode,
+      _kPrefRemainingSeconds,
+    ]) {
+      await prefs.remove(k);
+    }
+  }
+
+  Future<void> _restorePausedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sessId = prefs.getString(_kPrefSessionId);
+    final startedAtMs = prefs.getInt(_kPrefSessionStartedAtMs);
+    final goalId = prefs.getString(_kPrefGoalId);
+    if (sessId == null || startedAtMs == null || goalId == null) return;
+
+    // _activeSession 재구성 (DB 조회 없이 prefs 값으로 충분)
+    _activeSession = StudySession(
+      id: sessId,
+      goalId: goalId,
+      startedAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
+    );
+
+    final colorArgb = prefs.getInt(_kPrefSubjectColor) ?? 0;
+    if (!mounted) return;
+    setState(() {
+      _selectedTask = CameraTask(
+        todoId: prefs.getString(_kPrefTodoId) ?? '',
+        goalId: goalId,
+        subjectId: prefs.getString(_kPrefSubjectId) ?? '',
+        text: prefs.getString(_kPrefTaskText) ?? '',
+        subjectName: prefs.getString(_kPrefSubjectName),
+        subjectColor: colorArgb == 0 ? null : Color(colorArgb),
+      );
+      _focusMinutes =
+          prefs.getInt(_kPrefFocusMinutes) ?? _kDefaultFocusMinutes;
+      _breakMinutes =
+          prefs.getInt(_kPrefBreakMinutes) ?? _kDefaultBreakMinutes;
+      _isBreakMode = prefs.getBool(_kPrefIsBreakMode) ?? false;
+      _remainingSeconds =
+          prefs.getInt(_kPrefRemainingSeconds) ?? (_focusMinutes * 60);
+      _isRunning = false; // 복원 후엔 일시정지 상태 — ▶ 다시 눌러야 진행
+    });
   }
 
   @override
@@ -236,6 +352,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           subjectId: _selectedTask!.subjectId,
         );
     _activeSession = null;
+    // 세션을 명시적으로 종료했으므로 paused 상태도 제거
+    await _clearPausedState();
   }
 
   // ── 타이머 제어 ──────────────────────────────────────────────────────────
@@ -251,6 +369,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
     _ticker?.cancel();
     setState(() => _isRunning = true);
+    // 진행 중 세션을 prefs 에 저장 — 백아웃 시 복원 가능하도록
+    await _savePausedState();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       if (_remainingSeconds <= 1) {
@@ -261,9 +381,11 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     });
   }
 
-  void _pauseTimer() {
+  Future<void> _pauseTimer() async {
     _ticker?.cancel();
     setState(() => _isRunning = false);
+    // 일시정지된 시점의 남은 시간 다시 저장 (다음 진입 시 정확히 이어 가도록)
+    await _savePausedState();
   }
 
   void _toggleRunning() {
@@ -444,8 +566,16 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ── 뒤로가기 (상단 < 버튼) ──────────────────────────────────────────────
+  // 진행 중 세션이 있으면 종료하지 않고 paused 상태로 보존 → 다음 진입 시
+  // _restorePausedState 가 복원해서 ▶ 누르면 이어서 진행.
+  // (이전엔 _endSession 호출 → focus 0 으로 FSRS Again 처리되며 과목이
+  //  오늘의 계획에서 사라지는 문제가 있었음.)
   Future<void> _onBack() async {
-    await _endSession();
+    _ticker?.cancel();
+    if (_activeSession != null) {
+      // 현재 남은 시간을 prefs 에 저장하고 세션은 그대로 열어둠.
+      await _savePausedState();
+    }
     if (!mounted) return;
     Navigator.pop(context);
   }

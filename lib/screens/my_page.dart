@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ 추가
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
+import '../providers/today_plan_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
 
@@ -166,15 +167,16 @@ Future<void> _showStartDialog() async {
     );
 
     if (result != true) return;
-
     if (!mounted) return;
 
-    Navigator.push(
+    final entries = await ref.read(todayPlanProvider.future);
+    final tasks = CameraTask.fromTodayPlan(entries);
+    if (!mounted) return;
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CameraPage(
-          allTasks: [],
-        ),
+        builder: (_) => CameraPage(allTasks: tasks),
       ),
     );
   }
@@ -281,17 +283,29 @@ Future<void> _showStartDialog() async {
                                   child: AnimatedSwitcher(
                                     duration:
                                         const Duration(milliseconds: 280),
-                                    child: Text(
-                                      '🍅 $displayedNickname',
+                                    // 🍅 이모지 → twemoji_tomato-2.png 이미지로 교체
+                                    child: Row(
                                       key: ValueKey(displayedNickname),
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color: isDark
-                                            ? Colors.white
-                                            : const Color(0xFF1A1A1A),
-                                        letterSpacing: -0.3,
-                                      ),
+                                      children: [
+                                        Image.asset(
+                                          'assets/images/twemoji_tomato-2.png',
+                                          width: 18,
+                                          height: 18,
+                                          fit: BoxFit.contain,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          displayedNickname,
+                                          style: TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF1A1A1A),
+                                            letterSpacing: -0.3,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),

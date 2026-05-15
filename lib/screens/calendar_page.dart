@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_goal.dart';
 import '../providers/calendar_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
+import '../providers/today_plan_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
 
@@ -149,12 +150,15 @@ Future<void> _showStartDialog() async {
     if (result != true) return;
     if (!mounted) return;
 
-    Navigator.push(
+    // 오늘의 계획 데이터를 단일 소스로 사용 — 모든 페이지에서 동일.
+    final entries = await ref.read(todayPlanProvider.future);
+    final tasks = CameraTask.fromTodayPlan(entries);
+    if (!mounted) return;
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CameraPage(
-          allTasks: [],
-        ),
+        builder: (_) => CameraPage(allTasks: tasks),
       ),
     );
   }

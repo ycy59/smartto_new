@@ -300,25 +300,15 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     if (result != true) return;
     if (!mounted) return;
 
-    // 현재 화면의 과목 할일을 CameraTask로 변환
-    final cameraTasks = _subjects
-        .where((s) => s.goalId != null && s.subjectId != null)
-        .expand((s) => s.todos
-            .where((t) => t.text.isNotEmpty)
-            .map((t) => CameraTask(
-                  todoId: t.id ?? '',
-                  goalId: s.goalId!,
-                  subjectId: s.subjectId!,
-                  text: t.text,
-                  subjectName: s.name,
-                  subjectColor: s.color,
-                )))
-        .toList();
+    // 오늘의 계획 데이터를 단일 소스로 사용 — 모든 페이지에서 동일.
+    final entries = await ref.read(todayPlanProvider.future);
+    final tasks = CameraTask.fromTodayPlan(entries);
+    if (!mounted) return;
 
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CameraPage(allTasks: cameraTasks),
+        builder: (_) => CameraPage(allTasks: tasks),
       ),
     );
   }

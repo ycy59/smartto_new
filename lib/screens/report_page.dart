@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/stats_provider.dart';
+import '../providers/today_plan_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
@@ -243,12 +244,14 @@ class _ReportPageShellState extends ConsumerState<ReportPageShell>
     if (result != true) return;
     if (!mounted) return;
 
-    Navigator.push(
+    final entries = await ref.read(todayPlanProvider.future);
+    final tasks = CameraTask.fromTodayPlan(entries);
+    if (!mounted) return;
+
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const CameraPage(
-          allTasks: [],
-        ),
+        builder: (_) => CameraPage(allTasks: tasks),
       ),
     );
   }
