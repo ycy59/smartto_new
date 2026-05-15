@@ -58,7 +58,15 @@ class _AppEntry extends StatelessWidget {
         if (done && nickname.isNotEmpty) {
           return HomeShell(nickname: nickname);
         }
-        return const OnboardingScreen();
+        // 온보딩은 항상 라이트 테마로 — 시스템이 다크모드여도 영향 안 받음.
+        return Theme(
+          data: ThemeData(
+            scaffoldBackgroundColor: Colors.white,
+            useMaterial3: true,
+            brightness: Brightness.light,
+          ),
+          child: const OnboardingScreen(),
+        );
       },
     );
   }
@@ -213,27 +221,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       bottomNavigationBar: showBottomButton
           ? Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              child: SizedBox(
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: canGoNext ? onBottomButtonPressed : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2F2F2F),
-                    disabledBackgroundColor: const Color(0xFFBDBDBD),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              // body 와 동일하게 maxWidth 430 - 좌우 24*2 = 382 로 가운데 정렬.
+              // 좁은 화면(< 430)에선 화면 폭 - 48 으로 자연스럽게 줄어듦.
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 382),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: canGoNext ? onBottomButtonPressed : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF4A261),
+                          disabledBackgroundColor: const Color(0xFFF4A261)
+                              .withValues(alpha: 0.4),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          buttonText,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
                     ),
-                    elevation: 0,
                   ),
-                  child: Text(
-                    buttonText,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
+                ],
               ),
             )
           : null,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // ✅ 추가
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
+import '../main.dart' show OnboardingScreen;
 import '../providers/today_plan_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
@@ -471,7 +472,37 @@ Future<void> _showStartDialog() async {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 10),
+                          // ⚠️ TEMP DEBUG: 온보딩 화면 다시 보기 (확인용)
+                          // 누르면 라이트 테마로 OnboardingScreen 푸시. 뒤로가기로 복귀.
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => Theme(
+                                    data: ThemeData(
+                                      scaffoldBackgroundColor: Colors.white,
+                                      useMaterial3: true,
+                                      brightness: Brightness.light,
+                                    ),
+                                    child: const OnboardingScreen(),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              '🛠 온보딩 다시 보기 (디버그)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFF888888)
+                                    : const Color(0xFF9A9A9A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           Container(
                             width: 34,
                             height: 16,
