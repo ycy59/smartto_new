@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_goal.dart';
 import '../providers/calendar_provider.dart';
-import '../providers/theme_provider.dart'; // ✅ 추가
-import '../providers/today_plan_provider.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
 
@@ -47,8 +46,8 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
     });
   }
 
-Future<void> _showStartDialog() async {
-    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+  Future<void> _showStartDialog() async {
+    final isDark = ref.read(themeProvider) == ThemeMode.dark;
 
     final result = await showDialog<bool>(
       context: context,
@@ -60,7 +59,7 @@ Future<void> _showStartDialog() async {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -78,7 +77,7 @@ Future<void> _showStartDialog() async {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                    color: isDark ? Colors.white : const Color(0xFF232323),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -88,7 +87,7 @@ Future<void> _showStartDialog() async {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
-                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -102,12 +101,12 @@ Future<void> _showStartDialog() async {
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8),
                             foregroundColor: const Color(0xFF9A9A9A),
                           ),
                           child: const Text(
@@ -150,15 +149,12 @@ Future<void> _showStartDialog() async {
     if (result != true) return;
     if (!mounted) return;
 
-    // 오늘의 계획 데이터를 단일 소스로 사용 — 모든 페이지에서 동일.
-    final entries = await ref.read(todayPlanProvider.future);
-    final tasks = CameraTask.fromTodayPlan(entries);
-    if (!mounted) return;
-
-    await Navigator.push(
+    Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => CameraPage(allTasks: tasks),
+        builder: (context) => const CameraPage(
+          allTasks: [],
+        ),
       ),
     );
   }
@@ -232,50 +228,31 @@ Future<void> _showStartDialog() async {
   String _monthTitle(DateTime d) {
     const months = [
       '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
     ];
     return '${months[d.month]} ${d.year}';
   }
 
-  void _openDetail(
-    DateTime day,
-    CalendarMonthData data,
-  ) {
+  // ✅ 새 페이지 이동 없이 날짜만 업데이트
+  void _selectDay(DateTime day) {
     setState(() => _selectedDate = day);
-    final stats = data.focusByDay[_key(day)] ?? DayFocusStats.empty;
-    final reviews = data.reviewsByDay[_key(day)] ?? const <CalendarReviewEntry>[];
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CalendarDetailPage(
-          selectedDate: day,
-          focusStats: stats,
-          reviews: reviews,
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
     final days = _buildMonthDays(_focusedMonth);
     final monthAsync = ref.watch(calendarMonthDataProvider(_focusedMonth));
     final data = monthAsync.valueOrNull ?? CalendarMonthData.empty;
 
+    // ✅ 선택된 날짜 데이터
+    final selectedKey = _key(_selectedDate);
+    final selectedStats = data.focusByDay[selectedKey] ?? DayFocusStats.empty;
+    final selectedReviews = data.reviewsByDay[selectedKey] ?? const <CalendarReviewEntry>[];
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -287,12 +264,13 @@ Future<void> _showStartDialog() async {
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         borderRadius: BorderRadius.circular(24),
                       ),
                       child: Column(
                         children: [
                           const SizedBox(height: 14),
+                          // 월 네비게이터
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 14),
                             child: Row(
@@ -304,11 +282,11 @@ Future<void> _showStartDialog() async {
                                     radius: 12,
                                     backgroundColor: isDark
                                         ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFF1F1F1), // ✅
+                                        : const Color(0xFFF1F1F1),
                                     child: Icon(
                                       Icons.chevron_left,
                                       size: 16,
-                                      color: isDark ? Colors.white70 : Colors.grey, // ✅
+                                      color: isDark ? Colors.white70 : Colors.grey,
                                     ),
                                   ),
                                 ),
@@ -317,7 +295,7 @@ Future<void> _showStartDialog() async {
                                   style: TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : Colors.black, // ✅
+                                    color: isDark ? Colors.white : Colors.black,
                                   ),
                                 ),
                                 GestureDetector(
@@ -326,11 +304,11 @@ Future<void> _showStartDialog() async {
                                     radius: 12,
                                     backgroundColor: isDark
                                         ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFF1F1F1), // ✅
+                                        : const Color(0xFFF1F1F1),
                                     child: Icon(
                                       Icons.chevron_right,
                                       size: 16,
-                                      color: isDark ? Colors.white70 : Colors.grey, // ✅
+                                      color: isDark ? Colors.white70 : Colors.grey,
                                     ),
                                   ),
                                 ),
@@ -338,6 +316,7 @@ Future<void> _showStartDialog() async {
                             ),
                           ),
                           const SizedBox(height: 14),
+                          // 요일 헤더
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10),
                             child: Row(
@@ -354,7 +333,9 @@ Future<void> _showStartDialog() async {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          Expanded(
+                          // ✅ 캘린더 그리드 고정 높이
+                          SizedBox(
+                            height: 280,
                             child: GridView.builder(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -371,21 +352,19 @@ Future<void> _showStartDialog() async {
                                 final day = days[index];
                                 if (day == null) return const SizedBox();
 
-                                final isSelected =
-                                    _isSameDay(day, _selectedDate);
+                                final isSelected = _isSameDay(day, _selectedDate);
                                 final key = _key(day);
                                 final stats = data.focusByDay[key];
-                                final reviews =
-                                    data.reviewsByDay[key] ?? const [];
+                                final reviews = data.reviewsByDay[key] ?? const [];
 
                                 return GestureDetector(
-                                  onTap: () => _openDetail(day, data),
+                                  onTap: () => _selectDay(day), // ✅ 변경
                                   child: Container(
                                     margin: const EdgeInsets.all(2),
                                     decoration: BoxDecoration(
                                       color: isSelected
                                           ? isDark
-                                              ? const Color(0xFF3D2B2A) // ✅
+                                              ? const Color(0xFF3D2B2A)
                                               : const Color(0xFFF9F4F4)
                                           : Colors.transparent,
                                       borderRadius: BorderRadius.circular(10),
@@ -399,11 +378,10 @@ Future<void> _showStartDialog() async {
                                             fontSize: 13,
                                             color: day.weekday == DateTime.sunday
                                                 ? const Color(0xFFF08AA1)
-                                                : day.weekday ==
-                                                        DateTime.saturday
+                                                : day.weekday == DateTime.saturday
                                                     ? const Color(0xFF7EA3FF)
                                                     : isDark
-                                                        ? Colors.white // ✅
+                                                        ? Colors.white
                                                         : Colors.black,
                                           ),
                                         ),
@@ -418,6 +396,24 @@ Future<void> _showStartDialog() async {
                                   ),
                                 );
                               },
+                            ),
+                          ),
+
+                          // ✅ 구분선
+                          Divider(
+                            height: 1,
+                            color: isDark
+                                ? const Color(0xFF2C2C2C)
+                                : const Color(0xFFF0F0F0),
+                          ),
+
+                          // ✅ 인라인 상세 패널
+                          Expanded(
+                            child: _InlineDetailPanel(
+                              selectedDate: _selectedDate,
+                              focusStats: selectedStats,
+                              reviews: selectedReviews,
+                              isDark: isDark,
                             ),
                           ),
                         ],
@@ -440,25 +436,19 @@ Future<void> _showStartDialog() async {
   }
 }
 
-// ✅ StatefulWidget → ConsumerStatefulWidget
-class CalendarDetailPage extends ConsumerStatefulWidget {
+// ✅ 인라인 상세 패널
+class _InlineDetailPanel extends StatelessWidget {
   final DateTime selectedDate;
   final DayFocusStats focusStats;
   final List<CalendarReviewEntry> reviews;
+  final bool isDark;
 
-  const CalendarDetailPage({
-    super.key,
+  const _InlineDetailPanel({
     required this.selectedDate,
     required this.focusStats,
     required this.reviews,
+    required this.isDark,
   });
-
-  @override
-  ConsumerState<CalendarDetailPage> createState() => _CalendarDetailPageState();
-}
-
-class _CalendarDetailPageState extends ConsumerState<CalendarDetailPage> {
-  double _dragOffset = 0;
 
   String _weekdayKorean(int weekday) {
     const names = ['', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
@@ -483,147 +473,84 @@ class _CalendarDetailPageState extends ConsumerState<CalendarDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
-
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2), // ✅
-      body: SafeArea(
-        child: GestureDetector(
-          onVerticalDragUpdate: (details) {
-            if (details.delta.dy > 0) {
-              setState(() => _dragOffset += details.delta.dy);
-            }
-          },
-          onVerticalDragEnd: (_) {
-            if (_dragOffset > 120) {
-              Navigator.pop(context);
-            } else {
-              setState(() => _dragOffset = 0);
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            transform: Matrix4.translationValues(0, _dragOffset, 0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-                        Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF555555)
-                                  : const Color(0xFFD0D0D0), // ✅
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            '${widget.selectedDate.month}월 ${widget.selectedDate.day}일 ${_weekdayKorean(widget.selectedDate.weekday)}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : Colors.black, // ✅
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        if (widget.focusStats.sessionCount > 0)
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: _FocusSummaryCard(
-                              stats: widget.focusStats,
-                              isDark: isDark, // ✅
-                            ),
-                          ),
-                        const SizedBox(height: 14),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            widget.reviews.isEmpty
-                                ? '복습 일정 없음'
-                                : '복습 (${widget.reviews.length}건)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? const Color(0xFFAAAAAA)
-                                  : const Color(0xFF555555), // ✅
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: widget.reviews.isEmpty
-                              ? Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 40),
-                                    child: Text(
-                                      '오늘은 복습할 일정이 없어요',
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? const Color(0xFF666666)
-                                            : const Color(0xFFB3B3B3), // ✅
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 0, 16, 16),
-                                  itemCount: widget.reviews.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 8),
-                                  itemBuilder: (context, index) {
-                                    final r = widget.reviews[index];
-                                    return _ReviewCard(
-                                      entry: r,
-                                      understandingLabel:
-                                          _understandingLabel(
-                                              r.understandingLevel),
-                                      lastReviewLabel:
-                                          _lastReviewLabel(r.lastReview),
-                                      isDark: isDark, // ✅
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 14),
+        // 날짜 헤더
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '${selectedDate.month}월 ${selectedDate.day}일 ${_weekdayKorean(selectedDate.weekday)}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
         ),
-      ),
+        const SizedBox(height: 14),
+        // 집중 요약 카드
+        if (focusStats.sessionCount > 0) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _FocusSummaryCard(stats: focusStats, isDark: isDark),
+          ),
+          const SizedBox(height: 14),
+        ],
+        // 복습 헤더
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            reviews.isEmpty ? '복습 일정 없음' : '복습 (${reviews.length}건)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // 복습 목록
+        Expanded(
+          child: reviews.isEmpty
+              ? Center(
+                  child: Text(
+                    '오늘은 복습할 일정이 없어요',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF666666)
+                          : const Color(0xFFB3B3B3),
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: reviews.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final r = reviews[index];
+                    return _ReviewCard(
+                      entry: r,
+                      understandingLabel: _understandingLabel(r.understandingLevel),
+                      lastReviewLabel: _lastReviewLabel(r.lastReview),
+                      isDark: isDark,
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }
 
 class _FocusSummaryCard extends StatelessWidget {
   final DayFocusStats stats;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _FocusSummaryCard({
     required this.stats,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -632,7 +559,7 @@ class _FocusSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2020) : const Color(0xFFFCF6F4), // ✅
+        color: isDark ? const Color(0xFF2A2020) : const Color(0xFFFCF6F4),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -651,7 +578,7 @@ class _FocusSummaryCard extends StatelessWidget {
                     strokeWidth: 6,
                     backgroundColor: isDark
                         ? const Color(0xFF4A3535)
-                        : const Color(0xFFF0DDD8), // ✅
+                        : const Color(0xFFF0DDD8),
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Color(0xFFD97068),
                     ),
@@ -677,7 +604,7 @@ class _FocusSummaryCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: isDark
                             ? const Color(0xFF888888)
-                            : const Color(0xFF999999), // ✅
+                            : const Color(0xFF999999),
                       ),
                     ),
                   ],
@@ -693,13 +620,13 @@ class _FocusSummaryCard extends StatelessWidget {
                 _StatRow(
                   label: '총 학습 시간',
                   value: _formatDuration(stats.totalDurationMinutes),
-                  isDark: isDark, // ✅
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 6),
                 _StatRow(
                   label: '완료 세션',
                   value: '${stats.sessionCount}회',
-                  isDark: isDark, // ✅
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -722,12 +649,12 @@ class _FocusSummaryCard extends StatelessWidget {
 class _StatRow extends StatelessWidget {
   final String label;
   final String value;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _StatRow({
     required this.label,
     required this.value,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -744,7 +671,7 @@ class _StatRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+            color: isDark ? Colors.white : const Color(0xFF232323),
           ),
         ),
       ],
@@ -756,13 +683,13 @@ class _ReviewCard extends StatelessWidget {
   final CalendarReviewEntry entry;
   final String understandingLabel;
   final String lastReviewLabel;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _ReviewCard({
     required this.entry,
     required this.understandingLabel,
     required this.lastReviewLabel,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -770,7 +697,7 @@ class _ReviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFAFAFA), // ✅
+        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFAFAFA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -793,7 +720,7 @@ class _ReviewCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                    color: isDark ? Colors.white : const Color(0xFF232323),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -882,4 +809,3 @@ class _TomatoFace extends StatelessWidget {
     );
   }
 }
-
