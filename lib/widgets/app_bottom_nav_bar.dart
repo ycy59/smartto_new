@@ -222,7 +222,7 @@ class _NavItemState extends State<_NavItem> {
 }
 
 // ─────────────────────────────────────────────
-// _TomatoCta — 중앙 토마토 (펄스 + 탭 squish)
+// _TomatoCta — 중앙 토마토 (탭 squish 만, 펄스는 페이지 간 동기 불가로 제거)
 // ─────────────────────────────────────────────
 class _TomatoCta extends StatefulWidget {
   final VoidCallback onTap;
@@ -232,29 +232,8 @@ class _TomatoCta extends StatefulWidget {
   State<_TomatoCta> createState() => _TomatoCtaState();
 }
 
-class _TomatoCtaState extends State<_TomatoCta>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
-  late final Animation<double> _scale;
+class _TomatoCtaState extends State<_TomatoCta> {
   bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(
-      duration: const Duration(milliseconds: 1600),
-      vsync: this,
-    )..repeat(reverse: true);
-    _scale = Tween<double>(begin: 1.0, end: 1.05).animate(
-      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -267,16 +246,13 @@ class _TomatoCtaState extends State<_TomatoCta>
         scale: _pressed ? 0.92 : 1.0,
         duration: const Duration(milliseconds: 110),
         curve: Curves.easeOut,
-        child: ScaleTransition(
-          scale: _scale,
-          child: SizedBox(
-            width: 46,
-            height: 46,
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/tomato_glasses.png',
-                fit: BoxFit.cover,
-              ),
+        child: SizedBox(
+          width: 46,
+          height: 46,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/tomato_glasses.png',
+              fit: BoxFit.cover,
             ),
           ),
         ),
