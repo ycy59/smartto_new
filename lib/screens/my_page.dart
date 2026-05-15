@@ -281,17 +281,29 @@ Future<void> _showStartDialog() async {
                                   child: AnimatedSwitcher(
                                     duration:
                                         const Duration(milliseconds: 280),
-                                    child: Text(
-                                      '🍅 $displayedNickname',
-                                      key: ValueKey(displayedNickname),
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color: isDark
-                                            ? Colors.white
-                                            : const Color(0xFF1A1A1A),
-                                        letterSpacing: -0.3,
-                                      ),
+                                    // ✅ 수정
+                                    child: Row(
+                                      children: [
+                                        Image.asset(
+                                          'assets/images/twemoji_tomato-2.png',
+                                          width: 18,
+                                          height: 18,
+                                          fit: BoxFit.contain,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          displayedNickname,
+                                          key: ValueKey(displayedNickname),
+                                          style: TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w800,
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF1A1A1A),
+                                            letterSpacing: -0.3,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
