@@ -1392,6 +1392,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
+                                // ✅ 수정 — 시험 모드 할일이 있을 때만 표시
+                              if (_todos.any((t) => t.mode == StudyMode.exam))
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
