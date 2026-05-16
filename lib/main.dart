@@ -112,47 +112,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
-  bool get canGoNext {
-    switch (currentPage) {
-      case 0:
-        return true; // splash
-      case 1:
-        return true;
-      case 2:
-        return nicknameController.text.trim().isNotEmpty;
-      case 3:
-        return selectedPurpose.isNotEmpty;
-      case 4:
-        return selectedStudyTime.isNotEmpty;
-      case 5:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  String get buttonText {
-    switch (currentPage) {
-      case 2:
-      case 3:
-      case 4:
-        return '다음';
-      case 5:
-        return '첫 과목 추가하기';
-      default:
-        return '';
-    }
-  }
-
-  void onBottomButtonPressed() {
-    if (!canGoNext) return;
-    goNext();
-  }
-
-  bool get showBottomButton {
-  return currentPage != 0 && currentPage != 1 && currentPage != 5;
-}
-    void goPrev() {
+  void goPrev() {
   if (currentPage > 0) {
     _pageController.previousPage(
       duration: const Duration(milliseconds: 250),
@@ -188,6 +148,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             controller: nicknameController,
             onChanged: (_) => setState(() {}),
             onBack: goPrev,
+            onNext: goNext,
+            canGoNext: nicknameController.text.trim().isNotEmpty,
           ),
           PurposePage(
             options: purposeOptions,
@@ -198,6 +160,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               });
             },
             onBack: goPrev,
+            onNext: goNext,
+            canGoNext: selectedPurpose.isNotEmpty,
           ),
           StudyTimePage(
             options: timeOptions,
@@ -208,6 +172,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               });
             },
             onBack: goPrev,
+            onNext: goNext,
+            canGoNext: selectedStudyTime.isNotEmpty,
           ),
           CompletePage(
             nickname: nicknameController.text.trim(),
@@ -218,45 +184,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ),
 ),
-      bottomNavigationBar: showBottomButton
-          ? Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              // body 와 동일하게 maxWidth 430 - 좌우 24*2 = 382 로 가운데 정렬.
-              // 좁은 화면(< 430)에선 화면 폭 - 48 으로 자연스럽게 줄어듦.
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 382),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: canGoNext ? onBottomButtonPressed : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF4A261),
-                          disabledBackgroundColor: const Color(0xFFF4A261)
-                              .withValues(alpha: 0.4),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          buttonText,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : null,
     );
   }
 }
@@ -449,12 +376,16 @@ class NicknamePage extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onBack;
+  final VoidCallback onNext;
+  final bool canGoNext;
 
   const NicknamePage({
     super.key,
     required this.controller,
     required this.onChanged,
     required this.onBack,
+    required this.onNext,
+    required this.canGoNext,
   });
 
   @override
@@ -464,6 +395,8 @@ class NicknamePage extends StatelessWidget {
     return OnboardingLayout(
       stepIndex: 0,
       onBack: onBack,
+      onNext: onNext,
+      canGoNext: canGoNext,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -514,6 +447,8 @@ class PurposePage extends StatelessWidget {
   final String selectedPurpose;
   final ValueChanged<String> onSelect;
   final VoidCallback onBack;
+  final VoidCallback onNext;
+  final bool canGoNext;
 
   const PurposePage({
     super.key,
@@ -521,6 +456,8 @@ class PurposePage extends StatelessWidget {
     required this.selectedPurpose,
     required this.onSelect,
     required this.onBack,
+    required this.onNext,
+    required this.canGoNext,
   });
 
   @override
@@ -528,6 +465,8 @@ class PurposePage extends StatelessWidget {
     return OnboardingLayout(
       stepIndex: 1,
       onBack: onBack,
+      onNext: onNext,
+      canGoNext: canGoNext,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -626,6 +565,8 @@ class StudyTimePage extends StatelessWidget {
   final String selectedTime;
   final ValueChanged<String> onSelect;
   final VoidCallback onBack;
+  final VoidCallback onNext;
+  final bool canGoNext;
 
   const StudyTimePage({
     super.key,
@@ -633,6 +574,8 @@ class StudyTimePage extends StatelessWidget {
     required this.selectedTime,
     required this.onSelect,
     required this.onBack,
+    required this.onNext,
+    required this.canGoNext,
   });
 
   @override
@@ -640,6 +583,8 @@ class StudyTimePage extends StatelessWidget {
     return OnboardingLayout(
       stepIndex: 2,
       onBack: onBack,
+      onNext: onNext,
+      canGoNext: canGoNext,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -780,12 +725,18 @@ class OnboardingLayout extends StatelessWidget {
   final int stepIndex;
   final Widget child;
   final VoidCallback? onBack;
+  final VoidCallback? onNext;
+  final bool canGoNext;
+  final String buttonText;
 
   const OnboardingLayout({
     super.key,
     required this.stepIndex,
     required this.child,
     this.onBack,
+    this.onNext,
+    this.canGoNext = true,
+    this.buttonText = '다음',
   });
 
   @override
@@ -806,7 +757,7 @@ class OnboardingLayout extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -831,6 +782,31 @@ class OnboardingLayout extends StatelessWidget {
           const Spacer(),
           child,
           const Spacer(),
+          if (onNext != null)
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: canGoNext ? onNext : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFF4A261),
+                  disabledBackgroundColor:
+                      const Color(0xFFF4A261).withValues(alpha: 0.4),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  buttonText,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
