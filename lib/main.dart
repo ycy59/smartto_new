@@ -89,9 +89,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String selectedStudyTime = '';
 
   final List<Map<String, String>> purposeOptions = const [
-    {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.jpg'},
-    {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.jpg'},
-    {'title': '자기계발', 'subtitle': '자격증 · 언어', 'icon': 'assets/images/icon_growth.jpg'},
+    {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.png'},
+    {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.png'},
+    {'title': '자기계발', 'subtitle': '자격증 · 언어', 'icon': 'assets/images/icon_growth.png'},
   ];
 
   final List<String> timeOptions = const ['1시간', '2시간', '4시간', '5시간+'];
