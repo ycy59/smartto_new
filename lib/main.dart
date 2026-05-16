@@ -104,6 +104,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void goNext() {
+    FocusScope.of(context).unfocus();
     if (currentPage < 5) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 250),
