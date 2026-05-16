@@ -465,6 +465,7 @@ class NicknamePage extends StatelessWidget {
       stepIndex: 0,
       onBack: onBack,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
@@ -529,6 +530,7 @@ class PurposePage extends StatelessWidget {
       stepIndex: 1,
       onBack: onBack,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ✅ 상단 아이콘 박스 제거
@@ -641,6 +643,7 @@ class StudyTimePage extends StatelessWidget {
       stepIndex: 2,
       onBack: onBack,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
