@@ -263,6 +263,15 @@ class GreetingCard extends ConsumerWidget {
     required this.nickname,
   });
 
+  /// 현재 시간대에 따라 인사말 반환
+  String _getTimeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 6) return '대단한 열정이에요';
+    if (hour < 12) return '좋은 아침, 오늘도 파이팅!';
+    if (hour < 19) return '집중의 오후를 만들어봐요';
+    return '오늘도 수고 많았어요 :)';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = nickname.trim();
@@ -320,7 +329,7 @@ class GreetingCard extends ConsumerWidget {
           Row(
             children: [
               Text(
-                '오늘도 스마트하게',
+                _getTimeGreeting(),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -701,13 +710,11 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
 
   List<MainPlanSubject> _mapEntries(List<TodayPlanEntry> entries) =>
       entries.map((e) {
-        final dday = e.goal.daysUntilDeadline ?? 0;
         return MainPlanSubject(
           subjectId: e.subject.id,
           goalId: e.goal.id,
           title: e.subject.name,
           color: e.subject.color,
-          dday: dday < 0 ? 0 : dday,
           todos: e.goal.todos
               .map((t) => MainPlanTodo(
                     id: t.id,
@@ -917,12 +924,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                 onChangedTitle: (value) {
                   subject.title = value;
                 },
-                onChangedDday: (value) {
-                  final parsed = int.tryParse(value);
-                  if (parsed != null) {
-                    subject.dday = parsed;
-                  }
-                },
                 onRemoveTodo: (todoIndex) =>
                     _confirmDeleteTodo(subjectIndex, todoIndex),
                 onSubmittedTodo: (todoIndex) =>
@@ -947,7 +948,6 @@ class MainPlanSubject {
   final String? goalId;
   String title;
   Color color;
-  int dday;
   List<MainPlanTodo> todos;
 
   MainPlanSubject({
@@ -955,7 +955,6 @@ class MainPlanSubject {
     this.goalId,
     required this.title,
     required this.color,
-    required this.dday,
     required this.todos,
   });
 }
@@ -989,30 +988,18 @@ class _EditableSubjectBlock extends StatelessWidget {
   final VoidCallback onDeleteSubject;
   final ValueChanged<Color> onPickColor;
   final ValueChanged<String> onChangedTitle;
-  final ValueChanged<String> onChangedDday;
   final ValueChanged<int> onRemoveTodo;
   final ValueChanged<int> onSubmittedTodo;
   final void Function(int, String) onChangedTodo;
 
-  String _getDdayText(MainPlanSubject subject) {
-    DateTime? earliest;
-    for (final todo in subject.todos) {
-      if (todo.dueDate != null) {
-        if (earliest == null || todo.dueDate!.isBefore(earliest)) {
-          earliest = todo.dueDate;
-        }
-      }
-    }
-
-    if (earliest == null) return 'D - ${subject.dday}';
-
+  /// 할일 하나의 dueDate로 D-day 문자열 반환
+  String _todoDdayText(DateTime dueDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(earliest.year, earliest.month, earliest.day);
+    final target = DateTime(dueDate.year, dueDate.month, dueDate.day);
     final diff = target.difference(today).inDays;
-
     if (diff < 0) return 'D + ${diff.abs()}';
-    if (diff == 0) return 'D - 0';
+    if (diff == 0) return 'D-day';
     return 'D - $diff';
   }
 
@@ -1026,7 +1013,6 @@ class _EditableSubjectBlock extends StatelessWidget {
     required this.onDeleteSubject,
     required this.onPickColor,
     required this.onChangedTitle,
-    required this.onChangedDday,
     required this.onRemoveTodo,
     required this.onSubmittedTodo,
     required this.onChangedTodo,
@@ -1091,43 +1077,6 @@ class _EditableSubjectBlock extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(width: 8),
-            if (subject.todos.any((t) => t.dueDate != null))
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF4A3535) : const Color(0xFFF2E1E2), // ✅ 다크모드 색상
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: isEditing
-                    ? SizedBox(
-                        width: 42,
-                        child: TextFormField(
-                          initialValue: '${subject.dday}',
-                          onChanged: onChangedDday,
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF8F7177),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        _getDdayText(subject),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF8F7177),
-                        ),
-                      ),
-              ),
           ],
         ),
         if (showPalette) ...[
@@ -1215,6 +1164,28 @@ class _EditableSubjectBlock extends StatelessWidget {
                             ),
                           ),
                   ),
+                  if (todo.dueDate != null && !isEditing)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF4A3535)
+                              : const Color(0xFFF2E1E2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _todoDdayText(todo.dueDate!),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF8F7177),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (isEditing)
                     GestureDetector(
                       onTap: () => onRemoveTodo(todoIndex),
