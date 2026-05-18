@@ -37,15 +37,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.14.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/APPICON_4.png"
 
 flutter:
   uses-material-design: true
   assets:
     - assets/images/tomato_glasses.png
     - assets/images/tomato_splash.png
-    - assets/images/icon_university.jpg
-    - assets/images/icon_exam.jpg
-    - assets/images/icon_growth.jpg
+    - assets/images/icon_university.png
+    - assets/images/icon_exam.png
+    - assets/images/icon_growth.png
     - assets/images/twemoji_tomato.png
     - assets/images/twemoji_tomato-1.png
     - assets/images/twemoji_tomato-2.png

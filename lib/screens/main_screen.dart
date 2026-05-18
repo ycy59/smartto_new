@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/today_plan_provider.dart';
 import '../providers/stats_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart';
@@ -8,7 +9,6 @@ import 'my_page.dart';
 import 'camera_page.dart';
 import 'report_page.dart';
 import '../providers/theme_provider.dart';
-
 
 class MainScreen extends ConsumerStatefulWidget {
   final String nickname;
@@ -66,7 +66,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     );
   }
 
-Future<void> _showStartDialog() async {
+  Future<void> _showStartDialog() async {
     final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅ 추가
 
     final result = await showDialog<bool>(
@@ -92,22 +92,28 @@ Future<void> _showStartDialog() async {
                   fit: BoxFit.contain,
                 ),
                 const SizedBox(height: 10),
-                Text(                         // ✅ const 제거
+                Text(
+                  // ✅ const 제거
                   '시작하시겠습니까?',
-                  style: TextStyle(           // ✅ const 제거
+                  style: TextStyle(
+                    // ✅ const 제거
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: isDark ? Colors.white : const Color(0xFF232323), // ✅
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(                         // ✅ const 제거
+                Text(
+                  // ✅ const 제거
                   '집중 모드를 시작합니다.\n카메라로 집중도를 측정합니다.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(           // ✅ const 제거
+                  style: TextStyle(
+                    // ✅ const 제거
                     fontSize: 13,
                     height: 1.45,
-                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    color: isDark
+                        ? const Color(0xFF888888)
+                        : const Color(0xFF8F8F8F), // ✅
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -120,13 +126,18 @@ Future<void> _showStartDialog() async {
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(  // ✅ const 제거
-                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                            side: BorderSide(
+                              // ✅ const 제거
+                              color: isDark
+                                  ? const Color(0xFF444444)
+                                  : const Color(0xFFE5E5E5), // ✅
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            backgroundColor: isDark
+                                ? const Color(0xFF2C2C2C)
+                                : const Color(0xFFF8F8F8), // ✅
                           ),
                           child: const Text(
                             '취소',
@@ -263,6 +274,190 @@ class GreetingCard extends ConsumerWidget {
     required this.nickname,
   });
 
+  /// step(1~16) → 표시 레이블
+  String _stepToLabel(int step) {
+    if (step == 16) return '8시간+';
+    final min = step * 30;
+    final h = min ~/ 60;
+    final m = min % 60;
+    if (h == 0) return '$m분';
+    if (m == 0) return '$h시간';
+    return '$h시간 $m분';
+  }
+
+  /// step → 응원 메시지
+  String _stepToMessage(int step) {
+    final h = (step * 30) / 60;
+    if (h < 2) return '가볍게 시작해봐요';
+    if (h < 4) return '꾸준한 집중 목표예요';
+    if (h < 6) return '오늘 열심히 달려봐요!';
+    return '오늘 정말 대단한 목표예요';
+  }
+
+  /// 목표 시간 슬라이더 바텀시트
+  Future<void> _showGoalPicker(
+      BuildContext context, WidgetRef ref, bool isDark) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedStr = prefs.getString('study_time_goal') ?? '120';
+    final savedMin = int.tryParse(savedStr) ?? 120;
+    final initialStep = (savedMin / 30).round().clamp(1, 16);
+
+    if (!context.mounted) return;
+
+    int currentStep = initialStep;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            final step = currentStep;
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF444444)
+                          : const Color(0xFFDDDDDD),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '오늘 목표 시간',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _stepToLabel(step),
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFFD97068),
+                      letterSpacing: -1,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _stepToMessage(step),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? const Color(0xFF888888)
+                          : const Color(0xFF8A8A8A),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SliderTheme(
+                    data: SliderTheme.of(ctx).copyWith(
+                      activeTrackColor: const Color(0xFFD97068),
+                      inactiveTrackColor: isDark
+                          ? const Color(0xFF333333)
+                          : const Color(0xFFEEEEEE),
+                      thumbColor: const Color(0xFFD97068),
+                      overlayColor:
+                          const Color(0xFFD97068).withValues(alpha: 0.15),
+                      trackHeight: 4,
+                    ),
+                    child: Slider(
+                      min: 1,
+                      max: 16,
+                      divisions: 15,
+                      value: step.toDouble(),
+                      onChanged: (v) => setState(() => currentStep = v.round()),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('30분',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFF888888)
+                                    : const Color(0xFF8A8A8A))),
+                        Text('4시간',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFF888888)
+                                    : const Color(0xFF8A8A8A))),
+                        Text('8시간+',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFF888888)
+                                    : const Color(0xFF8A8A8A))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString(
+                            'study_time_goal', '${step * 30}');
+                        ref.invalidate(statsProvider);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD97068),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        '저장',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// 현재 시간대에 따라 인사말 반환
+  String _getTimeGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 6) return '대단한 열정이에요';
+    if (hour < 12) return '좋은 아침, 오늘도 파이팅!';
+    if (hour < 19) return '집중의 오후를 만들어봐요';
+    return '오늘도 수고 많았어요 :)';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = nickname.trim();
@@ -320,7 +515,7 @@ class GreetingCard extends ConsumerWidget {
           Row(
             children: [
               Text(
-                '오늘도 스마트하게',
+                _getTimeGreeting(),
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
@@ -345,118 +540,94 @@ class GreetingCard extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 26),
+          // 학습 시간 / 목표 시간 + 목표 변경 버튼
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: InfoCard(
-                  isDark: isDark,
-                  title: '학습 시간',
-                  value: todayLabel,
-                  changeText: '$progressPct%',
-                  changeColor: const Color(0xFFD97068),
+              Text(
+                todayLabel,
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                  letterSpacing: -0.8,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: InfoCard(
-                  isDark: isDark, // ✅ 추가
-                  title: '목표 시간',
-                  value: goalLabel,
-                  changeText: '오늘 목표',
-                  changeColor: const Color(0xFF6D88D8),
+              const SizedBox(width: 6),
+              Text(
+                '/ $goalLabel',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: isDark
+                      ? const Color(0xFF9A9A9A)
+                      : const Color(0xFF8A8A8A),
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-// InfoCard
-// ─────────────────────────────────────────────
-class InfoCard extends StatelessWidget {
-  final bool isDark; // ✅ 추가
-  final String title;
-  final String value;
-  final String changeText;
-  final Color changeColor;
-
-  const InfoCard({
-    super.key,
-    required this.isDark, // ✅ 추가
-    required this.title,
-    required this.value,
-    required this.changeText,
-    required this.changeColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 82,
-      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF252525)
-            : const Color(0xFFFAF7F6),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF323232)
-              : const Color(0xFFF0EBEA),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _showGoalPicker(context, ref, isDark),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF9A9A9A)
-                        : const Color(0xFF8A8A8A),
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.1,
+                        ? const Color(0xFF3A2A28)
+                        : const Color(0xFFFDF2F1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: changeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: _AnimatedValueText(
-                  value: changeText,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: changeColor,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.1,
+                  child: const Text(
+                    '목표 변경',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFFD97068),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          _AnimatedValueText(
-            value: value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF1A1A1A),
-              letterSpacing: -0.5,
-              height: 1.0,
+          const SizedBox(height: 10),
+          // 진행 바
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor:
+                  isDark ? const Color(0xFF333333) : const Color(0xFFEEEEEE),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFD97068),
+              ),
             ),
+          ),
+          const SizedBox(height: 8),
+          // 오늘 목표 / 달성률
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '오늘 목표',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark
+                      ? const Color(0xFF9A9A9A)
+                      : const Color(0xFF8A8A8A),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Text(
+                '$progressPct% 달성',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFFD97068),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -486,9 +657,8 @@ class WeeklyStatsCard extends ConsumerWidget {
       error: (_, __) => '--',
     );
     final avgFocus = statsAsync.when(
-      data: (s) => s.weeklyAvgFocus != null
-          ? '${s.weeklyAvgFocus!.toInt()}%'
-          : '-%',
+      data: (s) =>
+          s.weeklyAvgFocus != null ? '${s.weeklyAvgFocus!.toInt()}%' : '-%',
       loading: () => '--',
       error: (_, __) => '--',
     );
@@ -537,7 +707,8 @@ class WeeklyStatsCard extends ConsumerWidget {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF3A2A28)
@@ -647,9 +818,7 @@ class StatItem extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               height: 1.25,
-              color: isDark
-                  ? const Color(0xFF9A9A9A)
-                  : const Color(0xFF8A8A8A),
+              color: isDark ? const Color(0xFF9A9A9A) : const Color(0xFF8A8A8A),
               fontWeight: FontWeight.w500,
               letterSpacing: -0.1,
             ),
@@ -701,13 +870,11 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
 
   List<MainPlanSubject> _mapEntries(List<TodayPlanEntry> entries) =>
       entries.map((e) {
-        final dday = e.goal.daysUntilDeadline ?? 0;
         return MainPlanSubject(
           subjectId: e.subject.id,
           goalId: e.goal.id,
           title: e.subject.name,
           color: e.subject.color,
-          dday: dday < 0 ? 0 : dday,
           todos: e.goal.todos
               .map((t) => MainPlanTodo(
                     id: t.id,
@@ -797,8 +964,8 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
         _subjects[subjectIndex].todos.removeAt(todoIndex);
         if (_subjects[subjectIndex].todos.isEmpty) {
           _subjects[subjectIndex].todos.add(
-            MainPlanTodo(text: '', done: false),
-          );
+                MainPlanTodo(text: '', done: false),
+              );
         }
       });
     }
@@ -807,9 +974,9 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
   void _addNextTodo(int subjectIndex, int todoIndex) {
     setState(() {
       _subjects[subjectIndex].todos.insert(
-        todoIndex + 1,
-        MainPlanTodo(text: '', done: false),
-      );
+            todoIndex + 1,
+            MainPlanTodo(text: '', done: false),
+          );
     });
   }
 
@@ -870,7 +1037,8 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                   _loadTodayPlan();
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF3A2A28)
@@ -917,12 +1085,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                 onChangedTitle: (value) {
                   subject.title = value;
                 },
-                onChangedDday: (value) {
-                  final parsed = int.tryParse(value);
-                  if (parsed != null) {
-                    subject.dday = parsed;
-                  }
-                },
                 onRemoveTodo: (todoIndex) =>
                     _confirmDeleteTodo(subjectIndex, todoIndex),
                 onSubmittedTodo: (todoIndex) =>
@@ -947,7 +1109,6 @@ class MainPlanSubject {
   final String? goalId;
   String title;
   Color color;
-  int dday;
   List<MainPlanTodo> todos;
 
   MainPlanSubject({
@@ -955,7 +1116,6 @@ class MainPlanSubject {
     this.goalId,
     required this.title,
     required this.color,
-    required this.dday,
     required this.todos,
   });
 }
@@ -989,30 +1149,18 @@ class _EditableSubjectBlock extends StatelessWidget {
   final VoidCallback onDeleteSubject;
   final ValueChanged<Color> onPickColor;
   final ValueChanged<String> onChangedTitle;
-  final ValueChanged<String> onChangedDday;
   final ValueChanged<int> onRemoveTodo;
   final ValueChanged<int> onSubmittedTodo;
   final void Function(int, String) onChangedTodo;
 
-  String _getDdayText(MainPlanSubject subject) {
-    DateTime? earliest;
-    for (final todo in subject.todos) {
-      if (todo.dueDate != null) {
-        if (earliest == null || todo.dueDate!.isBefore(earliest)) {
-          earliest = todo.dueDate;
-        }
-      }
-    }
-
-    if (earliest == null) return 'D - ${subject.dday}';
-
+  /// 할일 하나의 dueDate로 D-day 문자열 반환
+  String _todoDdayText(DateTime dueDate) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final target = DateTime(earliest.year, earliest.month, earliest.day);
+    final target = DateTime(dueDate.year, dueDate.month, dueDate.day);
     final diff = target.difference(today).inDays;
-
     if (diff < 0) return 'D + ${diff.abs()}';
-    if (diff == 0) return 'D - 0';
+    if (diff == 0) return 'D-day';
     return 'D - $diff';
   }
 
@@ -1026,7 +1174,6 @@ class _EditableSubjectBlock extends StatelessWidget {
     required this.onDeleteSubject,
     required this.onPickColor,
     required this.onChangedTitle,
-    required this.onChangedDday,
     required this.onRemoveTodo,
     required this.onSubmittedTodo,
     required this.onChangedTodo,
@@ -1057,7 +1204,8 @@ class _EditableSubjectBlock extends StatelessWidget {
                         isDense: true,
                         border: InputBorder.none,
                       ),
-                      style: TextStyle( // ✅ const 제거
+                      style: TextStyle(
+                        // ✅ const 제거
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : Colors.black,
@@ -1065,7 +1213,8 @@ class _EditableSubjectBlock extends StatelessWidget {
                     )
                   : Text(
                       subject.title,
-                      style: TextStyle( // ✅ const 제거
+                      style: TextStyle(
+                        // ✅ const 제거
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : Colors.black,
@@ -1091,43 +1240,6 @@ class _EditableSubjectBlock extends StatelessWidget {
                 ),
               ),
             ],
-            const SizedBox(width: 8),
-            if (subject.todos.any((t) => t.dueDate != null))
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF4A3535) : const Color(0xFFF2E1E2), // ✅ 다크모드 색상
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: isEditing
-                    ? SizedBox(
-                        width: 42,
-                        child: TextFormField(
-                          initialValue: '${subject.dday}',
-                          onChanged: onChangedDday,
-                          textAlign: TextAlign.center,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF8F7177),
-                          ),
-                        ),
-                      )
-                    : Text(
-                        _getDdayText(subject),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF8F7177),
-                        ),
-                      ),
-              ),
           ],
         ),
         if (showPalette) ...[
@@ -1180,7 +1292,8 @@ class _EditableSubjectBlock extends StatelessWidget {
                     child: isEditing
                         ? TextField(
                             controller: controller,
-                            onChanged: (value) => onChangedTodo(todoIndex, value),
+                            onChanged: (value) =>
+                                onChangedTodo(todoIndex, value),
                             onSubmitted: (_) => onSubmittedTodo(todoIndex),
                             decoration: const InputDecoration(
                               isDense: true,
@@ -1215,6 +1328,28 @@ class _EditableSubjectBlock extends StatelessWidget {
                             ),
                           ),
                   ),
+                  if (todo.dueDate != null && !isEditing)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF4A3535)
+                              : const Color(0xFFF2E1E2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          _todoDdayText(todo.dueDate!),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF8F7177),
+                          ),
+                        ),
+                      ),
+                    ),
                   if (isEditing)
                     GestureDetector(
                       onTap: () => onRemoveTodo(todoIndex),
@@ -1400,4 +1535,3 @@ class _SmallDot extends StatelessWidget {
     );
   }
 }
-

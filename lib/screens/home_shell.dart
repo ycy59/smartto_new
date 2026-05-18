@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'main_screen.dart';
 import 'my_page.dart';
+import 'subject_page.dart';
 
 class HomeShell extends StatefulWidget {
   final String nickname;
+  final bool openSubjectPage;
 
   const HomeShell({
     super.key,
     required this.nickname,
+    this.openSubjectPage = false,
   });
 
   @override
@@ -26,6 +30,22 @@ class _HomeShellState extends State<HomeShell> {
     super.initState();
     currentNickname = widget.nickname;
     _pageController = PageController(initialPage: 0);
+
+    if (widget.openSubjectPage) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SubjectPageShell(
+              currentIndex: 2,
+              onTapNav: moveToPage,
+              nickname: currentNickname,
+            ),
+          ),
+        );
+      });
+    }
   }
 
   @override
