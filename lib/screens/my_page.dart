@@ -187,102 +187,104 @@ Future<void> _showStartDialog() async {
         ? _currentNickname
         : _nicknameController.text.trim();
 
+    // ✅ 변경 — 토마토 스타일 다이얼로그
+final shouldSave = await showDialog<bool>(
+  context: context,
+  barrierDismissible: true,
+  builder: (context) {
     final isDark = ref.read(themeProvider) == ThemeMode.dark;
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 38),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              borderRadius: BorderRadius.circular(24),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 38),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/tomato_glasses.png',
+              width: 66,
+              height: 66,
+              fit: BoxFit.contain,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+            const SizedBox(height: 10),
+            Text(
+              '닉네임을 변경할까요?',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF232323),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '\'$newNickname\'으로 변경됩니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
               children: [
-                Text(
-                  '닉네임 변경',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF232323),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '\'$newNickname\'으로 변경하시겠습니까?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: isDark
-                        ? const Color(0xFF888888)
-                        : const Color(0xFF8F8F8F),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 42,
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(
-                              color: isDark
-                                  ? const Color(0xFF444444)
-                                  : const Color(0xFFE5E5E5),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            backgroundColor: isDark
-                                ? const Color(0xFF2C2C2C)
-                                : const Color(0xFFF8F8F8),
-                            foregroundColor: const Color(0xFF9A9A9A),
-                          ),
-                          child: const Text(
-                            '취소',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(
+                          color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5),
                         ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8),
+                        foregroundColor: const Color(0xFF9A9A9A),
+                      ),
+                      child: const Text(
+                        '취소',
+                        style: TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: SizedBox(
-                        height: 42,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD97068),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            '저장',
-                            style: TextStyle(fontWeight: FontWeight.w800),
-                          ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 42,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD97068),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
+                      child: const Text(
+                        '변경',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
+  },
+);
 
     if (shouldSave != true) return;
 
