@@ -125,10 +125,12 @@ class CameraTask {
 }
 
 class CameraPage extends ConsumerStatefulWidget {
+  final CameraTask? initialSelectedTask;
   final List<CameraTask> allTasks;
 
   const CameraPage({
     super.key,
+    this.initialSelectedTask, 
     required this.allTasks,
   });
 
