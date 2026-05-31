@@ -1250,276 +1250,279 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: _selectedColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _showColorPalette = !_showColorPalette;
-                        });
-                      },
-                      icon: const Icon(Icons.edit, size: 18, color: Color(0xFF9B9B9B)),
-                    ),
-                  ],
+          Expanded(
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 10),
-                if (_showColorPalette) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: _colorOptions.map((color) {
-                      final selected = _selectedColor == color;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedColor = color;
-                          });
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(left: 8),
-                          width: 18,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
                           height: 18,
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: color, width: 2),
+                            color: _selectedColor,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Center(
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _showColorPalette = !_showColorPalette;
+                            });
+                          },
+                          icon: const Icon(Icons.edit, size: 18, color: Color(0xFF9B9B9B)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (_showColorPalette) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: _colorOptions.map((color) {
+                          final selected = _selectedColor == color;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedColor = color;
+                              });
+                            },
                             child: Container(
-                              width: 8,
-                              height: 8,
+                              margin: const EdgeInsets.only(left: 8),
+                              width: 18,
+                              height: 18,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: selected ? color : Colors.transparent,
+                                border: Border.all(color: color, width: 2),
                               ),
+                              child: Center(
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: selected ? color : Colors.transparent,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: widget.onBack,
+                          child: const Icon(Icons.chevron_left, color: Color(0xFFB2B2B2)),
+                        ),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF2C2C2C) : _softBackground(_selectedColor),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      _nameController.text.trim().isEmpty
+                                          ? '과목'
+                                          : _nameController.text.trim(),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: _levelColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        _levelText,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    if (_todos.any((t) => t.mode == StudyMode.exam))
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFB8DE9D),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          'D-${_dDay < 0 ? 0 : _dDay + 1}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Column(
+                                  children: List.generate(_todoControllers.length, (index) {
+                                    final todo = _todos[index];
+                                    final isExam = todo.mode == StudyMode.exam;
+                                    final dateText = todo.dueDate != null
+                                        ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
+                                        : null;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _todos[index].done = !_todos[index].done;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  width: 12,
+                                                  height: 12,
+                                                  decoration: BoxDecoration(
+                                                    color: _todos[index].done
+                                                        ? _selectedColor
+                                                        : const Color(0xFFE0E0E0),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: _todoControllers[index],
+                                                  onChanged: (value) {
+                                                    _todos[index].text = value;
+                                                  },
+                                                  onSubmitted: (_) {
+                                                    _insertNextTodo(index);
+                                                  },
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: isDark ? Colors.white : Colors.black,
+                                                  ),
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    border: UnderlineInputBorder(
+                                                      borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                                    ),
+                                                    enabledBorder: UnderlineInputBorder(
+                                                      borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                                    ),
+                                                    focusedBorder: UnderlineInputBorder(
+                                                      borderSide: BorderSide(color: Color(0xFFBDBDBD)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    if (todo.mode == StudyMode.study) {
+                                                      todo.mode = StudyMode.exam;
+                                                    } else {
+                                                      todo.mode = StudyMode.study;
+                                                      todo.dueDate = null;
+                                                    }
+                                                  });
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: isExam ? const Color(0xFFF08AA1) : const Color(0xFFB8DE9D),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Text(
+                                                    isExam ? '시험' : '학습',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (isExam)
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 22, top: 4),
+                                              child: GestureDetector(
+                                                onTap: () => _pickTodoDate(index),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(Icons.calendar_today, size: 12, color: Color(0xFF9B9B9B)),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      dateText ?? '시험일자 선택',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: dateText != null
+                                                            ? isDark ? Colors.white70 : const Color(0xFF444444)
+                                                            : const Color(0xFFBEBEBE),
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: widget.onBack,
-                      child: const Icon(Icons.chevron_left, color: Color(0xFFB2B2B2)),
-                    ),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF2C2C2C) : _softBackground(_selectedColor),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  _nameController.text.trim().isEmpty
-                                      ? '과목'
-                                      : _nameController.text.trim(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: _levelColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    _levelText,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // ✅ 시험 모드 할일 있을 때만 D-day 표시
-                                if (_todos.any((t) => t.mode == StudyMode.exam))
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFB8DE9D),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      'D-${_dDay < 0 ? 0 : _dDay + 1}',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Column(
-                              children: List.generate(_todoControllers.length, (index) {
-                                final todo = _todos[index];
-                                final isExam = todo.mode == StudyMode.exam;
-                                final dateText = todo.dueDate != null
-                                    ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
-                                    : null;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                _todos[index].done = !_todos[index].done;
-                                              });
-                                            },
-                                            child: Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: _todos[index].done
-                                                    ? _selectedColor
-                                                    : const Color(0xFFE0E0E0),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: TextField(
-                                              controller: _todoControllers[index],
-                                              onChanged: (value) {
-                                                _todos[index].text = value;
-                                              },
-                                              onSubmitted: (_) {
-                                                _insertNextTodo(index);
-                                              },
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: isDark ? Colors.white : Colors.black,
-                                              ),
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                border: UnderlineInputBorder(
-                                                  borderSide: BorderSide(color: Color(0xFFD9D9D9)),
-                                                ),
-                                                enabledBorder: UnderlineInputBorder(
-                                                  borderSide: BorderSide(color: Color(0xFFD9D9D9)),
-                                                ),
-                                                focusedBorder: UnderlineInputBorder(
-                                                  borderSide: BorderSide(color: Color(0xFFBDBDBD)),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                if (todo.mode == StudyMode.study) {
-                                                  todo.mode = StudyMode.exam;
-                                                } else {
-                                                  todo.mode = StudyMode.study;
-                                                  todo.dueDate = null;
-                                                }
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: isExam ? const Color(0xFFF08AA1) : const Color(0xFFB8DE9D),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                isExam ? '시험' : '학습',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (isExam)
-                                        Padding(
-                                          padding: const EdgeInsets.only(left: 22, top: 4),
-                                          child: GestureDetector(
-                                            onTap: () => _pickTodoDate(index),
-                                            child: Row(
-                                              children: [
-                                                const Icon(Icons.calendar_today, size: 12, color: Color(0xFF9B9B9B)),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  dateText ?? '시험일자 선택',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: dateText != null
-                                                        ? isDark ? Colors.white70 : const Color(0xFF444444)
-                                                        : const Color(0xFFBEBEBE),
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ),
-                          ],
-                        ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             height: 44,
