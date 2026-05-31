@@ -538,6 +538,52 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
   }
 
+  Future<void> _onCompleteTap() async {
+    final task = _selectedTask;
+    if (task == null) return;
+
+    // 이미 완료 상태 → 미완료로 바로 토글 (회상 질문 불필요)
+    if (_currentTaskDone) {
+      await _toggleDone();
+      return;
+    }
+
+    // 미완료 → 완료 전환: 다이얼로그가 열려 있는 동안 타이머 일시정지
+    final wasRunning = _isRunning;
+    if (wasRunning) await _pauseTimer();
+
+    if (!mounted) return;
+
+    // Step 1: 완료 확인 다이얼로그
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ConfirmCompleteDialog(taskText: task.text),
+    );
+
+    if (!mounted) return;
+    if (confirmed != true) {
+      if (wasRunning) await _startTimer();
+      return;
+    }
+
+    // Step 2: 채팅형 회상 질문 다이얼로그
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _RecallChatDialog(
+        taskText: task.text,
+        subjectName: task.subjectName ?? '',
+      ),
+    );
+
+    if (!mounted) return;
+    if (saved == true) {
+      await _toggleDone();
+    } else if (wasRunning) {
+      await _startTimer();
+    }
+  }
+
   Future<void> _resetSelection() async {
     await _endSession();
     if (!mounted) return;
@@ -678,7 +724,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           text: _currentTaskDone ? '미완료' : '완료',
           enabled: hasTask,
           background: _kAccent,
-          onTap: hasTask ? _toggleDone : null,
+          onTap: hasTask ? _onCompleteTap : null,
         ),
         const SizedBox(width: 6),
 
@@ -1686,6 +1732,553 @@ class _Chip extends StatelessWidget {
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: selected ? Colors.white : const Color(0xFF666666),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 완료 확인 다이얼로그
+// ─────────────────────────────────────────────────────────────────────────────
+class _ConfirmCompleteDialog extends StatelessWidget {
+  final String taskText;
+
+  const _ConfirmCompleteDialog({required this.taskText});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _kAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_outline_rounded,
+                    color: _kAccent, size: 28),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '잘 하셨어요!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF222222),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '"$taskText"를 완료할까요?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF555555),
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '짧은 회상 질문으로 기억을 다져봐요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF999999),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Color(0xFFDDDDDD)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('취소',
+                          style: TextStyle(
+                              color: Color(0xFF888888),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('회상 시작',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 채팅형 회상 질문 다이얼로그
+//   - AI 질문 말풍선 → 사용자 답변 → AI 피드백 말풍선
+//   - 더미 데이터 사용 (실제 SLM 연동 시 _generateQuestion/_generateFeedback 교체)
+//   Navigator.pop(context, true)  → 완료 저장
+//   Navigator.pop(context, false) → 닫기(저장 안 함)
+// ─────────────────────────────────────────────────────────────────────────────
+enum _ChatRole { ai, user }
+
+class _ChatMsg {
+  final _ChatRole role;
+  final String text;
+  _ChatMsg(this.role, this.text);
+}
+
+class _RecallChatDialog extends StatefulWidget {
+  final String taskText;
+  final String subjectName;
+
+  const _RecallChatDialog({
+    required this.taskText,
+    required this.subjectName,
+  });
+
+  @override
+  State<_RecallChatDialog> createState() => _RecallChatDialogState();
+}
+
+class _RecallChatDialogState extends State<_RecallChatDialog> {
+  final _ctrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final List<_ChatMsg> _msgs = [];
+  bool _isWaiting = false;
+  bool _isDone = false;
+  int _round = 0; // 0 = 첫 번째 답변, 1 = 힌트 후 재답변
+
+  // ── 더미 응답들 — SLM 연동 시 아래 3개 교체 ────────────────────────────────
+
+  String get _question =>
+      '오늘 공부한 ${widget.taskText}의 핵심 내용을 한 줄로 설명해보세요.';
+
+  // 1라운드 후 힌트 — 답변 수준과 무관하게 힌트 제공 (SLM 연동 시 답변 평가 추가)
+  String get _hint =>
+      '좋아요! 조금 더 생각해볼까요? '
+      '${widget.taskText}에서 가장 중요한 개념이나 원리를 떠올려보세요. '
+      '다시 한번 설명해줄 수 있어요?';
+
+  // 2라운드 후 요약 설명
+  String get _summary =>
+      '잘 하셨어요! ${widget.taskText}를 정리해드릴게요.\n\n'
+      '핵심 개념을 체계적으로 이해하면 더 오래 기억할 수 있어요. '
+      '오늘 학습한 내용을 바탕으로 꾸준히 복습해보세요!';
+
+  // ────────────────────────────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+    _msgs.add(_ChatMsg(_ChatRole.ai, _question));
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final answer = _ctrl.text.trim();
+    if (answer.isEmpty || _isWaiting) return;
+
+    setState(() {
+      _msgs.add(_ChatMsg(_ChatRole.user, answer));
+      _ctrl.clear();
+      _isWaiting = true;
+    });
+    _scrollToBottom();
+
+    // 더미 딜레이 — SLM 응답 시뮬레이션 (실제 연동 시 API 호출로 교체)
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    if (_round == 0) {
+      // 1라운드: 힌트 제공 후 재답변 유도
+      setState(() {
+        _msgs.add(_ChatMsg(_ChatRole.ai, _hint));
+        _isWaiting = false;
+        _round = 1;
+      });
+    } else {
+      // 2라운드: 요약 설명 + 저장하기
+      setState(() {
+        _msgs.add(_ChatMsg(_ChatRole.ai, _summary));
+        _isWaiting = false;
+        _isDone = true;
+      });
+    }
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = widget.subjectName.isNotEmpty
+        ? '${widget.subjectName} · ${widget.taskText}'
+        : widget.taskText;
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        children: [
+          _buildHeader(),
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          // 컨텍스트 칩
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F2F2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF666666)),
+                ),
+              ),
+            ),
+          ),
+          // 채팅 영역
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              itemCount: _msgs.length + (_isWaiting ? 1 : 0),
+              itemBuilder: (ctx, i) {
+                if (_isWaiting && i == _msgs.length) {
+                  return _buildTypingBubble();
+                }
+                return _buildBubble(_msgs[i]);
+              },
+            ),
+          ),
+          // 입력창 / 완료 버튼
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          _isDone ? _buildDoneBar() : _buildInputBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 12, 14),
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome_rounded, color: _kAccent, size: 20),
+          const SizedBox(width: 8),
+          const Text(
+            '학습 도우미',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF222222)),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _kAccent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              '더미 데모',
+              style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: _kAccent),
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: () => Navigator.pop(context, false),
+            icon: const Icon(Icons.close_rounded,
+                size: 20, color: Color(0xFF888888)),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBubble(_ChatMsg msg) {
+    final isAi = msg.role == _ChatRole.ai;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment:
+            isAi ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isAi)
+            Container(
+              width: 28,
+              height: 28,
+              margin: const EdgeInsets.only(right: 8, top: 2),
+              decoration: BoxDecoration(
+                color: _kAccent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: _kAccent, size: 14),
+            ),
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isAi ? Colors.white : _kAccent,
+                border: isAi
+                    ? Border.all(color: const Color(0xFFEEEEEE))
+                    : null,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isAi ? 4 : 16),
+                  bottomRight: Radius.circular(isAi ? 16 : 4),
+                ),
+                boxShadow: isAi
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Text(
+                msg.text,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isAi ? const Color(0xFF333333) : Colors.white,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingBubble() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            margin: const EdgeInsets.only(right: 8, top: 2),
+            decoration: BoxDecoration(
+              color: _kAccent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.auto_awesome_rounded,
+                color: _kAccent, size: 14),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFEEEEEE)),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _TypingDot(delay: 0),
+                SizedBox(width: 4),
+                _TypingDot(delay: 180),
+                SizedBox(width: 4),
+                _TypingDot(delay: 360),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              maxLines: 1,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _send(),
+              decoration: InputDecoration(
+                hintText: '답변을 입력하세요',
+                hintStyle: const TextStyle(
+                    color: Color(0xFFBBBBBB), fontSize: 14),
+                filled: true,
+                fillColor: const Color(0xFFF8F8F8),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _send,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: _kAccent,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoneBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kAccent,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          child: const Text('저장하기',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 타이핑 인디케이터 점 (위아래 bounce 애니메이션)
+// ─────────────────────────────────────────────────────────────────────────────
+class _TypingDot extends StatefulWidget {
+  final int delay;
+  const _TypingDot({required this.delay});
+
+  @override
+  State<_TypingDot> createState() => _TypingDotState();
+}
+
+class _TypingDotState extends State<_TypingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _ctrl.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, -4 * _ctrl.value),
+        child: Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: Color(0xFFAAAAAA),
+            shape: BoxShape.circle,
           ),
         ),
       ),
