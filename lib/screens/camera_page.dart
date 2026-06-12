@@ -38,6 +38,7 @@ import '../providers/today_plan_provider.dart';
 import '../services/alarm_service.dart';
 import '../widgets/concentration_service.dart';
 import '../providers/slm_provider.dart';
+import '../providers/study_qa_provider.dart';
 import '../widgets/prompts/slm_prompts.dart';
 import 'alarm_settings_screen.dart';
 
@@ -575,6 +576,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       builder: (_) => _RecallChatDialog(
         taskText: task.text,
         subjectName: task.subjectName ?? '',
+        subjectColor: task.subjectColor ?? _kAccent,
         studyMode: 'study', // TODO: goal.mode 연결 시 동적 매핑
         focusScorePercent: _serviceReady
             ? (_service.averageScore01 * 100).round()
@@ -1875,6 +1877,7 @@ class _ChatMsg {
 class _RecallChatDialog extends ConsumerStatefulWidget {
   final String taskText;
   final String subjectName;
+  final Color subjectColor;
   final String studyMode;
   final int? focusScorePercent;
   final int? durationMinutes;
@@ -1882,6 +1885,7 @@ class _RecallChatDialog extends ConsumerStatefulWidget {
   const _RecallChatDialog({
     required this.taskText,
     required this.subjectName,
+    this.subjectColor = _kAccent,
     this.studyMode = 'study',
     this.focusScorePercent,
     this.durationMinutes,
@@ -1899,6 +1903,7 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
   bool _isDone = false;
   int _round = 0; // 0 = 첫 답변, 1 = 힌트 후 재답변
   String? _question; // SLM 생성 회상 질문 (또는 fallback)
+  String? _firstUserAnswer; // 1라운드 사용자 답변 (Q&A 저장용)
 
   @override
   void initState() {
@@ -2004,6 +2009,7 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
     _scrollToBottom();
 
     if (_round == 0) {
+      _firstUserAnswer = answer; // 1라운드 답변 저장
       // 1라운드: SLM 피드백 → 재답변 유도
       final feedback = await _generateFeedback(answer);
       if (!mounted) return;
@@ -2268,13 +2274,29 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
     );
   }
 
+  void _saveQaEntry() {
+    if (_question == null || _firstUserAnswer == null) return;
+    ref.read(studyQaProvider.notifier).add(
+          StudyQaEntry(
+            subjectName: widget.subjectName,
+            subjectColorValue: widget.subjectColor.value,
+            question: _question!,
+            answer: _firstUserAnswer!,
+            date: DateTime.now(),
+          ),
+        );
+  }
+
   Widget _buildDoneBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () {
+            _saveQaEntry();
+            Navigator.pop(context, true);
+          },
           style: ElevatedButton.styleFrom(
             backgroundColor: _kAccent,
             padding: const EdgeInsets.symmetric(vertical: 13),

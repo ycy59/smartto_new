@@ -9,6 +9,7 @@ import '../domain/entities/todo_item.dart' as domain;
 import '../providers/database_provider.dart';
 import '../providers/stats_provider.dart';
 import '../providers/study_goal_provider.dart';
+import '../providers/study_qa_provider.dart';
 import '../providers/theme_provider.dart';
 import '../providers/today_plan_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart'; // ✅ 공통 하단바
@@ -1699,7 +1700,7 @@ class QAEntry {
 // ──────────────────────────────────────────
 // 학습 Q&A 페이지
 // ──────────────────────────────────────────
-class StudyQAPage extends StatelessWidget {
+class StudyQAPage extends ConsumerWidget {
   final List<SubjectItem> subjects;
   final bool isDark;
 
@@ -1709,32 +1710,24 @@ class StudyQAPage extends StatelessWidget {
     required this.isDark,
   });
 
-  List<QAEntry> _getDummyQAList() {
-    final now = DateTime.now();
-    return subjects.isEmpty
-        ? [
-            QAEntry(
-              subjectName: '예시 과목',
-              subjectColor: const Color(0xFFE06B63),
-              question: '오늘 공부한 내용을 한 줄로 요약해보세요.',
-              answer: '아직 학습 기록이 없어요.',
-              date: now,
-            ),
-          ]
-        : subjects
-            .map((s) => QAEntry(
-                  subjectName: s.name,
-                  subjectColor: s.color,
-                  question: '${s.name}에서 오늘 학습한 핵심 내용은 무엇인가요?',
-                  answer: '학습 세션 종료 후 자동으로 생성됩니다.',
-                  date: now,
-                ))
-            .toList();
+  List<QAEntry> _toQaEntries(List<StudyQaEntry> saved) {
+    return saved
+        .map((e) => QAEntry(
+              subjectName: e.subjectName,
+              subjectColor: Color(e.subjectColorValue),
+              question: e.question,
+              answer: e.answer,
+              date: e.date,
+            ))
+        .toList();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final qaList = _getDummyQAList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = ref.watch(studyQaProvider);
+    final qaList = saved.isNotEmpty
+        ? _toQaEntries(saved)
+        : <QAEntry>[]; // 저장된 항목 없으면 빈 리스트
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

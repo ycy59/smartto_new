@@ -6,6 +6,9 @@ import '../providers/today_plan_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
+import 'dart:io';
+import '../providers/slm_provider.dart';
+import '../widgets/prompts/slm_prompts.dart';
 
 // ─────────────────────────────────────────────
 // 동적 효과 헬퍼 (file-private)
@@ -340,13 +343,19 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
   DateTime _selectedDate = _stripTime(DateTime.now());
+  String? _insightText;
+  bool _insightLoading = false;
 
   static DateTime _stripTime(DateTime d) => DateTime(d.year, d.month, d.day);
 
   void _changeDate(int delta) {
     final next = _selectedDate.add(Duration(days: delta));
     if (next.isAfter(DateTime.now())) return;
-    setState(() => _selectedDate = _stripTime(next));
+    setState(() {
+      _selectedDate = _stripTime(next);
+      _insightText = null;
+      _insightLoading = false;
+    });
   }
 
   String _formatDateLabel(DateTime d) {
@@ -354,6 +363,174 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
     if (d == now) return '오늘';
     if (d == now.subtract(const Duration(days: 1))) return '어제';
     return '${d.month}/${d.day}';
+  }
+
+  Future<void> _generateDailyInsight({
+    required DailyReport report,
+    required List<HourlyBucket> buckets,
+    required List<ActivityEntry> activities,
+    required ModeRatio ratio,
+  }) async {
+    if (_insightLoading) return;
+    setState(() {
+      _insightLoading = true;
+      _insightText = null;
+    });
+    final now = _stripTime(DateTime.now());
+    final period = _selectedDate == now ? '오늘' : '${_selectedDate.month}월 ${_selectedDate.day}일';
+    final withFocus = buckets.where((b) => b.avgFocus != null && b.minutes >= 10).toList();
+    String bestSlot = '-', weakSlot = '-';
+    if (withFocus.isNotEmpty) {
+      final best = withFocus.reduce((a, b) => (a.avgFocus ?? 0) > (b.avgFocus ?? 0) ? a : b);
+      final weak = withFocus.reduce((a, b) => (a.avgFocus ?? 100) < (b.avgFocus ?? 100) ? a : b);
+      String fmt(int h) => '${h >= 12 ? '오후' : '오전'} ${h == 0 ? 12 : h > 12 ? h - 12 : h}시';
+      bestSlot = fmt(best.hour);
+      weakSlot = fmt(weak.hour);
+    }
+    final subjectMinMap = <String, int>{};
+    final subjectFocusWeightMap = <String, double>{};
+    final subjectFocusMinMap = <String, int>{};
+    final subjectNameMap = <String, String>{};
+    for (final b in buckets) {
+      subjectMinMap[b.subjectId] = (subjectMinMap[b.subjectId] ?? 0) + b.minutes;
+      subjectNameMap[b.subjectId] = b.subjectName;
+      if (b.avgFocus != null && b.minutes > 0) {
+        subjectFocusWeightMap[b.subjectId] =
+            (subjectFocusWeightMap[b.subjectId] ?? 0.0) + b.avgFocus! * b.minutes;
+        subjectFocusMinMap[b.subjectId] = (subjectFocusMinMap[b.subjectId] ?? 0) + b.minutes;
+      }
+    }
+    String mostStudied = '-', lowestFocus = '-';
+    if (subjectMinMap.isNotEmpty) {
+      final maxId = subjectMinMap.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+      mostStudied = subjectNameMap[maxId] ?? '-';
+    }
+    if (subjectFocusMinMap.isNotEmpty) {
+      final avgMap =
+          subjectFocusMinMap.map((id, mins) => MapEntry(id, subjectFocusWeightMap[id]! / mins));
+      final minId = avgMap.entries.reduce((a, b) => a.value < b.value ? a : b).key;
+      lowestFocus = subjectNameMap[minId] ?? '-';
+    }
+    final modeStr = ratio.totalMinutes > 0
+        ? '학습 ${(ratio.studyRatio * 100).toInt()}%, 시험 ${(ratio.examRatio * 100).toInt()}%'
+        : '-';
+    final prompt = SlmPrompts.reportInsight(
+      period: period,
+      totalStudyTime: formatMinutes(report.totalMinutes),
+      completedTodos: report.completedTodos,
+      averageFocusPercent: report.avgFocus?.toInt() ?? 0,
+      totalSessions: activities.length,
+      bestFocusTimeSlot: bestSlot,
+      weakFocusTimeSlot: weakSlot,
+      mostStudiedSubject: mostStudied,
+      lowestFocusSubject: lowestFocus,
+      studyModeRatio: modeStr,
+    );
+    try {
+      final slm = ref.read(slmServiceProvider);
+      await slm.load();
+      final buf = StringBuffer();
+      await for (final token in slm.generate(prompt)) {
+        buf.write(token);
+        if (mounted) setState(() => _insightText = buf.toString());
+      }
+    } catch (e) {
+      if (mounted) setState(() => _insightText = SlmPrompts.fallbackCoaching);
+    } finally {
+      if (mounted) setState(() => _insightLoading = false);
+    }
+  }
+
+  Widget _buildDailyInsightCard(
+    bool isDark,
+    DailyReport report,
+    List<HourlyBucket> buckets,
+    List<ActivityEntry> activities,
+    ModeRatio ratio,
+  ) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7B89FF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('AI',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF7B89FF))),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '학습 인사이트',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF222222),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_insightText != null)
+            Text(
+              _insightText!,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? const Color(0xFFCCCCCC) : const Color(0xFF444444),
+                height: 1.6,
+              ),
+            )
+          else if (_insightLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (!Platform.isIOS && !Platform.isAndroid)
+            Text(
+              'iOS/Android에서만 지원됩니다.',
+              style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? const Color(0xFF666666) : Colors.grey),
+            )
+          else
+            GestureDetector(
+              onTap: () => _generateDailyInsight(
+                report: report,
+                buckets: buckets,
+                activities: activities,
+                ratio: ratio,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7B89FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '인사이트 생성',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -641,6 +818,20 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
                     ),
                     ),
                     const SizedBox(height: 16),
+
+                    // AI 학습 인사이트
+                    if ((dailyReport.valueOrNull?.totalMinutes ?? 0) > 0)
+                      _FadeSlideIn(
+                        delay: const Duration(milliseconds: 380),
+                        child: _buildDailyInsightCard(
+                          isDark,
+                          dailyReport.value!,
+                          hourlyBuckets.value ?? [],
+                          activities.value ?? [],
+                          modeRatio.value ?? ModeRatio.empty,
+                        ),
+                      ),
+                    const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -748,6 +939,8 @@ class _WeeklyTab extends ConsumerStatefulWidget {
 class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
   int? _selectedDayIndex;
   DateTime _weekStart = _getWeekStart(DateTime.now());
+  String? _insightText;
+  bool _insightLoading = false;
 
   static DateTime _getWeekStart(DateTime d) {
     final day = DateTime(d.year, d.month, d.day);
@@ -760,7 +953,140 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
     setState(() {
       _weekStart = next;
       _selectedDayIndex = null;
+      _insightText = null;
+      _insightLoading = false;
     });
+  }
+
+  Future<void> _generateWeeklyInsight(WeeklyReport report) async {
+    if (_insightLoading) return;
+    setState(() {
+      _insightLoading = true;
+      _insightText = null;
+    });
+    final end = _weekStart.add(const Duration(days: 6));
+    final period = '${_weekStart.month}/${_weekStart.day} - ${end.month}/${end.day}';
+    const weekdays = ['', '월', '화', '수', '목', '금', '토', '일'];
+    final bestDay = report.maxFocusDay != null
+        ? '${report.maxFocusDay!.month}/${report.maxFocusDay!.day}(${weekdays[report.maxFocusDay!.weekday]})'
+        : '-';
+    final subjectMinMap = <String, int>{};
+    final subjectNameMap = <String, String>{};
+    for (final b in report.buckets) {
+      subjectMinMap[b.subjectId] = (subjectMinMap[b.subjectId] ?? 0) + b.minutes;
+      subjectNameMap[b.subjectId] = b.subjectName;
+    }
+    String mostStudied = '-';
+    if (subjectMinMap.isNotEmpty) {
+      final maxId = subjectMinMap.entries.reduce((a, b) => a.value > b.value ? a : b).key;
+      mostStudied = subjectNameMap[maxId] ?? '-';
+    }
+    final prompt = SlmPrompts.reportInsight(
+      period: '이번 주 ($period)',
+      totalStudyTime: formatMinutes(report.totalMinutes),
+      completedTodos: report.completedTodos,
+      averageFocusPercent: report.maxFocusValue?.toInt() ?? 0,
+      totalSessions: report.buckets.length,
+      bestFocusTimeSlot: bestDay,
+      weakFocusTimeSlot: '-',
+      mostStudiedSubject: mostStudied,
+      lowestFocusSubject: '-',
+      studyModeRatio: '-',
+    );
+    try {
+      final slm = ref.read(slmServiceProvider);
+      await slm.load();
+      final buf = StringBuffer();
+      await for (final token in slm.generate(prompt)) {
+        buf.write(token);
+        if (mounted) setState(() => _insightText = buf.toString());
+      }
+    } catch (e) {
+      if (mounted) setState(() => _insightText = SlmPrompts.fallbackCoaching);
+    } finally {
+      if (mounted) setState(() => _insightLoading = false);
+    }
+  }
+
+  Widget _buildWeeklyInsightCard(bool isDark, WeeklyReport report) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7B89FF).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('AI',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF7B89FF))),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '주간 학습 인사이트',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF222222),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (_insightText != null)
+            Text(
+              _insightText!,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? const Color(0xFFCCCCCC) : const Color(0xFF444444),
+                height: 1.6,
+              ),
+            )
+          else if (_insightLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else if (!Platform.isIOS && !Platform.isAndroid)
+            Text(
+              'iOS/Android에서만 지원됩니다.',
+              style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? const Color(0xFF666666) : Colors.grey),
+            )
+          else
+            GestureDetector(
+              onTap: () => _generateWeeklyInsight(report),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7B89FF),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  '인사이트 생성',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   String _weekLabel() {
@@ -1175,6 +1501,13 @@ class _WeeklyTabState extends ConsumerState<_WeeklyTab> {
                     ),
                   ),
                   ),
+                  if (report.totalMinutes > 0) ...[
+                    _FadeSlideIn(
+                      delay: const Duration(milliseconds: 380),
+                      child: _buildWeeklyInsightCard(isDark, report),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   const SizedBox(height: 80),
                 ],
               ),
