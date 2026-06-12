@@ -30,11 +30,34 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/entities/study_session.dart';
 import '../providers/study_session_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
+import '../services/alarm_service.dart';
 import '../widgets/concentration_service.dart';
+import '../providers/slm_provider.dart';
+import '../providers/study_qa_provider.dart';
+import '../widgets/prompts/slm_prompts.dart';
+import 'alarm_settings_screen.dart';
+
+// ─────────────────────────────────────────────
+// 진행 중 세션 SharedPreferences 키
+// (▶ 누른 뒤 사용자가 백아웃해도 다음 카메라 진입 시 같은 위치에서 복원)
+// ─────────────────────────────────────────────
+const _kPrefSessionId = 's_paused.session_id';
+const _kPrefSessionStartedAtMs = 's_paused.session_started_at_ms';
+const _kPrefGoalId = 's_paused.goal_id';
+const _kPrefSubjectId = 's_paused.subject_id';
+const _kPrefTodoId = 's_paused.todo_id';
+const _kPrefTaskText = 's_paused.task_text';
+const _kPrefSubjectName = 's_paused.subject_name';
+const _kPrefSubjectColor = 's_paused.subject_color_argb';
+const _kPrefFocusMinutes = 's_paused.focus_minutes';
+const _kPrefBreakMinutes = 's_paused.break_minutes';
+const _kPrefIsBreakMode = 's_paused.is_break_mode';
+const _kPrefRemainingSeconds = 's_paused.remaining_seconds';
 
 // ── 상수 ──────────────────────────────────────────────────────────────────────
 // 동적 추천 정책 기준값
@@ -83,6 +106,25 @@ class CameraTask {
 
   /// 색 fallback (지정 안 됐으면 기본 액센트)
   Color get color => subjectColor ?? _kAccent;
+
+  /// 오늘의 계획(TodayPlanEntry 리스트) 을 카메라용 CameraTask 리스트로 변환.
+  /// 모든 페이지(홈/캘린더/리포트/과목/내 페이지) 에서 카메라 진입 시 동일한
+  /// 데이터 소스를 보장하기 위한 단일 헬퍼.
+  static List<CameraTask> fromTodayPlan(List<TodayPlanEntry> entries) {
+    return [
+      for (final e in entries)
+        for (final t in e.goal.todos)
+          if (t.text.isNotEmpty)
+            CameraTask(
+              todoId: t.id,
+              goalId: e.goal.id,
+              subjectId: e.subject.id,
+              text: t.text,
+              subjectName: e.subject.name,
+              subjectColor: e.subject.color,
+            ),
+    ];
+  }
 }
 
 class CameraPage extends ConsumerStatefulWidget {
@@ -91,7 +133,7 @@ class CameraPage extends ConsumerStatefulWidget {
 
   const CameraPage({
     super.key,
-    required this.initialSelectedTask,
+    this.initialSelectedTask, 
     required this.allTasks,
   });
 
@@ -125,16 +167,96 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   bool _serviceReady = false;
   int _frameCounter = 0; // 매 3번째 프레임만 처리 (≈ 10fps)
 
+  // ── 알람 (세션 종료 시 사운드 + 진동) ─────────────────────────────────────
+  final AlarmService _alarm = AlarmService();
+
   @override
   void initState() {
     super.initState();
-    _selectedTask = widget.initialSelectedTask;
     _doneMap = {for (final t in widget.allTasks) t.todoId: false};
-    if (_selectedTask != null) {
-      _startSession(_selectedTask!);
-      // 타이머는 사용자가 ▶ 버튼을 누를 때만 시작 (자동 시작 X)
-    }
+    _alarm.init();
+    // 세션은 ▶ 누를 때 _startTimer 에서 시작.
+    // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
     _initCamera();
+    // 직전에 ▶ 누르고 백아웃한 진행 중 세션이 있으면 복원 (paused 상태로).
+    _restorePausedState();
+  }
+
+  // ── 진행 중 세션 영속화 (SharedPreferences) ───────────────────────────────
+  Future<void> _savePausedState() async {
+    if (_activeSession == null || _selectedTask == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final t = _selectedTask!;
+    await prefs.setString(_kPrefSessionId, _activeSession!.id);
+    await prefs.setInt(
+        _kPrefSessionStartedAtMs, _activeSession!.startedAt.millisecondsSinceEpoch);
+    await prefs.setString(_kPrefGoalId, t.goalId);
+    await prefs.setString(_kPrefSubjectId, t.subjectId);
+    await prefs.setString(_kPrefTodoId, t.todoId);
+    await prefs.setString(_kPrefTaskText, t.text);
+    await prefs.setString(_kPrefSubjectName, t.subjectName ?? '');
+    await prefs.setInt(_kPrefSubjectColor, t.subjectColor?.toARGB32() ?? 0);
+    await prefs.setInt(_kPrefFocusMinutes, _focusMinutes);
+    await prefs.setInt(_kPrefBreakMinutes, _breakMinutes);
+    await prefs.setBool(_kPrefIsBreakMode, _isBreakMode);
+    await prefs.setInt(_kPrefRemainingSeconds, _remainingSeconds);
+  }
+
+  Future<void> _clearPausedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final k in const [
+      _kPrefSessionId,
+      _kPrefSessionStartedAtMs,
+      _kPrefGoalId,
+      _kPrefSubjectId,
+      _kPrefTodoId,
+      _kPrefTaskText,
+      _kPrefSubjectName,
+      _kPrefSubjectColor,
+      _kPrefFocusMinutes,
+      _kPrefBreakMinutes,
+      _kPrefIsBreakMode,
+      _kPrefRemainingSeconds,
+    ]) {
+      await prefs.remove(k);
+    }
+  }
+
+  Future<void> _restorePausedState() async {
+    final prefs = await SharedPreferences.getInstance();
+    final sessId = prefs.getString(_kPrefSessionId);
+    final startedAtMs = prefs.getInt(_kPrefSessionStartedAtMs);
+    final goalId = prefs.getString(_kPrefGoalId);
+    if (sessId == null || startedAtMs == null || goalId == null) return;
+
+    // _activeSession 재구성 (DB 조회 없이 prefs 값으로 충분)
+    _activeSession = StudySession(
+      id: sessId,
+      goalId: goalId,
+      startedAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
+    );
+
+    final colorArgb = prefs.getInt(_kPrefSubjectColor) ?? 0;
+    if (!mounted) return;
+    setState(() {
+      _selectedTask = CameraTask(
+        todoId: prefs.getString(_kPrefTodoId) ?? '',
+        goalId: goalId,
+        subjectId: prefs.getString(_kPrefSubjectId) ?? '',
+        text: prefs.getString(_kPrefTaskText) ?? '',
+        subjectName: prefs.getString(_kPrefSubjectName),
+        subjectColor: colorArgb == 0 ? null : Color(colorArgb),
+      );
+      _focusMinutes =
+          prefs.getInt(_kPrefFocusMinutes) ?? _kDefaultFocusMinutes;
+      _breakMinutes =
+          prefs.getInt(_kPrefBreakMinutes) ?? _kDefaultBreakMinutes;
+      _isBreakMode = prefs.getBool(_kPrefIsBreakMode) ?? false;
+      _remainingSeconds =
+          prefs.getInt(_kPrefRemainingSeconds) ?? (_focusMinutes * 60);
+      _isRunning = false; // 복원 후엔 일시정지 상태 — ▶ 다시 눌러야 진행
+    });
   }
 
   @override
@@ -146,6 +268,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
     _camCtrl?.dispose();
     _service.dispose();
+    _alarm.dispose();
     super.dispose();
   }
 
@@ -234,12 +357,25 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           subjectId: _selectedTask!.subjectId,
         );
     _activeSession = null;
+    // 세션을 명시적으로 종료했으므로 paused 상태도 제거
+    await _clearPausedState();
   }
 
   // ── 타이머 제어 ──────────────────────────────────────────────────────────
-  void _startTimer() {
+  // ▶ 를 눌러야 비로소 study_sessions 행이 DB 에 생성된다.
+  // (과목 선택만으로 세션을 만들지 않음 — 선택 후 그냥 나가면 focus_score 0 → FSRS Again → 오늘의 계획에서 사라지는 버그 방지.)
+  Future<void> _startTimer() async {
+    if (!_isBreakMode &&
+        _activeSession == null &&
+        _selectedTask != null &&
+        _selectedTask!.goalId.isNotEmpty) {
+      await _startSession(_selectedTask!);
+      if (!mounted) return;
+    }
     _ticker?.cancel();
     setState(() => _isRunning = true);
+    // 진행 중 세션을 prefs 에 저장 — 백아웃 시 복원 가능하도록
+    await _savePausedState();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       if (_remainingSeconds <= 1) {
@@ -250,9 +386,11 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     });
   }
 
-  void _pauseTimer() {
+  Future<void> _pauseTimer() async {
     _ticker?.cancel();
     setState(() => _isRunning = false);
+    // 일시정지된 시점의 남은 시간 다시 저장 (다음 진입 시 정확히 이어 가도록)
+    await _savePausedState();
   }
 
   void _toggleRunning() {
@@ -310,6 +448,10 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       await _endSession();
       if (!mounted) return;
 
+      // 세션 종료 알람 (사용자 설정에 따라 소리/진동/무음)
+      await _alarm.play();
+      if (!mounted) return;
+
       // 평가 팝업 (확인 누를 때까지 대기)
       await showDialog(
         context: context,
@@ -321,12 +463,14 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           currentFocusMinutes: _focusMinutes,
         ),
       );
+      // 평가 팝업 닫히면 알람 중지
+      await _alarm.stop();
       if (!mounted) return;
 
       // 추천 적용 + 다음 세션을 위한 service reset
+      // 다음 집중 세션은 휴식 후 사용자가 ▶ 누를 때 _startTimer 에서 시작.
+      // (여기서 미리 만들면 휴식 중 뒤로가기 시 0점 종료 → FSRS Again 되는 동일 버그 발생)
       if (_serviceReady) _service.reset();
-      if (_selectedTask != null) await _startSession(_selectedTask!);
-      if (!mounted) return;
 
       // 휴식 모드 진입 — 카메라 image stream 멈춤 (CPU 절약)
       if (_camCtrl?.value.isStreamingImages ?? false) {
@@ -397,6 +541,58 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     }
   }
 
+  Future<void> _onCompleteTap() async {
+    final task = _selectedTask;
+    if (task == null) return;
+
+    // 이미 완료 상태 → 미완료로 바로 토글 (회상 질문 불필요)
+    if (_currentTaskDone) {
+      await _toggleDone();
+      return;
+    }
+
+    // 미완료 → 완료 전환: 다이얼로그가 열려 있는 동안 타이머 일시정지
+    final wasRunning = _isRunning;
+    if (wasRunning) await _pauseTimer();
+
+    if (!mounted) return;
+
+    // Step 1: 완료 확인 다이얼로그
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _ConfirmCompleteDialog(taskText: task.text),
+    );
+
+    if (!mounted) return;
+    if (confirmed != true) {
+      if (wasRunning) await _startTimer();
+      return;
+    }
+
+    // Step 2: 채팅형 회상 질문 다이얼로그
+    final saved = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _RecallChatDialog(
+        taskText: task.text,
+        subjectName: task.subjectName ?? '',
+        subjectColor: task.subjectColor ?? _kAccent,
+        studyMode: 'study', // TODO: goal.mode 연결 시 동적 매핑
+        focusScorePercent: _serviceReady
+            ? (_service.averageScore01 * 100).round()
+            : null,
+        durationMinutes: _focusMinutes,
+      ),
+    );
+
+    if (!mounted) return;
+    if (saved == true) {
+      await _toggleDone();
+    } else if (wasRunning) {
+      await _startTimer();
+    }
+  }
+
   Future<void> _resetSelection() async {
     await _endSession();
     if (!mounted) return;
@@ -412,8 +608,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
 
   Future<void> _selectTask(CameraTask task) async {
     if (_selectedTask?.goalId != task.goalId) {
+      // 이전 task 에 진행 중인 세션이 있으면 종료. 새 세션은 ▶ 누를 때 시작.
       await _endSession();
-      await _startSession(task);
       if (_serviceReady) _service.reset(); // 새 task 선택 시 누적 점수 초기화
     }
     // task 선택만 함. 타이머 시작은 사용자가 ▶ 직접 눌러야 함.
@@ -427,15 +623,18 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ── 뒤로가기 (상단 < 버튼) ──────────────────────────────────────────────
+  // 진행 중 세션이 있으면 종료하지 않고 paused 상태로 보존 → 다음 진입 시
+  // _restorePausedState 가 복원해서 ▶ 누르면 이어서 진행.
+  // (이전엔 _endSession 호출 → focus 0 으로 FSRS Again 처리되며 과목이
+  //  오늘의 계획에서 사라지는 문제가 있었음.)
   Future<void> _onBack() async {
-    await _endSession();
+    _ticker?.cancel();
+    if (_activeSession != null) {
+      // 현재 남은 시간을 prefs 에 저장하고 세션은 그대로 열어둠.
+      await _savePausedState();
+    }
     if (!mounted) return;
-    Navigator.pop(context, {
-      'selectedTask': _selectedTask?.text,
-      'doneMap': {
-        for (final t in widget.allTasks) t.text: _doneMap[t.todoId] ?? false,
-      },
-    });
+    Navigator.pop(context);
   }
 
   // ── BUILD ────────────────────────────────────────────────────────────────
@@ -534,7 +733,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           text: _currentTaskDone ? '미완료' : '완료',
           enabled: hasTask,
           background: _kAccent,
-          onTap: hasTask ? _toggleDone : null,
+          onTap: hasTask ? _onCompleteTap : null,
         ),
         const SizedBox(width: 6),
 
@@ -545,6 +744,31 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           background: isDark ? const Color(0xFF2C2C2C) : Colors.white, // ✅
           textColor: isDark ? Colors.white70 : const Color(0xFF555555), // ✅
           onTap: hasTask ? _resetSelection : null,
+        ),
+        const SizedBox(width: 6),
+
+        // 알람 설정
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AlarmSettingsScreen(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              Icons.notifications_outlined,
+              size: 16,
+              color: isDark ? Colors.white70 : const Color(0xFF555555),
+            ),
+          ),
         ),
       ],
     );
@@ -1517,6 +1741,623 @@ class _Chip extends StatelessWidget {
             fontSize: 13,
             fontWeight: FontWeight.w700,
             color: selected ? Colors.white : const Color(0xFF666666),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 완료 확인 다이얼로그
+// ─────────────────────────────────────────────────────────────────────────────
+class _ConfirmCompleteDialog extends StatelessWidget {
+  final String taskText;
+
+  const _ConfirmCompleteDialog({required this.taskText});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 320),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _kAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.check_circle_outline_rounded,
+                    color: _kAccent, size: 28),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                '잘 하셨어요!',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF222222),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '"$taskText"를 완료할까요?',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF555555),
+                  fontWeight: FontWeight.w600,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '짧은 회상 질문으로 기억을 다져봐요.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF999999),
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: Color(0xFFDDDDDD)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('취소',
+                          style: TextStyle(
+                              color: Color(0xFF888888),
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _kAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('회상 시작',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 채팅형 회상 질문 다이얼로그 (SLM 연동)
+//   - 모델: Gemma-2-2B-IT (flutter_gemma 경유 MediaPipe LLM Inference)
+//   - 1라운드: SLM 회상 질문 → 사용자 답변 → SLM 피드백/힌트
+//   - 2라운드: 사용자 재답변 → SLM 모델 요약 → 저장 가능 상태
+//   - 모델 미로드/실패 시 SlmPrompts.fallback* 사용
+//   Navigator.pop(context, true)  → 완료 저장
+//   Navigator.pop(context, false) → 닫기(저장 안 함)
+// ─────────────────────────────────────────────────────────────────────────────
+enum _ChatRole { ai, user }
+
+class _ChatMsg {
+  final _ChatRole role;
+  final String text;
+  _ChatMsg(this.role, this.text);
+}
+
+class _RecallChatDialog extends ConsumerStatefulWidget {
+  final String taskText;
+  final String subjectName;
+  final Color subjectColor;
+  final String studyMode;
+  final int? focusScorePercent;
+  final int? durationMinutes;
+
+  const _RecallChatDialog({
+    required this.taskText,
+    required this.subjectName,
+    this.subjectColor = _kAccent,
+    this.studyMode = 'study',
+    this.focusScorePercent,
+    this.durationMinutes,
+  });
+
+  @override
+  ConsumerState<_RecallChatDialog> createState() => _RecallChatDialogState();
+}
+
+class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
+  final _ctrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final List<_ChatMsg> _msgs = [];
+  bool _isWaiting = false;
+  bool _isDone = false;
+  int _round = 0; // 0 = 첫 답변, 1 = 힌트 후 재답변
+  String? _question; // SLM 생성 회상 질문 (또는 fallback)
+  String? _firstUserAnswer; // 1라운드 사용자 답변 (Q&A 저장용)
+
+  @override
+  void initState() {
+    super.initState();
+    _kickOff();
+  }
+
+  /// 최초 진입 시 SLM 으로 회상 질문 1문장 생성.
+  /// 모델 미준비/실패 시 SlmPrompts.fallbackQuestion() 사용.
+  Future<void> _kickOff() async {
+    setState(() => _isWaiting = true);
+    final q = await _generateInitialQuestion();
+    if (!mounted) return;
+    setState(() {
+      _question = q;
+      _msgs.add(_ChatMsg(_ChatRole.ai, q));
+      _isWaiting = false;
+    });
+    _scrollToBottom();
+  }
+
+  Future<String> _generateInitialQuestion() async {
+    try {
+      final downloadState = ref.read(slmDownloadStateProvider);
+      if (!downloadState.isReady) {
+        return SlmPrompts.fallbackQuestion();
+      }
+      final slm = ref.read(slmServiceProvider);
+      if (!slm.modelReady) await slm.load();
+      final prompt = SlmPrompts.recallQuestion(
+        subject: widget.subjectName,
+        title: widget.taskText,
+        mode: widget.studyMode,
+        focusScorePercent: widget.focusScorePercent,
+        durationMinutes: widget.durationMinutes,
+      );
+      final raw = await slm.generateAll(prompt);
+      final validated = slm.validateRecallQuestion(raw);
+      return validated.isEmpty ? SlmPrompts.fallbackQuestion() : validated;
+    } catch (e) {
+      debugPrint('[RecallChat] SLM 질문 생성 실패: $e');
+      return SlmPrompts.fallbackQuestion();
+    }
+  }
+
+  Future<String> _generateFeedback(String userAnswer) async {
+    try {
+      final slm = ref.read(slmServiceProvider);
+      if (!slm.modelReady) return SlmPrompts.fallbackFeedback;
+      final prompt = SlmPrompts.evaluateAnswer(
+        question: _question ?? '',
+        userAnswer: userAnswer,
+        subject: widget.subjectName,
+        title: widget.taskText,
+        focusScorePercent: widget.focusScorePercent,
+        durationMinutes: widget.durationMinutes,
+      );
+      final raw = (await slm.generateAll(prompt)).trim();
+      return raw.isEmpty ? SlmPrompts.fallbackFeedback : raw;
+    } catch (e) {
+      debugPrint('[RecallChat] SLM 피드백 실패: $e');
+      return SlmPrompts.fallbackFeedback;
+    }
+  }
+
+  Future<String> _generateSummary() async {
+    try {
+      final slm = ref.read(slmServiceProvider);
+      if (!slm.modelReady) return _fallbackSummary();
+      final prompt = SlmPrompts.modelSummary(
+        question: _question ?? '',
+        subject: widget.subjectName,
+        title: widget.taskText,
+        mode: widget.studyMode,
+      );
+      final raw = (await slm.generateAll(prompt)).trim();
+      return raw.isEmpty ? _fallbackSummary() : raw;
+    } catch (e) {
+      debugPrint('[RecallChat] SLM 요약 실패: $e');
+      return _fallbackSummary();
+    }
+  }
+
+  String _fallbackSummary() =>
+      '오늘 학습한 ${widget.taskText} 내용을 한 줄로 정리해 두면 다음 복습이 수월해져요.';
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final answer = _ctrl.text.trim();
+    if (answer.isEmpty || _isWaiting || _question == null) return;
+
+    setState(() {
+      _msgs.add(_ChatMsg(_ChatRole.user, answer));
+      _ctrl.clear();
+      _isWaiting = true;
+    });
+    _scrollToBottom();
+
+    if (_round == 0) {
+      _firstUserAnswer = answer; // 1라운드 답변 저장
+      // 1라운드: SLM 피드백 → 재답변 유도
+      final feedback = await _generateFeedback(answer);
+      if (!mounted) return;
+      setState(() {
+        _msgs.add(_ChatMsg(_ChatRole.ai, feedback));
+        _isWaiting = false;
+        _round = 1;
+      });
+    } else {
+      // 2라운드: SLM 모델 요약 → 저장
+      final summary = await _generateSummary();
+      if (!mounted) return;
+      setState(() {
+        _msgs.add(_ChatMsg(_ChatRole.ai, summary));
+        _isWaiting = false;
+        _isDone = true;
+      });
+    }
+    _scrollToBottom();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = widget.subjectName.isNotEmpty
+        ? '${widget.subjectName} · ${widget.taskText}'
+        : widget.taskText;
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+      child: Column(
+        children: [
+          _buildHeader(),
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            child: Center(
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F2F2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                      fontSize: 12, color: Color(0xFF666666)),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollCtrl,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              itemCount: _msgs.length + (_isWaiting ? 1 : 0),
+              itemBuilder: (ctx, i) {
+                if (_isWaiting && i == _msgs.length) {
+                  return _buildTypingBubble();
+                }
+                return _buildBubble(_msgs[i]);
+              },
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF0F0F0)),
+          _isDone ? _buildDoneBar() : _buildInputBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 12, 14),
+      child: Row(
+        children: [
+          const Icon(Icons.auto_awesome_rounded, color: _kAccent, size: 20),
+          const SizedBox(width: 8),
+          const Text(
+            '학습 도우미',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF222222)),
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: () => Navigator.pop(context, false),
+            icon: const Icon(Icons.close_rounded,
+                size: 20, color: Color(0xFF888888)),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBubble(_ChatMsg msg) {
+    final isAi = msg.role == _ChatRole.ai;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment:
+            isAi ? MainAxisAlignment.start : MainAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (isAi)
+            Container(
+              width: 28,
+              height: 28,
+              margin: const EdgeInsets.only(right: 8, top: 2),
+              decoration: BoxDecoration(
+                color: _kAccent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: _kAccent, size: 14),
+            ),
+          Flexible(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isAi ? Colors.white : _kAccent,
+                border: isAi
+                    ? Border.all(color: const Color(0xFFEEEEEE))
+                    : null,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isAi ? 4 : 16),
+                  bottomRight: Radius.circular(isAi ? 16 : 4),
+                ),
+                boxShadow: isAi
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
+              ),
+              child: Text(
+                msg.text,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isAi ? const Color(0xFF333333) : Colors.white,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypingBubble() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            margin: const EdgeInsets.only(right: 8, top: 2),
+            decoration: BoxDecoration(
+              color: _kAccent.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.auto_awesome_rounded,
+                color: _kAccent, size: 14),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: const Color(0xFFEEEEEE)),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _TypingDot(delay: 0),
+                SizedBox(width: 4),
+                _TypingDot(delay: 180),
+                SizedBox(width: 4),
+                _TypingDot(delay: 360),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              maxLines: 1,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _send(),
+              decoration: InputDecoration(
+                hintText: '답변을 입력하세요',
+                hintStyle: const TextStyle(
+                    color: Color(0xFFBBBBBB), fontSize: 14),
+                filled: true,
+                fillColor: const Color(0xFFF8F8F8),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _send,
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: const BoxDecoration(
+                color: _kAccent,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send_rounded,
+                  color: Colors.white, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _saveQaEntry() {
+    if (_question == null || _firstUserAnswer == null) return;
+    ref.read(studyQaProvider.notifier).add(
+          StudyQaEntry(
+            subjectName: widget.subjectName,
+            subjectColorValue: widget.subjectColor.value,
+            question: _question!,
+            answer: _firstUserAnswer!,
+            date: DateTime.now(),
+          ),
+        );
+  }
+
+  Widget _buildDoneBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () {
+            _saveQaEntry();
+            Navigator.pop(context, true);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _kAccent,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          child: const Text('저장하기',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w700)),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 타이핑 인디케이터 점 (위아래 bounce 애니메이션)
+// ─────────────────────────────────────────────────────────────────────────────
+class _TypingDot extends StatefulWidget {
+  final int delay;
+  const _TypingDot({required this.delay});
+
+  @override
+  State<_TypingDot> createState() => _TypingDotState();
+}
+
+class _TypingDotState extends State<_TypingDot>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _ctrl.repeat(reverse: true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Transform.translate(
+        offset: Offset(0, -4 * _ctrl.value),
+        child: Container(
+          width: 6,
+          height: 6,
+          decoration: const BoxDecoration(
+            color: Color(0xFFAAAAAA),
+            shape: BoxShape.circle,
           ),
         ),
       ),

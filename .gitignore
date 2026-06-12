@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Large model files
+assets/models/*.task
+
+# Xcode device containers
+ios/*.xcappdata
+

@@ -65,5 +65,13 @@ class StudySessionNotifier extends AsyncNotifier<List<StudySession>> {
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
     ref.invalidate(calendarMonthDataProvider);
+
+    // 리포트 페이지의 family provider 들 — 캐시가 영구라 명시적 invalidate 필요.
+    // (이걸 안 하면 세션 종료 후 리포트 페이지에 새 세션이 한참 동안 안 보임)
+    ref.invalidate(dailyReportProvider);
+    ref.invalidate(dailyHourlyBucketsProvider);
+    ref.invalidate(dailyModeRatioProvider);
+    ref.invalidate(dailyActivitiesProvider);
+    ref.invalidate(weeklyReportProvider);
   }
 }

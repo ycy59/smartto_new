@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/entities/study_goal.dart';
 import '../providers/calendar_provider.dart';
-import '../providers/theme_provider.dart'; // ✅ 추가
+import '../providers/theme_provider.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
-import 'main_screen.dart';
-import 'subject_page.dart';
-import 'report_page.dart';
 
 class CalendarPageShell extends ConsumerStatefulWidget {
   final int currentIndex;
@@ -48,8 +46,8 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
     });
   }
 
-Future<void> _showStartDialog() async {
-    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+  Future<void> _showStartDialog() async {
+    final isDark = ref.read(themeProvider) == ThemeMode.dark;
 
     final result = await showDialog<bool>(
       context: context,
@@ -61,7 +59,7 @@ Future<void> _showStartDialog() async {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -79,7 +77,7 @@ Future<void> _showStartDialog() async {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                    color: isDark ? Colors.white : const Color(0xFF232323),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -89,7 +87,7 @@ Future<void> _showStartDialog() async {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
-                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -103,12 +101,12 @@ Future<void> _showStartDialog() async {
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8),
                             foregroundColor: const Color(0xFF9A9A9A),
                           ),
                           child: const Text(
@@ -155,7 +153,6 @@ Future<void> _showStartDialog() async {
       context,
       MaterialPageRoute(
         builder: (context) => const CameraPage(
-          initialSelectedTask: null,
           allTasks: [],
         ),
       ),
@@ -231,50 +228,29 @@ Future<void> _showStartDialog() async {
   String _monthTitle(DateTime d) {
     const months = [
       '',
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December',
     ];
     return '${months[d.month]} ${d.year}';
   }
 
-  void _openDetail(
-    DateTime day,
-    CalendarMonthData data,
-  ) {
+  void _selectDay(DateTime day) {
     setState(() => _selectedDate = day);
-    final stats = data.focusByDay[_key(day)] ?? DayFocusStats.empty;
-    final reviews = data.reviewsByDay[_key(day)] ?? const <CalendarReviewEntry>[];
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CalendarDetailPage(
-          selectedDate: day,
-          focusStats: stats,
-          reviews: reviews,
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
     final days = _buildMonthDays(_focusedMonth);
     final monthAsync = ref.watch(calendarMonthDataProvider(_focusedMonth));
     final data = monthAsync.valueOrNull ?? CalendarMonthData.empty;
 
+    final selectedKey = _key(_selectedDate);
+    final selectedStats = data.focusByDay[selectedKey] ?? DayFocusStats.empty;
+    final selectedReviews = data.reviewsByDay[selectedKey] ?? const <CalendarReviewEntry>[];
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -286,80 +262,85 @@ Future<void> _showStartDialog() async {
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 14),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _changeMonth(-1),
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: isDark
-                                        ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFF1F1F1), // ✅
-                                    child: Icon(
-                                      Icons.chevron_left,
-                                      size: 16,
-                                      color: isDark ? Colors.white70 : Colors.grey, // ✅
+                      // ✅ SingleChildScrollView로 전체를 스크롤 가능하게
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 14),
+                            // 월 네비게이터
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _changeMonth(-1),
+                                    child: CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF3A3A3A)
+                                          : const Color(0xFFF1F1F1),
+                                      child: Icon(
+                                        Icons.chevron_left,
+                                        size: 16,
+                                        color: isDark ? Colors.white70 : Colors.grey,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Text(
-                                  _monthTitle(_focusedMonth),
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : Colors.black, // ✅
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => _changeMonth(1),
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: isDark
-                                        ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFF1F1F1), // ✅
-                                    child: Icon(
-                                      Icons.chevron_right,
-                                      size: 16,
-                                      color: isDark ? Colors.white70 : Colors.grey, // ✅
+                                  Text(
+                                    _monthTitle(_focusedMonth),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : Colors.black,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  GestureDetector(
+                                    onTap: () => _changeMonth(1),
+                                    child: CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF3A3A3A)
+                                          : const Color(0xFFF1F1F1),
+                                      child: Icon(
+                                        Icons.chevron_right,
+                                        size: 16,
+                                        color: isDark ? Colors.white70 : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _WeekText('MON'),
-                                _WeekText('TUE'),
-                                _WeekText('WED'),
-                                _WeekText('THU'),
-                                _WeekText('FRI'),
-                                _WeekText('SAT', color: Color(0xFF7EA3FF)),
-                                _WeekText('SUN', color: Color(0xFFF08AA1)),
-                              ],
+                            const SizedBox(height: 14),
+                            // 요일 헤더
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _WeekText('MON'),
+                                  _WeekText('TUE'),
+                                  _WeekText('WED'),
+                                  _WeekText('THU'),
+                                  _WeekText('FRI'),
+                                  _WeekText('SAT', color: Color(0xFF7EA3FF)),
+                                  _WeekText('SUN', color: Color(0xFFF08AA1)),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          Expanded(
-                            child: GridView.builder(
+                            const SizedBox(height: 10),
+                            // ✅ GridView — shrinkWrap으로 높이 자동 계산
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 8,
                               ),
-                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: days.length,
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
@@ -370,21 +351,19 @@ Future<void> _showStartDialog() async {
                                 final day = days[index];
                                 if (day == null) return const SizedBox();
 
-                                final isSelected =
-                                    _isSameDay(day, _selectedDate);
+                                final isSelected = _isSameDay(day, _selectedDate);
                                 final key = _key(day);
                                 final stats = data.focusByDay[key];
-                                final reviews =
-                                    data.reviewsByDay[key] ?? const [];
+                                final reviews = data.reviewsByDay[key] ?? const [];
 
                                 return GestureDetector(
-                                  onTap: () => _openDetail(day, data),
+                                  onTap: () => _selectDay(day),
                                   child: Container(
                                     margin: const EdgeInsets.all(2),
                                     decoration: BoxDecoration(
                                       color: isSelected
                                           ? isDark
-                                              ? const Color(0xFF3D2B2A) // ✅
+                                              ? const Color(0xFF3D2B2A)
                                               : const Color(0xFFF9F4F4)
                                           : Colors.transparent,
                                       borderRadius: BorderRadius.circular(10),
@@ -398,11 +377,10 @@ Future<void> _showStartDialog() async {
                                             fontSize: 13,
                                             color: day.weekday == DateTime.sunday
                                                 ? const Color(0xFFF08AA1)
-                                                : day.weekday ==
-                                                        DateTime.saturday
+                                                : day.weekday == DateTime.saturday
                                                     ? const Color(0xFF7EA3FF)
                                                     : isDark
-                                                        ? Colors.white // ✅
+                                                        ? Colors.white
                                                         : Colors.black,
                                           ),
                                         ),
@@ -418,15 +396,30 @@ Future<void> _showStartDialog() async {
                                 );
                               },
                             ),
-                          ),
-                        ],
+
+                            // ✅ 구분선
+                            Divider(
+                              height: 1,
+                              color: isDark
+                                  ? const Color(0xFF2C2C2C)
+                                  : const Color(0xFFF0F0F0),
+                            ),
+
+                            // ✅ 인라인 상세 패널 — Expanded 없이 그냥 배치
+                            _InlineDetailPanel(
+                              selectedDate: _selectedDate,
+                              focusStats: selectedStats,
+                              reviews: selectedReviews,
+                              isDark: isDark,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-                CalendarBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
+                AppBottomNavBar(
+                  activeTab: AppNavTab.calendar,
                   nickname: widget.nickname,
                   profileImagePath: widget.profileImagePath,
                   onTapTomato: _showStartDialog,
@@ -440,25 +433,19 @@ Future<void> _showStartDialog() async {
   }
 }
 
-// ✅ StatefulWidget → ConsumerStatefulWidget
-class CalendarDetailPage extends ConsumerStatefulWidget {
+// ✅ 인라인 상세 패널
+class _InlineDetailPanel extends StatelessWidget {
   final DateTime selectedDate;
   final DayFocusStats focusStats;
   final List<CalendarReviewEntry> reviews;
+  final bool isDark;
 
-  const CalendarDetailPage({
-    super.key,
+  const _InlineDetailPanel({
     required this.selectedDate,
     required this.focusStats,
     required this.reviews,
+    required this.isDark,
   });
-
-  @override
-  ConsumerState<CalendarDetailPage> createState() => _CalendarDetailPageState();
-}
-
-class _CalendarDetailPageState extends ConsumerState<CalendarDetailPage> {
-  double _dragOffset = 0;
 
   String _weekdayKorean(int weekday) {
     const names = ['', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
@@ -483,147 +470,88 @@ class _CalendarDetailPageState extends ConsumerState<CalendarDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
-
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
-      body: SafeArea(
-        child: GestureDetector(
-          onVerticalDragUpdate: (details) {
-            if (details.delta.dy > 0) {
-              setState(() => _dragOffset += details.delta.dy);
-            }
-          },
-          onVerticalDragEnd: (_) {
-            if (_dragOffset > 120) {
-              Navigator.pop(context);
-            } else {
-              setState(() => _dragOffset = 0);
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            transform: Matrix4.translationValues(0, _dragOffset, 0),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-                        Center(
-                          child: Container(
-                            width: 36,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF555555)
-                                  : const Color(0xFFD0D0D0), // ✅
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            '${widget.selectedDate.month}월 ${widget.selectedDate.day}일 ${_weekdayKorean(widget.selectedDate.weekday)}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : Colors.black, // ✅
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        if (widget.focusStats.sessionCount > 0)
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            child: _FocusSummaryCard(
-                              stats: widget.focusStats,
-                              isDark: isDark, // ✅
-                            ),
-                          ),
-                        const SizedBox(height: 14),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            widget.reviews.isEmpty
-                                ? '복습 일정 없음'
-                                : '복습 (${widget.reviews.length}건)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? const Color(0xFFAAAAAA)
-                                  : const Color(0xFF555555), // ✅
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: widget.reviews.isEmpty
-                              ? Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 40),
-                                    child: Text(
-                                      '오늘은 복습할 일정이 없어요',
-                                      style: TextStyle(
-                                        color: isDark
-                                            ? const Color(0xFF666666)
-                                            : const Color(0xFFB3B3B3), // ✅
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      16, 0, 16, 16),
-                                  itemCount: widget.reviews.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 8),
-                                  itemBuilder: (context, index) {
-                                    final r = widget.reviews[index];
-                                    return _ReviewCard(
-                                      entry: r,
-                                      understandingLabel:
-                                          _understandingLabel(
-                                              r.understandingLevel),
-                                      lastReviewLabel:
-                                          _lastReviewLabel(r.lastReview),
-                                      isDark: isDark, // ✅
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 14),
+        // 날짜 헤더
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '${selectedDate.month}월 ${selectedDate.day}일 ${_weekdayKorean(selectedDate.weekday)}',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: isDark ? Colors.white : Colors.black,
             ),
           ),
         ),
-      ),
+        const SizedBox(height: 14),
+        // 집중 요약 카드
+        if (focusStats.sessionCount > 0) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _FocusSummaryCard(stats: focusStats, isDark: isDark),
+          ),
+          const SizedBox(height: 14),
+        ],
+        // 복습 헤더
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            reviews.isEmpty ? '복습 일정 없음' : '복습 (${reviews.length}건)',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // ✅ 복습 목록 — shrinkWrap으로 높이 자동
+        reviews.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    '오늘은 복습할 일정이 없어요',
+                    style: TextStyle(
+                      color: isDark
+                          ? const Color(0xFF666666)
+                          : const Color(0xFFB3B3B3),
+                    ),
+                  ),
+                ),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: reviews.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final r = reviews[index];
+                  return _ReviewCard(
+                    entry: r,
+                    understandingLabel: _understandingLabel(r.understandingLevel),
+                    lastReviewLabel: _lastReviewLabel(r.lastReview),
+                    isDark: isDark,
+                  );
+                },
+              ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
 
 class _FocusSummaryCard extends StatelessWidget {
   final DayFocusStats stats;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _FocusSummaryCard({
     required this.stats,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -632,7 +560,7 @@ class _FocusSummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2020) : const Color(0xFFFCF6F4), // ✅
+        color: isDark ? const Color(0xFF2A2020) : const Color(0xFFFCF6F4),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -651,7 +579,7 @@ class _FocusSummaryCard extends StatelessWidget {
                     strokeWidth: 6,
                     backgroundColor: isDark
                         ? const Color(0xFF4A3535)
-                        : const Color(0xFFF0DDD8), // ✅
+                        : const Color(0xFFF0DDD8),
                     valueColor: const AlwaysStoppedAnimation<Color>(
                       Color(0xFFD97068),
                     ),
@@ -677,7 +605,7 @@ class _FocusSummaryCard extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                         color: isDark
                             ? const Color(0xFF888888)
-                            : const Color(0xFF999999), // ✅
+                            : const Color(0xFF999999),
                       ),
                     ),
                   ],
@@ -693,13 +621,13 @@ class _FocusSummaryCard extends StatelessWidget {
                 _StatRow(
                   label: '총 학습 시간',
                   value: _formatDuration(stats.totalDurationMinutes),
-                  isDark: isDark, // ✅
+                  isDark: isDark,
                 ),
                 const SizedBox(height: 6),
                 _StatRow(
                   label: '완료 세션',
                   value: '${stats.sessionCount}회',
-                  isDark: isDark, // ✅
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -722,12 +650,12 @@ class _FocusSummaryCard extends StatelessWidget {
 class _StatRow extends StatelessWidget {
   final String label;
   final String value;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _StatRow({
     required this.label,
     required this.value,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -744,7 +672,7 @@ class _StatRow extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+            color: isDark ? Colors.white : const Color(0xFF232323),
           ),
         ),
       ],
@@ -756,13 +684,13 @@ class _ReviewCard extends StatelessWidget {
   final CalendarReviewEntry entry;
   final String understandingLabel;
   final String lastReviewLabel;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _ReviewCard({
     required this.entry,
     required this.understandingLabel,
     required this.lastReviewLabel,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -770,7 +698,7 @@ class _ReviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFAFAFA), // ✅
+        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFAFAFA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -793,7 +721,7 @@ class _ReviewCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                    color: isDark ? Colors.white : const Color(0xFF232323),
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -879,180 +807,6 @@ class _TomatoFace extends StatelessWidget {
       width: 22,
       height: 22,
       child: Image.asset(imagePath, fit: BoxFit.contain),
-    );
-  }
-}
-
-class _BottomNavIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _BottomNavIcon({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Icon(icon, color: color, size: 23),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ✅ StatelessWidget → ConsumerWidget
-class CalendarBottomNavBar extends ConsumerWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTapNav;
-  final String nickname;
-  final String? profileImagePath;
-  final VoidCallback onTapTomato;
-
-  const CalendarBottomNavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTapNav,
-    required this.nickname,
-    this.profileImagePath,
-    required this.onTapTomato,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
-
-    return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
-        border: const Border(
-          top: BorderSide(color: Color(0xFFE9E9E9), width: 1),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavIcon(
-            icon: Icons.home,
-            label: 'Home',
-            active: false,
-            onTap: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => MainScreen(
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                    currentIndex: 0,
-                    onTapNav: onTapNav,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-                (route) => false,
-              );
-            },
-          ),
-          _BottomNavIcon(
-            icon: Icons.calendar_month,
-            label: 'Calendar',
-            active: true,
-            onTap: () {},
-          ),
-          _BottomTomatoItem(onTap: onTapTomato),
-          _BottomNavIcon(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => ReportPageShell(
-                    currentIndex: 3,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-          _BottomNavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => SubjectPageShell(
-                    currentIndex: 2,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomTomatoItem extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _BottomTomatoItem({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 46,
-        height: 46,
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/tomato_glasses.png',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: const Color(0xFFD94C43),
-                child: const Center(
-                  child: Text('🍅', style: TextStyle(fontSize: 24)),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
     );
   }
 }

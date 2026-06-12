@@ -88,13 +88,19 @@ class StatsNotifier extends AsyncNotifier<StudyStats> {
 
   void refresh() => ref.invalidateSelf();
 
-  static int _parseGoalMinutes(String s) => switch (s) {
-        '1시간' => 60,
-        '2시간' => 120,
-        '4시간' => 240,
-        '5시간+' => 300,
-        _ => 120,
-      };
+  static int _parseGoalMinutes(String s) {
+    // 새 형식: 분 단위 숫자 문자열 (예: '120')
+    final parsed = int.tryParse(s);
+    if (parsed != null) return parsed;
+    // 기존 형식 호환
+    return switch (s) {
+      '1시간' => 60,
+      '2시간' => 120,
+      '4시간' => 240,
+      '5시간+' => 300,
+      _ => 120,
+    };
+  }
 }
 
 /// 분 → 'XH YM' 형식 (예: 85분 → '1H 25M')

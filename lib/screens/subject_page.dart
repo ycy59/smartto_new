@@ -9,12 +9,11 @@ import '../domain/entities/todo_item.dart' as domain;
 import '../providers/database_provider.dart';
 import '../providers/stats_provider.dart';
 import '../providers/study_goal_provider.dart';
-import '../providers/theme_provider.dart'; // ✅ 추가
+import '../providers/study_qa_provider.dart';
+import '../providers/theme_provider.dart';
 import '../providers/today_plan_provider.dart';
+import '../widgets/app_bottom_nav_bar.dart'; // ✅ 공통 하단바
 import 'camera_page.dart';
-import 'calendar_page.dart';
-import 'main_screen.dart';
-import 'report_page.dart';
 
 /// 앱 전체에서 사용하는 과목 색상 팔레트
 const kSubjectColorPalette = [
@@ -61,10 +60,19 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
   SubjectPageMode _mode = SubjectPageMode.empty;
   int? _selectedIndex;
 
+  final PageController _pageController = PageController();
+  int _currentPageIndex = 0;
+
   @override
   void initState() {
     super.initState();
     _loadSubjectsFromDb();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadSubjectsFromDb() async {
@@ -76,9 +84,6 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
     for (final subject in subjects) {
       final goals = await goalRepo.getBySubject(subject.id);
-      // goal 이 비정상적으로 비어있더라도 subject 자체는 화면에 노출.
-      // 사용자가 직접 "할 일 추가" 로 복구할 수 있게 함 (이전에는 화면에서
-      // 사라져 마치 과목이 통째로 지워진 것처럼 보였음).
       if (goals.isEmpty) {
         result.add(SubjectItem(
           subjectId: subject.id,
@@ -132,7 +137,6 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       color: item.color,
     ));
 
-    // 할 일에서 모드/시험일자 파생
     final derivedMode = item.derivedMode;
     final derivedDate = item.earliestExamDate;
 
@@ -200,7 +204,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
   }
 
   Future<void> _showStartDialog() async {
-    final isDark = ref.read(themeProvider) == ThemeMode.dark; // ✅
+    final isDark = ref.read(themeProvider) == ThemeMode.dark;
 
     final result = await showDialog<bool>(
       context: context,
@@ -212,7 +216,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
           child: Container(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(24),
             ),
             child: Column(
@@ -220,7 +224,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
               children: [
                 Image.asset(
                   'assets/images/tomato_glasses.png',
-                  width: 52,  // subject_page는 52로 유지
+                  width: 52,
                   height: 52,
                   fit: BoxFit.contain,
                 ),
@@ -230,7 +234,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF232323), // ✅
+                    color: isDark ? Colors.white : const Color(0xFF232323),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -240,7 +244,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
-                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F), // ✅
+                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -254,12 +258,12 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5), // ✅
+                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8), // ✅
+                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8),
                             foregroundColor: const Color(0xFF9A9A9A),
                           ),
                           child: const Text(
@@ -302,7 +306,6 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     if (result != true) return;
     if (!mounted) return;
 
-    // 현재 화면의 과목 할일을 CameraTask로 변환
     final cameraTasks = _subjects
         .where((s) => s.goalId != null && s.subjectId != null)
         .expand((s) => s.todos
@@ -328,14 +331,12 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     );
   }
 
-  /// 현재 사용 중이지 않은 색상을 랜덤 선택
   Color _pickUnusedColor() {
     final used = _subjects.map((s) => s.color.toARGB32()).toSet();
     final unused = kSubjectColorPalette
         .where((c) => !used.contains(c.toARGB32()))
         .toList();
     if (unused.isEmpty) {
-      // 팔레트 색상을 모두 사용한 경우 전체에서 랜덤
       return kSubjectColorPalette[Random().nextInt(kSubjectColorPalette.length)];
     }
     unused.shuffle(Random());
@@ -409,28 +410,28 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
+    final isDark = ref.watch(themeProvider) == ThemeMode.dark;
 
     Widget body;
 
     if (_mode == SubjectPageMode.empty) {
       body = SubjectEmptyPage(
         onAddTap: _openAddScreen,
-        isDark: isDark, // ✅
+        isDark: isDark,
       );
     } else if (_mode == SubjectPageMode.add) {
       body = SubjectAddPage(
         onCancel: _openListScreen,
         onComplete: _addSubject,
         defaultColor: _pickUnusedColor(),
-        isDark: isDark, // ✅
+        isDark: isDark,
       );
     } else if (_mode == SubjectPageMode.detail && _selectedIndex != null) {
       body = SubjectDetailPage(
         subject: _subjects[_selectedIndex!],
         onBack: _openListScreen,
         onSave: (updated) => _updateSubject(_selectedIndex!, updated),
-        isDark: isDark, // ✅
+        isDark: isDark,
       );
     } else {
       body = SubjectListPage(
@@ -438,22 +439,49 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
         onAddTap: _openAddScreen,
         onDetailTap: _openDetailScreen,
         onDelete: _deleteSubject,
-        isDark: isDark, // ✅
+        isDark: isDark,
       );
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF5F5F5), // ✅
+      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 430),
             child: Column(
               children: [
-                Expanded(child: body),
-                SubjectBottomNavBar(
-                  currentIndex: widget.currentIndex,
-                  onTapNav: widget.onTapNav,
+                // ✅ PageView (과목 ↔ Q&A)
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    onPageChanged: (index) {
+                      setState(() => _currentPageIndex = index);
+                    },
+                    children: [
+                      body,
+                      StudyQAPage(
+                        subjects: _subjects,
+                        isDark: isDark,
+                      ),
+                    ],
+                  ),
+                ),
+                // ✅ 페이지 인디케이터 — 네비바 바로 위
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _PageDot(active: _currentPageIndex == 0, isDark: isDark),
+                      const SizedBox(width: 6),
+                      _PageDot(active: _currentPageIndex == 1, isDark: isDark),
+                    ],
+                  ),
+                ),
+                // ✅ 공통 하단바로 교체
+                AppBottomNavBar(
+                  activeTab: AppNavTab.subject,
                   nickname: widget.nickname,
                   profileImagePath: widget.profileImagePath,
                   onTapTomato: _showStartDialog,
@@ -469,12 +497,12 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
 class SubjectEmptyPage extends StatelessWidget {
   final VoidCallback onAddTap;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const SubjectEmptyPage({
     super.key,
     required this.onAddTap,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -488,7 +516,7 @@ class SubjectEmptyPage extends StatelessWidget {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2), // ✅
+              color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2),
             ),
           ),
           const SizedBox(height: 18),
@@ -522,7 +550,7 @@ class SubjectListPage extends StatelessWidget {
   final VoidCallback onAddTap;
   final ValueChanged<int> onDetailTap;
   final ValueChanged<int> onDelete;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const SubjectListPage({
     super.key,
@@ -530,12 +558,11 @@ class SubjectListPage extends StatelessWidget {
     required this.onAddTap,
     required this.onDetailTap,
     required this.onDelete,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    // ✅ 과목이 없으면 빈 화면 (+ 버튼만)
     if (subjects.isEmpty) {
       return Center(
         child: Column(
@@ -546,7 +573,7 @@ class SubjectListPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2), // ✅
+                color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2),
               ),
             ),
             const SizedBox(height: 18),
@@ -571,7 +598,6 @@ class SubjectListPage extends StatelessWidget {
       );
     }
 
-    // ✅ 과목이 있으면 리스트 + 하단 + 버튼
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Stack(
@@ -585,9 +611,6 @@ class SubjectListPage extends StatelessWidget {
               return Dismissible(
                 key: ValueKey('${item.name}-$index'),
                 direction: DismissDirection.endToStart,
-                // 옆으로 미는 제스처만으로 즉시 삭제되는 사고를 막기 위한 확인 단계.
-                // false 반환 시 Dismissible 이 원위치로 복귀하므로 onDismissed 도
-                // 호출되지 않음.
                 confirmDismiss: (_) async {
                   final ok = await showDialog<bool>(
                     context: context,
@@ -635,12 +658,11 @@ class SubjectListPage extends StatelessWidget {
                 child: _SubjectRow(
                   item: item,
                   onDetailTap: () => onDetailTap(index),
-                  isDark: isDark, // ✅
+                  isDark: isDark,
                 ),
               );
             },
           ),
-          // ✅ 우하단 + 버튼
           Positioned(
             right: 0,
             bottom: 12,
@@ -670,12 +692,12 @@ class SubjectListPage extends StatelessWidget {
 class _SubjectRow extends StatelessWidget {
   final SubjectItem item;
   final VoidCallback onDetailTap;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const _SubjectRow({
     required this.item,
     required this.onDetailTap,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -683,40 +705,50 @@ class _SubjectRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
+          // ✅ 과목 색상 동그라미 복구
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: item.color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               item.name,
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: isDark ? Colors.white : const Color(0xFF303030), // ✅
+                color: isDark ? Colors.white : const Color(0xFF303030),
               ),
             ),
           ),
           GestureDetector(
             onTap: onDetailTap,
             child: const Text(
-                'Detail',
-                style: TextStyle(
+              'Detail',
+              style: TextStyle(
                 color: Color(0xFFB7B7B7),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
+              ),
             ),
-         ),
-     ),
-     const SizedBox(width: 6),
-     GestureDetector(
-      onTap: onDetailTap,
-      child: const Icon(
-        Icons.chevron_right,
-        color: Color(0xFFC7C7C7),
-      ),
-     ),
+          ),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: onDetailTap,
+            child: const Icon(
+              Icons.chevron_right,
+              color: Color(0xFFC7C7C7),
+            ),
+          ),
         ],
       ),
     );
@@ -730,14 +762,14 @@ class SubjectAddPage extends StatefulWidget {
   final VoidCallback onCancel;
   final ValueChanged<SubjectItem> onComplete;
   final Color defaultColor;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const SubjectAddPage({
     super.key,
     required this.onCancel,
     required this.onComplete,
     required this.defaultColor,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -769,8 +801,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
   }
 
   bool get _canComplete {
-    return _nameController.text.trim().isNotEmpty &&
-        _selectedLevel != null;
+    return _nameController.text.trim().isNotEmpty && _selectedLevel != null;
   }
 
   Future<void> _pickTodoDate(int index) async {
@@ -819,38 +850,35 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = widget.isDark; // ✅
+    final isDark = widget.isDark;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
       child: Container(
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
         padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 상단 핸들
             Center(
               child: Container(
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF555555) : const Color(0xFFD0D0D0), // ✅
+                  color: isDark ? const Color(0xFF555555) : const Color(0xFFD0D0D0),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
             const SizedBox(height: 20),
-
-            // 이름 설정
             Text(
               '이름 설정',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A), // ✅
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -858,22 +886,22 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             Container(
               height: 42,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFEFD), // ✅
+                color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFEFD),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF444444) : const Color(0xFFE6E2D8), // ✅
+                  color: isDark ? const Color(0xFF444444) : const Color(0xFFE6E2D8),
                 ),
               ),
               child: TextField(
                 controller: _nameController,
                 onChanged: (_) => setState(() {}),
                 style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black, // ✅
+                  color: isDark ? Colors.white : Colors.black,
                 ),
                 decoration: InputDecoration(
                   hintText: '입력',
                   hintStyle: TextStyle(
-                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE), // ✅
+                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE),
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
@@ -881,15 +909,12 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 ),
               ),
             ),
-
             const SizedBox(height: 22),
-
-            // 이해도
             Text(
               '이해도',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A), // ✅
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -901,8 +926,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '어려움',
                     background: const Color(0xFFF08AA1),
                     selected: _selectedLevel == UnderstandingLevel.hard,
-                    onTap: () =>
-                        setState(() => _selectedLevel = UnderstandingLevel.hard),
+                    onTap: () => setState(() => _selectedLevel = UnderstandingLevel.hard),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -911,8 +935,7 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '보통',
                     background: const Color(0xFFF0C06F),
                     selected: _selectedLevel == UnderstandingLevel.normal,
-                    onTap: () => setState(
-                        () => _selectedLevel = UnderstandingLevel.normal),
+                    onTap: () => setState(() => _selectedLevel = UnderstandingLevel.normal),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -921,21 +944,17 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '쉬움',
                     background: const Color(0xFF97D778),
                     selected: _selectedLevel == UnderstandingLevel.easy,
-                    onTap: () =>
-                        setState(() => _selectedLevel = UnderstandingLevel.easy),
+                    onTap: () => setState(() => _selectedLevel = UnderstandingLevel.easy),
                   ),
                 ),
               ],
             ),
-
             const SizedBox(height: 22),
-
-            // 할 일 추가
             Text(
               '할 일',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A), // ✅
+                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -975,32 +994,28 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                 },
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: isDark ? Colors.white : Colors.black, // ✅
+                                  color: isDark ? Colors.white : Colors.black,
                                 ),
                                 decoration: InputDecoration(
                                   isDense: true,
                                   hintText: '할 일 입력',
                                   hintStyle: TextStyle(
-                                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE), // ✅
+                                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE),
                                     fontSize: 13,
                                   ),
                                   border: const UnderlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Color(0xFFD9D9D9)),
+                                    borderSide: BorderSide(color: Color(0xFFD9D9D9)),
                                   ),
                                   enabledBorder: const UnderlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Color(0xFFD9D9D9)),
+                                    borderSide: BorderSide(color: Color(0xFFD9D9D9)),
                                   ),
                                   focusedBorder: const UnderlineInputBorder(
-                                    borderSide:
-                                        BorderSide(color: Color(0xFFBDBDBD)),
+                                    borderSide: BorderSide(color: Color(0xFFBDBDBD)),
                                   ),
                                 ),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // 모드 토글
                             GestureDetector(
                               onTap: () {
                                 setState(() {
@@ -1013,12 +1028,9 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                 });
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: isExam
-                                      ? const Color(0xFFF08AA1)
-                                      : const Color(0xFFB8DE9D),
+                                  color: isExam ? const Color(0xFFF08AA1) : const Color(0xFFB8DE9D),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
@@ -1033,24 +1045,21 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                             ),
                           ],
                         ),
-                        // 시험 모드일 때 날짜 선택
                         if (isExam)
                           Padding(
-                            padding:
-                                const EdgeInsets.only(left: 22, top: 6),
+                            padding: const EdgeInsets.only(left: 22, top: 6),
                             child: GestureDetector(
                               onTap: () => _pickTodoDate(index),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.calendar_today,
-                                      size: 13, color: Color(0xFF9B9B9B)),
+                                  const Icon(Icons.calendar_today, size: 13, color: Color(0xFF9B9B9B)),
                                   const SizedBox(width: 6),
                                   Text(
                                     dateText ?? '시험일자 선택',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: dateText != null
-                                          ? isDark ? Colors.white70 : const Color(0xFF444444) // ✅
+                                          ? isDark ? Colors.white70 : const Color(0xFF444444)
                                           : const Color(0xFFBEBEBE),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1065,8 +1074,6 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 },
               ),
             ),
-
-            // 완료 버튼
             SizedBox(
               width: double.infinity,
               height: 44,
@@ -1075,16 +1082,12 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF299B2),
                   disabledBackgroundColor: const Color(0xFFF0D8DF),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   elevation: 0,
                 ),
                 child: const Text(
                   '완료',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700),
+                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -1099,14 +1102,14 @@ class SubjectDetailPage extends StatefulWidget {
   final SubjectItem subject;
   final VoidCallback onBack;
   final ValueChanged<SubjectItem> onSave;
-  final bool isDark; // ✅
+  final bool isDark;
 
   const SubjectDetailPage({
     super.key,
     required this.subject,
     required this.onBack,
     required this.onSave,
-    required this.isDark, // ✅
+    required this.isDark,
   });
 
   @override
@@ -1150,8 +1153,7 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                 ))
             .toList();
 
-    _todoControllers =
-        _todos.map((e) => TextEditingController(text: e.text)).toList();
+    _todoControllers = _todos.map((e) => TextEditingController(text: e.text)).toList();
   }
 
   @override
@@ -1243,315 +1245,285 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = widget.isDark; // ✅
+    final isDark = widget.isDark;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white, // ✅
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 4,
-                      height: 18,
-                      decoration: BoxDecoration(
-                        color: _selectedColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _nameController,
-                        decoration: const InputDecoration(
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: isDark ? Colors.white : Colors.black, // ✅
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _showColorPalette = !_showColorPalette;
-                        });
-                      },
-                      icon: const Icon(
-                        Icons.edit,
-                        size: 18,
-                        color: Color(0xFF9B9B9B),
-                      ),
-                    ),
-                  ],
+          Expanded(
+            child: SingleChildScrollView(
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 10),
-                if (_showColorPalette) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: _colorOptions.map((color) {
-                      final selected = _selectedColor == color;
-
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedColor = color;
-                          });
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(left: 8),
-                          width: 18,
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
                           height: 18,
                           decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: color,
-                              width: 2,
+                            color: _selectedColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              border: InputBorder.none,
+                              isDense: true,
+                            ),
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white : Colors.black,
                             ),
                           ),
-                          child: Center(
+                        ),
+                        IconButton(
+                          onPressed: () {
+                            setState(() {
+                              _showColorPalette = !_showColorPalette;
+                            });
+                          },
+                          icon: const Icon(Icons.edit, size: 18, color: Color(0xFF9B9B9B)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (_showColorPalette) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: _colorOptions.map((color) {
+                          final selected = _selectedColor == color;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _selectedColor = color;
+                              });
+                            },
                             child: Container(
-                              width: 8,
-                              height: 8,
+                              margin: const EdgeInsets.only(left: 8),
+                              width: 18,
+                              height: 18,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: selected ? color : Colors.transparent,
+                                border: Border.all(color: color, width: 2),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: selected ? color : Colors.transparent,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    GestureDetector(
-                      onTap: widget.onBack,
-                      child: const Icon(
-                        Icons.chevron_left,
-                        color: Color(0xFFB2B2B2),
+                          );
+                        }).toList(),
                       ),
-                    ),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                    ],
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: widget.onBack,
+                          child: const Icon(Icons.chevron_left, color: Color(0xFFB2B2B2)),
                         ),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF2C2C2C) // ✅
-                              : _softBackground(_selectedColor),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF2C2C2C) : _softBackground(_selectedColor),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
                               children: [
-                                Text(
-                                  _nameController.text.trim().isEmpty
-                                      ? '과목'
-                                      : _nameController.text.trim(),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : Colors.black, // ✅
-                                  ),
-                                ),
-                                const Spacer(),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _levelColor,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    _levelText,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
+                                Row(
+                                  children: [
+                                    Text(
+                                      _nameController.text.trim().isEmpty
+                                          ? '과목'
+                                          : _nameController.text.trim(),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: isDark ? Colors.white : Colors.black,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFB8DE9D),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    'D-${_dDay < 0 ? 0 : _dDay + 1}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
+                                    const Spacer(),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: _levelColor,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        _levelText,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    if (_todos.any((t) => t.mode == StudyMode.exam))
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFB8DE9D),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          'D-${_dDay < 0 ? 0 : _dDay + 1}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                Column(
+                                  children: List.generate(_todoControllers.length, (index) {
+                                    final todo = _todos[index];
+                                    final isExam = todo.mode == StudyMode.exam;
+                                    final dateText = todo.dueDate != null
+                                        ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
+                                        : null;
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      child: Column(
+                                        children: [
+                                          Row(
+                                            children: [
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _todos[index].done = !_todos[index].done;
+                                                  });
+                                                },
+                                                child: Container(
+                                                  width: 12,
+                                                  height: 12,
+                                                  decoration: BoxDecoration(
+                                                    color: _todos[index].done
+                                                        ? _selectedColor
+                                                        : const Color(0xFFE0E0E0),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: TextField(
+                                                  controller: _todoControllers[index],
+                                                  onChanged: (value) {
+                                                    _todos[index].text = value;
+                                                  },
+                                                  onSubmitted: (_) {
+                                                    _insertNextTodo(index);
+                                                  },
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: isDark ? Colors.white : Colors.black,
+                                                  ),
+                                                  decoration: const InputDecoration(
+                                                    isDense: true,
+                                                    border: UnderlineInputBorder(
+                                                      borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                                    ),
+                                                    enabledBorder: UnderlineInputBorder(
+                                                      borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                                    ),
+                                                    focusedBorder: UnderlineInputBorder(
+                                                      borderSide: BorderSide(color: Color(0xFFBDBDBD)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    if (todo.mode == StudyMode.study) {
+                                                      todo.mode = StudyMode.exam;
+                                                    } else {
+                                                      todo.mode = StudyMode.study;
+                                                      todo.dueDate = null;
+                                                    }
+                                                  });
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: isExam ? const Color(0xFFF08AA1) : const Color(0xFFB8DE9D),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                  child: Text(
+                                                    isExam ? '시험' : '학습',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (isExam)
+                                            Padding(
+                                              padding: const EdgeInsets.only(left: 22, top: 4),
+                                              child: GestureDetector(
+                                                onTap: () => _pickTodoDate(index),
+                                                child: Row(
+                                                  children: [
+                                                    const Icon(Icons.calendar_today, size: 12, color: Color(0xFF9B9B9B)),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      dateText ?? '시험일자 선택',
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: dateText != null
+                                                            ? isDark ? Colors.white70 : const Color(0xFF444444)
+                                                            : const Color(0xFFBEBEBE),
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 10),
-                            Column(
-                              children: List.generate(_todoControllers.length, (index) {
-                                final todo = _todos[index];
-                                final isExam = todo.mode == StudyMode.exam;
-                                final dateText = todo.dueDate != null
-                                    ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
-                                    : null;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                _todos[index].done = !_todos[index].done;
-                                              });
-                                            },
-                                            child: Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: BoxDecoration(
-                                                color: _todos[index].done
-                                                    ? _selectedColor
-                                                    : const Color(0xFFE0E0E0),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: TextField(
-                                              controller: _todoControllers[index],
-                                              onChanged: (value) {
-                                                _todos[index].text = value;
-                                              },
-                                              onSubmitted: (_) {
-                                                _insertNextTodo(index);
-                                              },
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: isDark ? Colors.white : Colors.black, // ✅
-                                              ),
-                                              decoration: const InputDecoration(
-                                                isDense: true,
-                                                border: UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Color(0xFFD9D9D9),
-                                                  ),
-                                                ),
-                                                enabledBorder: UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Color(0xFFD9D9D9),
-                                                  ),
-                                                ),
-                                                focusedBorder: UnderlineInputBorder(
-                                                  borderSide: BorderSide(
-                                                    color: Color(0xFFBDBDBD),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                if (todo.mode == StudyMode.study) {
-                                                  todo.mode = StudyMode.exam;
-                                                } else {
-                                                  todo.mode = StudyMode.study;
-                                                  todo.dueDate = null;
-                                                }
-                                              });
-                                            },
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8, vertical: 3),
-                                              decoration: BoxDecoration(
-                                                color: isExam
-                                                    ? const Color(0xFFF08AA1)
-                                                    : const Color(0xFFB8DE9D),
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                isExam ? '시험' : '학습',
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (isExam)
-                                        Padding(
-                                          padding: const EdgeInsets.only(
-                                              left: 22, top: 4),
-                                          child: GestureDetector(
-                                            onTap: () => _pickTodoDate(index),
-                                            child: Row(
-                                              children: [
-                                                const Icon(Icons.calendar_today,
-                                                    size: 12,
-                                                    color: Color(0xFF9B9B9B)),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  dateText ?? '시험일자 선택',
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: dateText != null
-                                                        ? isDark ? Colors.white70 : const Color(0xFF444444) // ✅
-                                                        : const Color(0xFFBEBEBE),
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             height: 44,
@@ -1559,18 +1531,12 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
               onPressed: _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF299B2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 elevation: 0,
               ),
               child: const Text(
                 '저장',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -1609,17 +1575,12 @@ class _LevelButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(12),
-            border: selected
-                ? Border.all(color: const Color(0xFF8D8D8D), width: 1)
-                : null,
+            border: selected ? Border.all(color: const Color(0xFF8D8D8D), width: 1) : null,
           ),
           alignment: Alignment.center,
           child: Text(
             title,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.white),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ),
       ),
@@ -1628,187 +1589,11 @@ class _LevelButton extends StatelessWidget {
 }
 
 // ──────────────────────────────────────────
-// 하단 네비게이션 바
+// 데이터 모델
 // ──────────────────────────────────────────
-
-// ✅ StatelessWidget → ConsumerWidget
-class SubjectBottomNavBar extends ConsumerWidget {
-  final int currentIndex;
-  final ValueChanged<int> onTapNav;
-  final String nickname;
-  final String? profileImagePath;
-  final VoidCallback onTapTomato;
-
-  const SubjectBottomNavBar({
-    super.key,
-    required this.currentIndex,
-    required this.onTapNav,
-    required this.nickname,
-    this.profileImagePath,
-    required this.onTapTomato,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
-
-    return Container(
-      height: 66,
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF0F0F0), // ✅
-        border: const Border(top: BorderSide(color: Color(0xFFE9E9E9), width: 1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _BottomNavIcon(
-            icon: Icons.home,
-            label: 'Home',
-            active: false,
-            onTap: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => MainScreen(
-                      nickname: nickname,
-                      profileImagePath: profileImagePath,
-                      currentIndex: 0,
-                      onTapNav: onTapNav,
-                    ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                  (route) => false,
-                );
-            },
-          ),
-            _BottomNavIcon(
-              icon: Icons.calendar_month,
-              label: 'Calendar',
-              active: false,
-              onTap: () {
-                Navigator.pushReplacement(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (_, __, ___) => CalendarPageShell(
-                      currentIndex: 1,
-                      onTapNav: onTapNav,
-                      nickname: nickname,
-                      profileImagePath: profileImagePath,
-                    ),
-                    transitionDuration: Duration.zero,
-                    reverseTransitionDuration: Duration.zero,
-                  ),
-                );
-              },
-            ),
-          _BottomTomatoItem(onTap: onTapTomato),
-          _BottomNavIcon(
-            icon: Icons.bar_chart,
-            label: 'Report',
-            active: false,
-            onTap: () {
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (_, __, ___) => ReportPageShell(
-                    currentIndex: 3,
-                    onTapNav: onTapNav,
-                    nickname: nickname,
-                    profileImagePath: profileImagePath,
-                  ),
-                  transitionDuration: Duration.zero,
-                  reverseTransitionDuration: Duration.zero,
-                ),
-              );
-            },
-          ),
-          _BottomNavIcon(
-            icon: Icons.book,
-            label: 'Subject',
-            active: currentIndex == 2,
-            onTap: () => onTapNav(2),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomNavIcon extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _BottomNavIcon({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? const Color(0xFFE08C84) : const Color(0xFFC8C8C8);
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Icon(icon, color: color, size: 23),
-          const SizedBox(height: 4),
-          Text(label,
-              style: TextStyle(
-                  fontSize: 10,
-                  color: color,
-                  fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomTomatoItem extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _BottomTomatoItem({
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 46,
-        height: 46,
-        child: ClipOval(
-          child: Image.asset(
-            'assets/images/tomato_glasses.png',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: const Color(0xFFD94C43),
-                child: const Center(
-                  child: Text('🍅', style: TextStyle(fontSize: 24)),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ──────────────────────────────────────────
-// 데이터 모델 (StudyMode, UnderstandingLevel은 domain/entities/study_goal.dart에서 import)
-// ──────────────────────────────────────────
-
 class SubjectItem {
-  final String? subjectId; // DB Subject ID (null = 미저장)
-  final String? goalId;    // DB StudyGoal ID (null = 미저장)
+  final String? subjectId;
+  final String? goalId;
   final String name;
   final UnderstandingLevel level;
   final Color color;
@@ -1823,7 +1608,6 @@ class SubjectItem {
     required this.todos,
   });
 
-  /// 시험 모드인 할 일 중 가장 빠른 시험일자
   DateTime? get earliestExamDate {
     DateTime? earliest;
     for (final t in todos) {
@@ -1836,7 +1620,6 @@ class SubjectItem {
     return earliest;
   }
 
-  /// 시험 모드 할 일이 있으면 exam, 아니면 study
   StudyMode get derivedMode =>
       todos.any((t) => t.mode == StudyMode.exam) ? StudyMode.exam : StudyMode.study;
 
@@ -1851,12 +1634,12 @@ class SubjectItem {
 }
 
 class TodoItem {
-  final String? id; // DB todo_items ID (null = 미저장)
+  final String? id;
   String text;
   bool done;
-  int priority; // 0 = 보통, 1 = 중요, 2 = 매우 중요
+  int priority;
   StudyMode mode;
-  DateTime? dueDate; // 시험 모드일 때만
+  DateTime? dueDate;
 
   TodoItem({
     this.id,
@@ -1866,4 +1649,298 @@ class TodoItem {
     this.mode = StudyMode.study,
     this.dueDate,
   });
+}
+
+// ──────────────────────────────────────────
+// 페이지 인디케이터 점
+// ──────────────────────────────────────────
+class _PageDot extends StatelessWidget {
+  final bool active;
+  final bool isDark;
+
+  const _PageDot({required this.active, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: active ? 16 : 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: active
+            ? const Color(0xFFE06B63)
+            : isDark
+                ? const Color(0xFF4A4A4A)
+                : const Color(0xFFD9D9D9),
+        borderRadius: BorderRadius.circular(10),
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────
+// Q&A 데이터 모델
+// ──────────────────────────────────────────
+class QAEntry {
+  final String subjectName;
+  final Color subjectColor;
+  final String question;
+  final String answer;
+  final DateTime date;
+
+  const QAEntry({
+    required this.subjectName,
+    required this.subjectColor,
+    required this.question,
+    required this.answer,
+    required this.date,
+  });
+}
+
+// ──────────────────────────────────────────
+// 학습 Q&A 페이지
+// ──────────────────────────────────────────
+class StudyQAPage extends ConsumerWidget {
+  final List<SubjectItem> subjects;
+  final bool isDark;
+
+  const StudyQAPage({
+    super.key,
+    required this.subjects,
+    required this.isDark,
+  });
+
+  List<QAEntry> _toQaEntries(List<StudyQaEntry> saved) {
+    return saved
+        .map((e) => QAEntry(
+              subjectName: e.subjectName,
+              subjectColor: Color(e.subjectColorValue),
+              question: e.question,
+              answer: e.answer,
+              date: e.date,
+            ))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final saved = ref.watch(studyQaProvider);
+    final qaList = saved.isNotEmpty
+        ? _toQaEntries(saved)
+        : <QAEntry>[]; // 저장된 항목 없으면 빈 리스트
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              children: [
+                Text(
+                  '학습 Q&A',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF6E1DF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '세션 종료 후 자동 생성',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFFD97068),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: qaList.isEmpty
+                ? Center(
+                    child: Text(
+                      '학습 세션을 완료하면\nQ&A가 자동으로 생성됩니다.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDark ? const Color(0xFF666666) : const Color(0xFFB3B3B3),
+                        height: 1.6,
+                      ),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: qaList.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final qa = qaList[index];
+                      return _QACard(qa: qa, isDark: isDark);
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────
+// Q&A 카드
+// ──────────────────────────────────────────
+class _QACard extends StatefulWidget {
+  final QAEntry qa;
+  final bool isDark;
+
+  const _QACard({required this.qa, required this.isDark});
+
+  @override
+  State<_QACard> createState() => _QACardState();
+}
+
+class _QACardState extends State<_QACard> {
+  bool _showAnswer = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final qa = widget.qa;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: qa.subjectColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  qa.subjectName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: qa.subjectColor,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${qa.date.month}월 ${qa.date.day}일',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? const Color(0xFF666666) : const Color(0xFFAAAAAA),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2A2020) : const Color(0xFFFCF6F4),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '질문',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD97068)),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  qa.question,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white : const Color(0xFF232323),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A2A1A) : const Color(0xFFF4FAF0),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      '내 답변',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF79B13D)),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => setState(() => _showAnswer = !_showAnswer),
+                      child: Text(
+                        _showAnswer ? '숨기기' : '보기',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? const Color(0xFF888888) : const Color(0xFFAAAAAA),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_showAnswer) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    qa.answer,
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white : const Color(0xFF232323),
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    '탭하여 답변 보기',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFF666666) : const Color(0xFFBBBBBB),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+      ),
+    );
+  }
 }

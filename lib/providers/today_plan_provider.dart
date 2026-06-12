@@ -25,12 +25,18 @@ final todayPlanProvider =
 class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
   @override
   Future<List<TodayPlanEntry>> build() async {
-    final goals = await ref.read(studyGoalRepoProvider).getDueToday();
+    // 오늘의 계획 = "미완료 todo 가 1개 이상인 goal"
+    // FSRS next_due 는 정렬 우선순위에만 사용하고 가시성 필터로는 쓰지 않음.
+    // (이전엔 next_due <= today 로 필터링 → FSRS Again 시 next_due 가 미래로
+    //  점프하면서 사용자가 ▶ 누르고 backout 만 해도 과목이 사라지는 문제 발생)
+    final goals = await ref.read(studyGoalRepoProvider).getAll();
     final subjects = await ref.read(subjectRepoProvider).getAll();
     final subjectMap = {for (final s in subjects) s.id: s};
 
     return PriorityCalculator.todayPlan(goals)
-        .where((p) => subjectMap.containsKey(p.goal.subjectId))
+        .where((p) =>
+            subjectMap.containsKey(p.goal.subjectId) &&
+            p.goal.todos.any((t) => !t.isDone))
         .map((p) {
           // 완료(isDone) todo는 화면에서 즉시 사라지도록 제거
           // priority 높은 순으로 정렬
