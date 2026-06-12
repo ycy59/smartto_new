@@ -9,6 +9,8 @@ import '../main.dart' show OnboardingScreen;
 import '../providers/today_plan_provider.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 import 'camera_page.dart';
+import 'slm_demo_page.dart';
+import 'slm_test_page.dart';
 
 // ✅ StatefulWidget → ConsumerStatefulWidget
 class MyPage extends ConsumerStatefulWidget {
@@ -569,6 +571,44 @@ final shouldSave = await showDialog<bool>(
                             },
                             child: Text(
                               '🛠 온보딩 다시 보기 (디버그)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFF888888)
+                                    : const Color(0xFF9A9A9A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          // 🧠 SLM UX 데모 (모델 없이 더미 데이터로 미리보기)
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SlmDemoPage(),
+                              ),
+                            ),
+                            child: Text(
+                              '🧠 SLM UX 데모',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark
+                                    ? const Color(0xFF888888)
+                                    : const Color(0xFF9A9A9A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          // 🔬 SLM 실제 모델 테스트 (모델 다운로드 + 추론)
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SlmTestPage(),
+                              ),
+                            ),
+                            child: Text(
+                              '🔬 SLM 모델 테스트',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: isDark
