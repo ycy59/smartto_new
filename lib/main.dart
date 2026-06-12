@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_shell.dart';
+import 'screens/subject_page.dart';
 import 'utils/db_platform_init.dart';
 import 'providers/theme_provider.dart';
 
@@ -89,9 +90,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String selectedStudyTime = '';
 
   final List<Map<String, String>> purposeOptions = const [
-    {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.jpg'},
-    {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.jpg'},
-    {'title': '자기계발', 'subtitle': '자격증 · 언어', 'icon': 'assets/images/icon_growth.jpg'},
+    {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.png'},
+    {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.png'},
+    {'title': '자기계발', 'subtitle': '자격증 · 언어', 'icon': 'assets/images/icon_growth.png'},
   ];
 
   final List<String> timeOptions = const ['1시간', '2시간', '4시간', '5시간+'];
@@ -104,6 +105,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void goNext() {
+    FocusScope.of(context).unfocus();
     if (currentPage < 5) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 250),
@@ -696,7 +698,10 @@ class CompletePage extends StatelessWidget {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => HomeShell(nickname: nickname),
+                      builder: (context) => HomeShell(
+                        nickname: nickname,
+                        openSubjectPage: true,
+                      ),
                     ),
                   );
                 },

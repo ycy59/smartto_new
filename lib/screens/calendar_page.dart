@@ -234,7 +234,6 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
     return '${months[d.month]} ${d.year}';
   }
 
-  // ✅ 새 페이지 이동 없이 날짜만 업데이트
   void _selectDay(DateTime day) {
     setState(() => _selectedDate = day);
   }
@@ -246,7 +245,6 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
     final monthAsync = ref.watch(calendarMonthDataProvider(_focusedMonth));
     final data = monthAsync.valueOrNull ?? CalendarMonthData.empty;
 
-    // ✅ 선택된 날짜 데이터
     final selectedKey = _key(_selectedDate);
     final selectedStats = data.focusByDay[selectedKey] ?? DayFocusStats.empty;
     final selectedReviews = data.reviewsByDay[selectedKey] ?? const <CalendarReviewEntry>[];
@@ -267,81 +265,82 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 14),
-                          // 월 네비게이터
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _changeMonth(-1),
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: isDark
-                                        ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFF1F1F1),
-                                    child: Icon(
-                                      Icons.chevron_left,
-                                      size: 16,
-                                      color: isDark ? Colors.white70 : Colors.grey,
+                      // ✅ SingleChildScrollView로 전체를 스크롤 가능하게
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 14),
+                            // 월 네비게이터
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _changeMonth(-1),
+                                    child: CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF3A3A3A)
+                                          : const Color(0xFFF1F1F1),
+                                      child: Icon(
+                                        Icons.chevron_left,
+                                        size: 16,
+                                        color: isDark ? Colors.white70 : Colors.grey,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Text(
-                                  _monthTitle(_focusedMonth),
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: isDark ? Colors.white : Colors.black,
-                                  ),
-                                ),
-                                GestureDetector(
-                                  onTap: () => _changeMonth(1),
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: isDark
-                                        ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFF1F1F1),
-                                    child: Icon(
-                                      Icons.chevron_right,
-                                      size: 16,
-                                      color: isDark ? Colors.white70 : Colors.grey,
+                                  Text(
+                                    _monthTitle(_focusedMonth),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : Colors.black,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  GestureDetector(
+                                    onTap: () => _changeMonth(1),
+                                    child: CircleAvatar(
+                                      radius: 12,
+                                      backgroundColor: isDark
+                                          ? const Color(0xFF3A3A3A)
+                                          : const Color(0xFFF1F1F1),
+                                      child: Icon(
+                                        Icons.chevron_right,
+                                        size: 16,
+                                        color: isDark ? Colors.white70 : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          // 요일 헤더
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _WeekText('MON'),
-                                _WeekText('TUE'),
-                                _WeekText('WED'),
-                                _WeekText('THU'),
-                                _WeekText('FRI'),
-                                _WeekText('SAT', color: Color(0xFF7EA3FF)),
-                                _WeekText('SUN', color: Color(0xFFF08AA1)),
-                              ],
+                            const SizedBox(height: 14),
+                            // 요일 헤더
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                children: [
+                                  _WeekText('MON'),
+                                  _WeekText('TUE'),
+                                  _WeekText('WED'),
+                                  _WeekText('THU'),
+                                  _WeekText('FRI'),
+                                  _WeekText('SAT', color: Color(0xFF7EA3FF)),
+                                  _WeekText('SUN', color: Color(0xFFF08AA1)),
+                                ],
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          // ✅ 캘린더 그리드 고정 높이
-                          SizedBox(
-                            height: 280,
-                            child: GridView.builder(
+                            const SizedBox(height: 10),
+                            // ✅ GridView — shrinkWrap으로 높이 자동 계산
+                            GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 8,
                               ),
-                              physics: const NeverScrollableScrollPhysics(),
                               itemCount: days.length,
                               gridDelegate:
                                   const SliverGridDelegateWithFixedCrossAxisCount(
@@ -358,7 +357,7 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                                 final reviews = data.reviewsByDay[key] ?? const [];
 
                                 return GestureDetector(
-                                  onTap: () => _selectDay(day), // ✅ 변경
+                                  onTap: () => _selectDay(day),
                                   child: Container(
                                     margin: const EdgeInsets.all(2),
                                     decoration: BoxDecoration(
@@ -397,26 +396,24 @@ class _CalendarPageShellState extends ConsumerState<CalendarPageShell> {
                                 );
                               },
                             ),
-                          ),
 
-                          // ✅ 구분선
-                          Divider(
-                            height: 1,
-                            color: isDark
-                                ? const Color(0xFF2C2C2C)
-                                : const Color(0xFFF0F0F0),
-                          ),
+                            // ✅ 구분선
+                            Divider(
+                              height: 1,
+                              color: isDark
+                                  ? const Color(0xFF2C2C2C)
+                                  : const Color(0xFFF0F0F0),
+                            ),
 
-                          // ✅ 인라인 상세 패널
-                          Expanded(
-                            child: _InlineDetailPanel(
+                            // ✅ 인라인 상세 패널 — Expanded 없이 그냥 배치
+                            _InlineDetailPanel(
                               selectedDate: _selectedDate,
                               focusStats: selectedStats,
                               reviews: selectedReviews,
                               isDark: isDark,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -511,10 +508,11 @@ class _InlineDetailPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        // 복습 목록
-        Expanded(
-          child: reviews.isEmpty
-              ? Center(
+        // ✅ 복습 목록 — shrinkWrap으로 높이 자동
+        reviews.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
                   child: Text(
                     '오늘은 복습할 일정이 없어요',
                     style: TextStyle(
@@ -523,22 +521,25 @@ class _InlineDetailPanel extends StatelessWidget {
                           : const Color(0xFFB3B3B3),
                     ),
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: reviews.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final r = reviews[index];
-                    return _ReviewCard(
-                      entry: r,
-                      understandingLabel: _understandingLabel(r.understandingLevel),
-                      lastReviewLabel: _lastReviewLabel(r.lastReview),
-                      isDark: isDark,
-                    );
-                  },
                 ),
-        ),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: reviews.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final r = reviews[index];
+                  return _ReviewCard(
+                    entry: r,
+                    understandingLabel: _understandingLabel(r.understandingLevel),
+                    lastReviewLabel: _lastReviewLabel(r.lastReview),
+                    isDark: isDark,
+                  );
+                },
+              ),
+        const SizedBox(height: 16),
       ],
     );
   }
