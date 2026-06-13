@@ -8,9 +8,9 @@ import 'database_provider.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 
 class StudyStats {
-  final int todayMinutes;       // 오늘 실제 학습 시간 (분)
-  final int goalMinutes;        // 온보딩에서 설정한 목표 시간 (분)
-  final int weeklyMinutes;      // 이번주 총 집중 (분)
+  final int todayMinutes; // 오늘 실제 학습 시간 (분)
+  final int goalMinutes; // 온보딩에서 설정한 목표 시간 (분)
+  final int weeklyMinutes; // 이번주 총 집중 (분)
   final int weeklySessionCount; // 이번주 완료 세션 수
   final double? weeklyAvgFocus; // 이번주 평균 집중도 (0~100)
 
@@ -37,39 +37,35 @@ class StatsNotifier extends AsyncNotifier<StudyStats> {
   @override
   Future<StudyStats> build() async {
     final db = ref.read(databaseHelperProvider);
-    final prefs = await SharedPreferences.getInstance();
-
-    final goalStr = prefs.getString('study_time_goal') ?? '2시간';
-    final goalMinutes = _parseGoalMinutes(goalStr);
+    final prefsFuture = SharedPreferences.getInstance();
 
     final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day)
-        .millisecondsSinceEpoch;
+    final todayStart =
+        DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
     // 이번주 월요일 자정
     final weekStart = DateTime(now.year, now.month, now.day)
         .subtract(Duration(days: now.weekday - 1))
         .millisecondsSinceEpoch;
 
-    // 오늘 학습 시간
-    final todayRows = await db.rawQuery('''
-      SELECT COALESCE(SUM(duration_minutes), 0) AS total
-      FROM study_sessions
-      WHERE started_at >= ? AND ended_at IS NOT NULL
-    ''', [todayStart]);
-    final todayMinutes =
-        (todayRows.first['total'] as num? ?? 0).toInt();
-
-    // 이번주 통계
-    final weekRows = await db.rawQuery('''
+    final statsRowsFuture = db.rawQuery('''
       SELECT
+        COALESCE(
+          SUM(CASE WHEN started_at >= ? THEN duration_minutes ELSE 0 END),
+          0
+        ) AS today_min,
         COALESCE(SUM(duration_minutes), 0)  AS total_min,
         COUNT(*)                             AS session_cnt,
         AVG(focus_score)                     AS avg_focus
       FROM study_sessions
       WHERE started_at >= ? AND ended_at IS NOT NULL
-    ''', [weekStart]);
+    ''', [todayStart, weekStart]);
 
-    final row = weekRows.first;
+    final prefs = await prefsFuture;
+    final goalStr = prefs.getString('study_time_goal') ?? '2시간';
+    final goalMinutes = _parseGoalMinutes(goalStr);
+
+    final row = (await statsRowsFuture).first;
+    final todayMinutes = (row['today_min'] as num? ?? 0).toInt();
     final weeklyMinutes = (row['total_min'] as num? ?? 0).toInt();
     final weeklySessionCount = (row['session_cnt'] as num? ?? 0).toInt();
     final rawFocus = row['avg_focus'];
@@ -136,12 +132,12 @@ String formatMinutesKo(int minutes) {
 
 /// 일간 시간대별 버킷 — _HourlyBarChart 의 단위.
 class HourlyBucket {
-  final int hour;            // 0~23 (local)
+  final int hour; // 0~23 (local)
   final String subjectId;
   final String subjectName;
-  final int subjectColor;    // ARGB int
+  final int subjectColor; // ARGB int
   final int minutes;
-  final double? avgFocus;    // 0~100, null 이면 해당 버킷에 focus_score 가 하나도 없음
+  final double? avgFocus; // 0~100, null 이면 해당 버킷에 focus_score 가 하나도 없음
 
   const HourlyBucket({
     required this.hour,
@@ -156,8 +152,8 @@ class HourlyBucket {
 /// 일간 통계 카드 3종 (총 집중 시간 / 완료 todo 수 / 평균 집중도).
 class DailyReport {
   final int totalMinutes;
-  final int completedTodos;  // 그 날 completed_at 이 찍힌 todo 수
-  final double? avgFocus;    // 0~100
+  final int completedTodos; // 그 날 completed_at 이 찍힌 todo 수
+  final double? avgFocus; // 0~100
 
   const DailyReport({
     required this.totalMinutes,
@@ -182,8 +178,7 @@ class ModeRatio {
   int get totalMinutes => examMinutes + studyMinutes;
 
   /// 0.0~1.0 — total 이 0 이면 0 반환.
-  double get examRatio =>
-      totalMinutes == 0 ? 0.0 : examMinutes / totalMinutes;
+  double get examRatio => totalMinutes == 0 ? 0.0 : examMinutes / totalMinutes;
   double get studyRatio =>
       totalMinutes == 0 ? 0.0 : studyMinutes / totalMinutes;
 
@@ -195,7 +190,7 @@ class ActivityEntry {
   final String sessionId;
   final DateTime startedAt;
   final int? durationMinutes;
-  final double? focusScore;       // 0.0~1.0 (raw)
+  final double? focusScore; // 0.0~1.0 (raw)
   final String goalTitle;
   final String subjectName;
   final int subjectColor;
@@ -211,9 +206,31 @@ class ActivityEntry {
   });
 }
 
+/// 일간 리포트 화면에서 한 번에 사용하는 데이터 묶음.
+class DailyReportBundle {
+  final DailyReport report;
+  final List<HourlyBucket> hourlyBuckets;
+  final ModeRatio modeRatio;
+  final List<ActivityEntry> activities;
+
+  const DailyReportBundle({
+    required this.report,
+    required this.hourlyBuckets,
+    required this.modeRatio,
+    required this.activities,
+  });
+
+  static const empty = DailyReportBundle(
+    report: DailyReport.empty,
+    hourlyBuckets: [],
+    modeRatio: ModeRatio.empty,
+    activities: [],
+  );
+}
+
 /// 주간 일별/과목별 매트릭스 한 셀.
 class DaySubjectBucket {
-  final DateTime day;        // local midnight
+  final DateTime day; // local midnight
   final String subjectId;
   final String subjectName;
   final int subjectColor;
@@ -234,7 +251,7 @@ class WeeklyReport {
   final int totalMinutes;
   final int completedTodos;
   final DateTime? maxFocusDay;
-  final double? maxFocusValue;   // 0~100
+  final double? maxFocusValue; // 0~100
 
   const WeeklyReport({
     required this.buckets,
@@ -363,8 +380,7 @@ class ReportQueries {
     final avgFocus = rawFocus != null
         ? double.parse(((rawFocus as num).toDouble() * 100).toStringAsFixed(1))
         : null;
-    final doneCnt =
-        (todoRows.first['done_count'] as num? ?? 0).toInt();
+    final doneCnt = (todoRows.first['done_count'] as num? ?? 0).toInt();
 
     return DailyReport(
       totalMinutes: totalMin,
@@ -443,6 +459,24 @@ class ReportQueries {
         .toList();
   }
 
+  /// 일간 리포트 화면에 필요한 데이터를 한 provider에서 함께 로드.
+  static Future<DailyReportBundle> getDailyBundle(
+    Database db,
+    DateTime date,
+  ) async {
+    final reportFuture = getDailyReport(db, date);
+    final bucketsFuture = getDailyHourlyBuckets(db, date);
+    final ratioFuture = getDailyModeRatio(db, date);
+    final activitiesFuture = getDailyActivities(db, date);
+
+    return DailyReportBundle(
+      report: await reportFuture,
+      hourlyBuckets: await bucketsFuture,
+      modeRatio: await ratioFuture,
+      activities: await activitiesFuture,
+    );
+  }
+
   /// ⑤ 주간 리포트 — 7일 매트릭스 + 최고 집중일 + 누적 totals.
   /// [weekStart] 는 보통 월요일 00:00 local.
   static Future<WeeklyReport> getWeeklyReport(
@@ -485,8 +519,7 @@ class ReportQueries {
     for (final row in sessRows) {
       final startedAt = DateTime.fromMillisecondsSinceEpoch(
           (row['started_at'] as num).toInt());
-      final day =
-          DateTime(startedAt.year, startedAt.month, startedAt.day);
+      final day = DateTime(startedAt.year, startedAt.month, startedAt.day);
 
       final subjectId = row['subject_id'] as String;
       final cellKey = '${day.millisecondsSinceEpoch}|$subjectId';
@@ -543,8 +576,7 @@ class ReportQueries {
         return x.subjectId.compareTo(y.subjectId);
       });
 
-    final completedTodos =
-        (todoRows.first['done_count'] as num? ?? 0).toInt();
+    final completedTodos = (todoRows.first['done_count'] as num? ?? 0).toInt();
 
     return WeeklyReport(
       buckets: buckets,
@@ -588,6 +620,13 @@ final dailyActivitiesProvider =
   return ReportQueries.getDailyActivities(db, date);
 });
 
+final dailyReportBundleProvider =
+    FutureProvider.family<DailyReportBundle, DateTime>((ref, date) async {
+  final helper = ref.read(databaseHelperProvider);
+  final db = await helper.database;
+  return ReportQueries.getDailyBundle(db, date);
+});
+
 final weeklyReportProvider =
     FutureProvider.family<WeeklyReport, DateTime>((ref, weekStart) async {
   final helper = ref.read(databaseHelperProvider);
@@ -607,14 +646,15 @@ class _DateBounds {
   factory _DateBounds.day(DateTime date) {
     final start = DateTime(date.year, date.month, date.day);
     final end = start.add(const Duration(days: 1));
-    return _DateBounds(start.millisecondsSinceEpoch, end.millisecondsSinceEpoch);
+    return _DateBounds(
+        start.millisecondsSinceEpoch, end.millisecondsSinceEpoch);
   }
 
   factory _DateBounds.week(DateTime weekStart) {
-    final start =
-        DateTime(weekStart.year, weekStart.month, weekStart.day);
+    final start = DateTime(weekStart.year, weekStart.month, weekStart.day);
     final end = start.add(const Duration(days: 7));
-    return _DateBounds(start.millisecondsSinceEpoch, end.millisecondsSinceEpoch);
+    return _DateBounds(
+        start.millisecondsSinceEpoch, end.millisecondsSinceEpoch);
   }
 }
 

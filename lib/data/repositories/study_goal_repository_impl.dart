@@ -8,19 +8,34 @@ class StudyGoalRepositoryImpl implements StudyGoalRepository {
   final DatabaseHelper _db;
   StudyGoalRepositoryImpl(this._db);
 
-  Future<List<TodoItem>> _todosFor(String goalId) async {
-    final rows = await _db.query(
-      'todo_items',
-      where: 'goal_id = ?',
-      whereArgs: [goalId],
-      orderBy: 'position ASC',
-    );
-    return rows.map(TodoItem.fromMap).toList();
-  }
+  Future<List<StudyGoal>> _withTodosForRows(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return const [];
 
-  Future<StudyGoal> _withTodos(Map<String, dynamic> row) async {
-    final todos = await _todosFor(row['id'] as String);
-    return StudyGoal.fromMap(row, todos: todos);
+    final goalIds = rows.map((row) => row['id'] as String).toList();
+    final placeholders = List.filled(goalIds.length, '?').join(',');
+    final todoRows = await _db.query(
+      'todo_items',
+      where: 'goal_id IN ($placeholders)',
+      whereArgs: goalIds,
+      orderBy: 'goal_id ASC, position ASC',
+    );
+
+    final todosByGoal = <String, List<TodoItem>>{};
+    for (final todoRow in todoRows) {
+      final todo = TodoItem.fromMap(todoRow);
+      (todosByGoal[todo.goalId] ??= []).add(todo);
+    }
+
+    return rows
+        .map(
+          (row) => StudyGoal.fromMap(
+            row,
+            todos: todosByGoal[row['id'] as String] ?? const <TodoItem>[],
+          ),
+        )
+        .toList();
   }
 
   @override
@@ -29,7 +44,7 @@ class StudyGoalRepositoryImpl implements StudyGoalRepository {
       'study_goals',
       orderBy: 'next_due ASC',
     );
-    return Future.wait(rows.map(_withTodos));
+    return _withTodosForRows(rows);
   }
 
   @override
@@ -40,21 +55,22 @@ class StudyGoalRepositoryImpl implements StudyGoalRepository {
       whereArgs: [subjectId],
       orderBy: 'next_due ASC',
     );
-    return Future.wait(rows.map(_withTodos));
+    return _withTodosForRows(rows);
   }
 
   @override
   Future<List<StudyGoal>> getDueToday() async {
     final todayEnd = DateTime.now();
-    final endOfDay = DateTime(todayEnd.year, todayEnd.month, todayEnd.day, 23, 59, 59)
-        .millisecondsSinceEpoch;
+    final endOfDay =
+        DateTime(todayEnd.year, todayEnd.month, todayEnd.day, 23, 59, 59)
+            .millisecondsSinceEpoch;
     final rows = await _db.query(
       'study_goals',
       where: 'next_due <= ?',
       whereArgs: [endOfDay],
       orderBy: 'next_due ASC',
     );
-    return Future.wait(rows.map(_withTodos));
+    return _withTodosForRows(rows);
   }
 
   @override
@@ -62,7 +78,7 @@ class StudyGoalRepositoryImpl implements StudyGoalRepository {
     final rows =
         await _db.query('study_goals', where: 'id = ?', whereArgs: [id]);
     if (rows.isEmpty) return null;
-    return _withTodos(rows.first);
+    return (await _withTodosForRows(rows)).first;
   }
 
   @override

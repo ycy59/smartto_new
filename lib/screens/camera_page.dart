@@ -328,7 +328,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
 
     final sensorOri = _camCtrl?.description.sensorOrientation ?? 0;
 
-    if (_frameCounter == 3) {
+    if (kDebugMode && _frameCounter == 3) {
       debugPrint('[camera_page] 첫 processFrame 호출 — '
           '${image.width}x${image.height} format=${image.format.raw} '
           'sensorOri=$sensorOri');

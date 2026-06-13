@@ -861,8 +861,10 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadTodayPlan());
   }
 
-  Future<void> _loadTodayPlan() async {
-    ref.invalidate(todayPlanProvider);
+  Future<void> _loadTodayPlan({bool refresh = false}) async {
+    if (refresh) {
+      ref.invalidate(todayPlanProvider);
+    }
     final entries = await ref.read(todayPlanProvider.future);
     if (!mounted) return;
     setState(() => _subjects = _mapEntries(entries));
@@ -1034,7 +1036,7 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
                       ),
                     ),
                   );
-                  _loadTodayPlan();
+                  _loadTodayPlan(refresh: true);
                 },
                 child: Container(
                   padding:

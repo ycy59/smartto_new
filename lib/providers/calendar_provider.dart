@@ -94,8 +94,12 @@ final calendarMonthDataProvider =
   final goalRepo = ref.read(studyGoalRepoProvider);
   final subjectRepo = ref.read(subjectRepoProvider);
 
+  final sessionsFuture = sessionRepo.getByDateRange(from, to);
+  final goalsFuture = goalRepo.getAll();
+  final subjectsFuture = subjectRepo.getAll();
+
   // 1) 해당 월에 발생한 세션 → 일별 집중도 평균
-  final sessions = await sessionRepo.getByDateRange(from, to);
+  final sessions = await sessionsFuture;
   final focusByDay = <String, DayFocusStats>{};
   final byDay = <String, List<double>>{};
   final durationByDay = <String, int>{};
@@ -118,8 +122,8 @@ final calendarMonthDataProvider =
   // 세션이 있지만 focus_score 가 없는 경우도 카운트만 잡아둠 (session_count=0 으로 두면 none 처리됨)
 
   // 2) 모든 goal 로드 → next_due 기준으로 일별 그룹화 (해당 월에 한정)
-  final allGoals = await goalRepo.getAll();
-  final subjects = await subjectRepo.getAll();
+  final allGoals = await goalsFuture;
+  final subjects = await subjectsFuture;
   final subjectMap = <String, Subject>{for (final s in subjects) s.id: s};
 
   final reviewsByDay = <String, List<CalendarReviewEntry>>{};

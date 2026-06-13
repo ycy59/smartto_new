@@ -30,8 +30,8 @@ import 'package:onnxruntime/onnxruntime.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // 학습 데이터 정상값 (face landmark 도구 분포 mismatch 보정용)
 // ─────────────────────────────────────────────────────────────────────────────
-const double _kNormalMarValue = 0.10;   // 학습 분포 mean ~ 0.10
-const double _kNormalGazeValue = 0.0;   // 학습 분포 mean ~ 0
+const double _kNormalMarValue = 0.10; // 학습 분포 mean ~ 0.10
+const double _kNormalGazeValue = 0.0; // 학습 분포 mean ~ 0
 
 // ─────────────────────────────────────────────────────────────────────────────
 // step2_prepare_dataset.py 와 동일한 임계값
@@ -92,8 +92,7 @@ class FocusResult {
     this.rawPred = -1,
   });
 
-  static const measuring =
-      FocusResult(status: FocusStatus.measuring, score: 0);
+  static const measuring = FocusResult(status: FocusStatus.measuring, score: 0);
 
   String get statusKr {
     switch (status) {
@@ -156,10 +155,8 @@ class ConcentrationService {
   int get currentBlinks => _countBlinksInBuffer();
   int get bufferSize => _buf.length;
   double? get currentEar => _buf.isEmpty ? null : _buf.last[2];
-  double? get currentMar =>
-      _realMarBuffer.isEmpty ? null : _realMarBuffer.last;
-  bool get currentFaceDetected =>
-      _buf.isNotEmpty && _buf.last[9] > 0.5;
+  double? get currentMar => _realMarBuffer.isEmpty ? null : _realMarBuffer.last;
+  bool get currentFaceDetected => _buf.isNotEmpty && _buf.last[9] > 0.5;
   bool get isStable => _stable;
   bool get isReadyForInference => _ready;
 
@@ -178,16 +175,15 @@ class ConcentrationService {
     if (earAvg < 0.08) return;
     _baselineSamples.add(earAvg);
     if (_baselineSamples.length >= 60) {
-      final mean = _baselineSamples.reduce((a, b) => a + b) /
-          _baselineSamples.length;
+      final mean =
+          _baselineSamples.reduce((a, b) => a + b) / _baselineSamples.length;
       _userEarThreshold = mean * 0.92; // 깜빡임 잘 잡히게 느슨
       debugPrint('[CALIBRATION] 사용자 EAR baseline=${mean.toStringAsFixed(3)} '
           '→ 깜빡임 임계값=${_userEarThreshold!.toStringAsFixed(3)}');
     }
   }
 
-  double get _effectiveEarThreshold =>
-      _userEarThreshold ?? _kEarBlinkThreshold;
+  double get _effectiveEarThreshold => _userEarThreshold ?? _kEarBlinkThreshold;
 
   // ── 사용자별 MAR baseline (하품 감지용) ─────────────────────────────
   final List<double> _realMarBuffer = [];
@@ -249,8 +245,8 @@ class ConcentrationService {
     try {
       _detector = FaceDetector(
         options: FaceDetectorOptions(
-          enableContours: true,        // contour 점 (눈/입/얼굴 윤곽)
-          enableClassification: true,   // eyeOpenProbability 받기 위해
+          enableContours: true, // contour 점 (눈/입/얼굴 윤곽)
+          enableClassification: true, // eyeOpenProbability 받기 위해
           enableTracking: false,
           performanceMode: FaceDetectorMode.fast,
         ),
@@ -344,7 +340,7 @@ class ConcentrationService {
         _appendFrame(frame);
       }
 
-      if (_processCallCount % 10 == 0) {
+      if (kDebugMode && _processCallCount % 60 == 0) {
         debugPrint('[ConcentrationService] '
             'calls=$_processCallCount  found=$_faceFoundCount  '
             'miss=$_faceMissCount  buf=${_buf.length}');
@@ -405,8 +401,10 @@ class ConcentrationService {
   // pitch/yaw/roll 은 ML Kit 직접 받음 (정확)
   List<double> _buildFrameVector(Face face) {
     // EAR (contour bbox 기반 + ×1.4 보정)
-    final earLRaw = _earFromContour(face.contours[FaceContourType.leftEye]?.points);
-    final earRRaw = _earFromContour(face.contours[FaceContourType.rightEye]?.points);
+    final earLRaw =
+        _earFromContour(face.contours[FaceContourType.leftEye]?.points);
+    final earRRaw =
+        _earFromContour(face.contours[FaceContourType.rightEye]?.points);
     final earL = earLRaw * _kEarScale;
     final earR = earRRaw * _kEarScale;
     final earAvg = (earL + earR) / 2.0;
@@ -418,10 +416,10 @@ class ConcentrationService {
 
     return [
       earL, earR, earAvg,
-      _kNormalMarValue,                     // MAR 강제 정상값
-      pitch, yaw, roll,                     // head pose 직접
+      _kNormalMarValue, // MAR 강제 정상값
+      pitch, yaw, roll, // head pose 직접
       _kNormalGazeValue, _kNormalGazeValue, // gaze 강제 0
-      1.0,                                  // face_detected
+      1.0, // face_detected
     ];
   }
 
@@ -448,13 +446,14 @@ class ConcentrationService {
   // upperLipTop 중간점 ↔ lowerLipBottom 중간점, 양 볼 사이 거리
   double _computeRealMar(Face face) {
     final upperTop = face.contours[FaceContourType.upperLipTop]?.points;
-    final lowerBottom =
-        face.contours[FaceContourType.lowerLipBottom]?.points;
+    final lowerBottom = face.contours[FaceContourType.lowerLipBottom]?.points;
     final leftCheek = face.contours[FaceContourType.leftCheek]?.points;
     final rightCheek = face.contours[FaceContourType.rightCheek]?.points;
 
-    if (upperTop == null || lowerBottom == null ||
-        upperTop.isEmpty || lowerBottom.isEmpty) {
+    if (upperTop == null ||
+        lowerBottom == null ||
+        upperTop.isEmpty ||
+        lowerBottom.isEmpty) {
       return 0.0;
     }
 
@@ -463,10 +462,11 @@ class ConcentrationService {
     final vertical = (topMid.y - bottomMid.y).abs().toDouble();
 
     double horizontal = 80.0;
-    if (leftCheek != null && rightCheek != null &&
-        leftCheek.isNotEmpty && rightCheek.isNotEmpty) {
-      horizontal =
-          (leftCheek.last.x - rightCheek.first.x).abs().toDouble();
+    if (leftCheek != null &&
+        rightCheek != null &&
+        leftCheek.isNotEmpty &&
+        rightCheek.isNotEmpty) {
+      horizontal = (leftCheek.last.x - rightCheek.first.x).abs().toDouble();
     }
     return horizontal < 1e-6 ? 0.0 : vertical / horizontal;
   }
@@ -581,13 +581,11 @@ class ConcentrationService {
       List<double> sorted) {
     final n = sorted.length;
     final mean = sorted.reduce((a, b) => a + b) / n;
-    final sq = sorted
-        .map((v) => (v - mean) * (v - mean))
-        .reduce((a, b) => a + b);
+    final sq =
+        sorted.map((v) => (v - mean) * (v - mean)).reduce((a, b) => a + b);
     final std = math.sqrt(sq / n);
-    final median = n.isOdd
-        ? sorted[n ~/ 2]
-        : (sorted[n ~/ 2 - 1] + sorted[n ~/ 2]) / 2.0;
+    final median =
+        n.isOdd ? sorted[n ~/ 2] : (sorted[n ~/ 2 - 1] + sorted[n ~/ 2]) / 2.0;
     return (
       mean: mean,
       std: std,
@@ -695,19 +693,16 @@ class ConcentrationService {
         final yawnDetected = _detectYawn();
         final yawnPenalty = yawnDetected ? _kYawnPenalty : 0.0;
         final longClosure = _detectLongEyeClosure();
-        final closurePenalty =
-            longClosure ? _kLongEyeClosurePenalty : 0.0;
+        final closurePenalty = longClosure ? _kLongEyeClosurePenalty : 0.0;
         final penalty = math.max(yawnPenalty, closurePenalty);
 
-        final clampedScore =
-            (baseScore - penalty).clamp(0.0, 100.0);
+        final clampedScore = (baseScore - penalty).clamp(0.0, 100.0);
         _scoreHistory.add(clampedScore);
 
-        if (_scoreHistory.length % 10 == 1) {
+        if (kDebugMode && _scoreHistory.length % 20 == 1) {
           final realMarMean = _realMarBuffer.isEmpty
               ? 0.0
-              : _realMarBuffer.reduce((a, b) => a + b) /
-                  _realMarBuffer.length;
+              : _realMarBuffer.reduce((a, b) => a + b) / _realMarBuffer.length;
           debugPrint(
             '[FEAT] face_rate=${feats[0].toStringAsFixed(2)} '
             'ear_avg_mean=${feats[13].toStringAsFixed(3)} '
@@ -715,15 +710,16 @@ class ConcentrationService {
             'blink_rate=${feats[46].toStringAsFixed(3)} '
             '${_userMarBaseline != null ? "mar_baseline=${_userMarBaseline!.toStringAsFixed(3)}" : "mar_baseline=학습 중"}',
           );
-        }
 
-        debugPrint('[SCORE] ml=${(mlScoreRaw * _kWeightMl * 100).toStringAsFixed(1)} '
-            'presence=${(presenceRatio * _kWeightPresence * 100).toStringAsFixed(1)} '
-            'stare=${(blinkRatio * _kWeightStare * 100).toStringAsFixed(1)} '
-            '${yawnDetected ? "🥱-$yawnPenalty " : ""}'
-            '${longClosure ? "😴-$closurePenalty " : ""}'
-            '→ ${clampedScore.toStringAsFixed(1)}점 '
-            '(blinks=$blinkCount/6 stable=$_stable)');
+          debugPrint(
+              '[SCORE] ml=${(mlScoreRaw * _kWeightMl * 100).toStringAsFixed(1)} '
+              'presence=${(presenceRatio * _kWeightPresence * 100).toStringAsFixed(1)} '
+              'stare=${(blinkRatio * _kWeightStare * 100).toStringAsFixed(1)} '
+              '${yawnDetected ? "yawn-$yawnPenalty " : ""}'
+              '${longClosure ? "long-close-$closurePenalty " : ""}'
+              '-> ${clampedScore.toStringAsFixed(1)}점 '
+              '(blinks=$blinkCount/6 stable=$_stable)');
+        }
       }
 
       _publishResult(
@@ -790,7 +786,8 @@ class ConcentrationService {
 
     if (avgScore >= focusedThreshold) {
       // 집중 잘함 → 다음 집중 +5분 (max 한도 내)
-      recFocus = (currentFocusMinutes + 5).clamp(minFocusMinutes, maxFocusMinutes);
+      recFocus =
+          (currentFocusMinutes + 5).clamp(minFocusMinutes, maxFocusMinutes);
       recBreak = (recFocus / 5).floor().clamp(minBreakMinutes, 60);
     } else if (avgScore >= mediumThreshold) {
       // 보통 → 현재 유지
@@ -798,7 +795,8 @@ class ConcentrationService {
       recBreak = (recFocus / 5).floor().clamp(minBreakMinutes, 60);
     } else {
       // 부진 → 다음 집중 -5분 (최소 보장), 휴식 최소 10분
-      recFocus = (currentFocusMinutes - 5).clamp(minFocusMinutes, maxFocusMinutes);
+      recFocus =
+          (currentFocusMinutes - 5).clamp(minFocusMinutes, maxFocusMinutes);
       recBreak = math.max(10, (recFocus / 5).floor()).clamp(10, 60);
     }
 
@@ -828,4 +826,3 @@ class ConcentrationService {
     );
   }
 }
-

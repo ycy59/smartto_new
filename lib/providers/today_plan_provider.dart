@@ -29,8 +29,10 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
     // FSRS next_due 는 정렬 우선순위에만 사용하고 가시성 필터로는 쓰지 않음.
     // (이전엔 next_due <= today 로 필터링 → FSRS Again 시 next_due 가 미래로
     //  점프하면서 사용자가 ▶ 누르고 backout 만 해도 과목이 사라지는 문제 발생)
-    final goals = await ref.read(studyGoalRepoProvider).getAll();
-    final subjects = await ref.read(subjectRepoProvider).getAll();
+    final goalsFuture = ref.read(studyGoalRepoProvider).getAll();
+    final subjectsFuture = ref.read(subjectRepoProvider).getAll();
+    final goals = await goalsFuture;
+    final subjects = await subjectsFuture;
     final subjectMap = {for (final s in subjects) s.id: s};
 
     return PriorityCalculator.todayPlan(goals)
@@ -38,19 +40,16 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
             subjectMap.containsKey(p.goal.subjectId) &&
             p.goal.todos.any((t) => !t.isDone))
         .map((p) {
-          // 완료(isDone) todo는 화면에서 즉시 사라지도록 제거
-          // priority 높은 순으로 정렬
-          final sortedTodos = p.goal.todos
-              .where((t) => !t.isDone)
-              .toList()
-            ..sort((a, b) => b.priority.compareTo(a.priority));
-          return TodayPlanEntry(
-            subject: subjectMap[p.goal.subjectId]!,
-            goal: p.goal.copyWith(todos: sortedTodos),
-            priorityScore: p.score,
-          );
-        })
-        .toList();
+      // 완료(isDone) todo는 화면에서 즉시 사라지도록 제거
+      // priority 높은 순으로 정렬
+      final sortedTodos = p.goal.todos.where((t) => !t.isDone).toList()
+        ..sort((a, b) => b.priority.compareTo(a.priority));
+      return TodayPlanEntry(
+        subject: subjectMap[p.goal.subjectId]!,
+        goal: p.goal.copyWith(todos: sortedTodos),
+        priorityScore: p.score,
+      );
+    }).toList();
   }
 
   void refresh() => ref.invalidateSelf();
@@ -71,9 +70,8 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
 
     // 1) state 에 있으면 옵티미스틱 업데이트 (완료된 항목은 화면에서 제거)
     if (current != null) {
-      final hasInState = current
-          .expand((e) => e.goal.todos)
-          .any((t) => t.id == todoId);
+      final hasInState =
+          current.expand((e) => e.goal.todos).any((t) => t.id == todoId);
       if (hasInState) {
         final updated = current.map((entry) {
           final newTodos = entry.goal.todos

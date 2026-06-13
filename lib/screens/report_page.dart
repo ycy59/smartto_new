@@ -576,10 +576,11 @@ class _DailyTabState extends ConsumerState<_DailyTab> {
   @override
   Widget build(BuildContext context) {
     final isDark = widget.isDark; // ✅
-    final dailyReport = ref.watch(dailyReportProvider(_selectedDate));
-    final hourlyBuckets = ref.watch(dailyHourlyBucketsProvider(_selectedDate));
-    final modeRatio = ref.watch(dailyModeRatioProvider(_selectedDate));
-    final activities = ref.watch(dailyActivitiesProvider(_selectedDate));
+    final dailyBundle = ref.watch(dailyReportBundleProvider(_selectedDate));
+    final dailyReport = dailyBundle.whenData((data) => data.report);
+    final hourlyBuckets = dailyBundle.whenData((data) => data.hourlyBuckets);
+    final modeRatio = dailyBundle.whenData((data) => data.modeRatio);
+    final activities = dailyBundle.whenData((data) => data.activities);
 
     return Column(
       children: [
