@@ -32,6 +32,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/entities/study_session.dart';
+import '../providers/database_provider.dart';
 import '../providers/study_session_provider.dart';
 import '../providers/theme_provider.dart'; // ✅ 추가
 import '../providers/today_plan_provider.dart';
@@ -114,7 +115,7 @@ class CameraTask {
     return [
       for (final e in entries)
         for (final t in e.goal.todos)
-          if (t.text.isNotEmpty)
+          if (!t.isDone && t.text.isNotEmpty)
             CameraTask(
               todoId: t.id,
               goalId: e.goal.id,
@@ -144,6 +145,7 @@ class CameraPage extends ConsumerStatefulWidget {
 class _CameraPageState extends ConsumerState<CameraPage> {
   // ── 과목 / 세션 ──────────────────────────────────────────────────────────
   CameraTask? _selectedTask;
+  late List<CameraTask> _tasks;
   late Map<String, bool> _doneMap; // todoId → done
   StudySession? _activeSession;
 
@@ -173,7 +175,13 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   @override
   void initState() {
     super.initState();
-    _doneMap = {for (final t in widget.allTasks) t.todoId: false};
+    _tasks = List.of(widget.allTasks);
+    _selectedTask = widget.initialSelectedTask;
+    if (_selectedTask != null &&
+        !_tasks.any((task) => task.todoId == _selectedTask!.todoId)) {
+      _tasks.insert(0, _selectedTask!);
+    }
+    _doneMap = {for (final t in _tasks) t.todoId: false};
     _alarm.init();
     // 세션은 ▶ 누를 때 _startTimer 에서 시작.
     // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
@@ -227,8 +235,33 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     final sessId = prefs.getString(_kPrefSessionId);
     final startedAtMs = prefs.getInt(_kPrefSessionStartedAtMs);
     final goalId = prefs.getString(_kPrefGoalId);
-    if (sessId == null || startedAtMs == null || goalId == null) return;
+    final todoId = prefs.getString(_kPrefTodoId);
+    if (sessId == null ||
+        startedAtMs == null ||
+        goalId == null ||
+        todoId == null ||
+        todoId.isEmpty) {
+      return;
+    }
 
+    final hasCurrentTask = _tasks.any((task) => task.todoId == todoId);
+    if (!hasCurrentTask) {
+      final goalTodos = await ref.read(todoRepoProvider).getByGoal(goalId);
+      var stillPending = false;
+      for (final todo in goalTodos) {
+        if (todo.id == todoId) {
+          stillPending = !todo.isDone;
+          break;
+        }
+      }
+      if (!stillPending) {
+        await _clearPausedState();
+        return;
+      }
+    }
+
+    final colorArgb = prefs.getInt(_kPrefSubjectColor) ?? 0;
+    if (!mounted) return;
     // _activeSession 재구성 (DB 조회 없이 prefs 값으로 충분)
     _activeSession = StudySession(
       id: sessId,
@@ -236,18 +269,20 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       startedAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
       createdAt: DateTime.fromMillisecondsSinceEpoch(startedAtMs),
     );
-
-    final colorArgb = prefs.getInt(_kPrefSubjectColor) ?? 0;
-    if (!mounted) return;
     setState(() {
-      _selectedTask = CameraTask(
-        todoId: prefs.getString(_kPrefTodoId) ?? '',
+      final restoredTask = CameraTask(
+        todoId: todoId,
         goalId: goalId,
         subjectId: prefs.getString(_kPrefSubjectId) ?? '',
         text: prefs.getString(_kPrefTaskText) ?? '',
         subjectName: prefs.getString(_kPrefSubjectName),
         subjectColor: colorArgb == 0 ? null : Color(colorArgb),
       );
+      _selectedTask = restoredTask;
+      if (!_tasks.any((task) => task.todoId == restoredTask.todoId)) {
+        _tasks.insert(0, restoredTask);
+        _doneMap[restoredTask.todoId] = false;
+      }
       _focusMinutes = prefs.getInt(_kPrefFocusMinutes) ?? _kDefaultFocusMinutes;
       _breakMinutes = prefs.getInt(_kPrefBreakMinutes) ?? _kDefaultBreakMinutes;
       _isBreakMode = prefs.getBool(_kPrefIsBreakMode) ?? false;
@@ -536,6 +571,32 @@ class _CameraPageState extends ConsumerState<CameraPage> {
           .read(todayPlanProvider.notifier)
           .toggleTodoDone(task.todoId, next);
     }
+
+    if (!mounted) return;
+    if (next) {
+      await _removeCompletedTask(task);
+    }
+  }
+
+  Future<void> _removeCompletedTask(CameraTask task) async {
+    _ticker?.cancel();
+    if (_activeSession != null) {
+      await _endSession();
+      if (!mounted) return;
+    } else {
+      await _clearPausedState();
+    }
+    if (_serviceReady) _service.reset();
+    setState(() {
+      _tasks.removeWhere((item) => item.todoId == task.todoId);
+      _doneMap.remove(task.todoId);
+      if (_selectedTask?.todoId == task.todoId) {
+        _selectedTask = null;
+      }
+      _isBreakMode = false;
+      _remainingSeconds = _focusMinutes * 60;
+      _isRunning = false;
+    });
   }
 
   Future<void> _onCompleteTap() async {
@@ -825,7 +886,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
               ),
               const Spacer(),
               Text(
-                '${_doneMap.values.where((v) => v).length} / ${widget.allTasks.length}',
+                '${_tasks.length}개',
                 style: const TextStyle(
                   fontSize: 10,
                   color: Color(0xFF7E7E7E),
@@ -839,9 +900,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  ...widget.allTasks
-                      .map((task) => _buildTaskRow(task, isDark)), // ✅
-                  if (widget.allTasks.isEmpty)
+                  ..._tasks.map((task) => _buildTaskRow(task, isDark)), // ✅
+                  if (_tasks.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(8),
                       child: Text(

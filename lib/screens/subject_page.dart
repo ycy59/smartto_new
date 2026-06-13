@@ -327,8 +327,9 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
     final cameraTasks = _subjects
         .where((s) => s.goalId != null && s.subjectId != null)
-        .expand((s) =>
-            s.todos.where((t) => t.text.isNotEmpty).map((t) => CameraTask(
+        .expand((s) => s.todos
+            .where((t) => !t.done && t.text.isNotEmpty)
+            .map((t) => CameraTask(
                   todoId: t.id ?? '',
                   goalId: s.goalId!,
                   subjectId: s.subjectId!,

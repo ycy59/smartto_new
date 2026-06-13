@@ -894,7 +894,7 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
     for (final subject in _subjects) {
       if (subject.goalId == null) continue;
       for (final todo in subject.todos) {
-        if (todo.text.isNotEmpty) {
+        if (!todo.done && todo.text.isNotEmpty) {
           result.add(CameraTask(
             todoId: todo.id ?? '',
             goalId: subject.goalId!,
