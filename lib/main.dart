@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/home_shell.dart';
-import 'screens/subject_page.dart';
 import 'utils/db_platform_init.dart';
 import 'providers/theme_provider.dart';
 
@@ -27,11 +26,13 @@ class SmarttoApp extends ConsumerWidget {
       title: 'Smartto',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
-      theme: ThemeData(  // ← 라이트 테마 (기존)
+      theme: ThemeData(
+        // ← 라이트 테마 (기존)
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      darkTheme: ThemeData(           // ← 다크 테마 추가
+      darkTheme: ThemeData(
+        // ← 다크 테마 추가
         scaffoldBackgroundColor: const Color(0xFF1A1A1A),
         useMaterial3: true,
         brightness: Brightness.dark,
@@ -90,9 +91,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String selectedStudyTime = '';
 
   final List<Map<String, String>> purposeOptions = const [
-    {'title': '대학생', 'subtitle': '수업 · 과제 · 시험', 'icon': 'assets/images/icon_university.png'},
-    {'title': '수험생', 'subtitle': '수능 · 공무원', 'icon': 'assets/images/icon_exam.png'},
-    {'title': '자기계발', 'subtitle': '자격증 · 언어', 'icon': 'assets/images/icon_growth.png'},
+    {
+      'title': '대학생',
+      'subtitle': '수업 · 과제 · 시험',
+      'icon': 'assets/images/icon_university.png'
+    },
+    {
+      'title': '수험생',
+      'subtitle': '수능 · 공무원',
+      'icon': 'assets/images/icon_exam.png'
+    },
+    {
+      'title': '자기계발',
+      'subtitle': '자격증 · 언어',
+      'icon': 'assets/images/icon_growth.png'
+    },
   ];
 
   final List<String> timeOptions = const ['1시간', '2시간', '4시간', '5시간+'];
@@ -115,77 +128,76 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void goPrev() {
-  if (currentPage > 0) {
-    _pageController.previousPage(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+    if (currentPage > 0) {
+      _pageController.previousPage(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-  child: Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 430),
-      child: PageView(
-        controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(),
-        onPageChanged: (index) {
-          setState(() {
-            currentPage = index;
-          });
-        },
-        children: [
-          SplashPage(
-            onFinished: goNext,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: PageView(
+              controller: _pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (index) {
+                setState(() {
+                  currentPage = index;
+                });
+              },
+              children: [
+                SplashPage(
+                  onFinished: goNext,
+                ),
+                IntroGuidePage(
+                  onStart: goNext,
+                ),
+                NicknamePage(
+                  controller: nicknameController,
+                  onChanged: (_) => setState(() {}),
+                  onBack: goPrev,
+                  onNext: goNext,
+                  canGoNext: nicknameController.text.trim().isNotEmpty,
+                ),
+                PurposePage(
+                  options: purposeOptions,
+                  selectedPurpose: selectedPurpose,
+                  onSelect: (value) {
+                    setState(() {
+                      selectedPurpose = value;
+                    });
+                  },
+                  onBack: goPrev,
+                  onNext: goNext,
+                  canGoNext: selectedPurpose.isNotEmpty,
+                ),
+                StudyTimePage(
+                  options: timeOptions,
+                  selectedTime: selectedStudyTime,
+                  onSelect: (value) {
+                    setState(() {
+                      selectedStudyTime = value;
+                    });
+                  },
+                  onBack: goPrev,
+                  onNext: goNext,
+                  canGoNext: selectedStudyTime.isNotEmpty,
+                ),
+                CompletePage(
+                  nickname: nicknameController.text.trim(),
+                  selectedStudyTime: selectedStudyTime,
+                ),
+              ],
+            ),
           ),
-
-           IntroGuidePage(
-            onStart: goNext, 
-          ),
-
-          NicknamePage(
-            controller: nicknameController,
-            onChanged: (_) => setState(() {}),
-            onBack: goPrev,
-            onNext: goNext,
-            canGoNext: nicknameController.text.trim().isNotEmpty,
-          ),
-          PurposePage(
-            options: purposeOptions,
-            selectedPurpose: selectedPurpose,
-            onSelect: (value) {
-              setState(() {
-                selectedPurpose = value;
-              });
-            },
-            onBack: goPrev,
-            onNext: goNext,
-            canGoNext: selectedPurpose.isNotEmpty,
-          ),
-          StudyTimePage(
-            options: timeOptions,
-            selectedTime: selectedStudyTime,
-            onSelect: (value) {
-              setState(() {
-                selectedStudyTime = value;
-              });
-            },
-            onBack: goPrev,
-            onNext: goNext,
-            canGoNext: selectedStudyTime.isNotEmpty,
-          ),
-          CompletePage(
-            nickname: nicknameController.text.trim(),
-            selectedStudyTime: selectedStudyTime,
-          ),
-        ],
+        ),
       ),
-    ),
-  ),
-),
     );
   }
 }
@@ -500,9 +512,7 @@ class PurposePage extends StatelessWidget {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFFFFF5EB)
-                        : Colors.white,
+                    color: isSelected ? const Color(0xFFFFF5EB) : Colors.white,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: isSelected
@@ -620,9 +630,7 @@ class StudyTimePage extends StatelessWidget {
                 onTap: () => onSelect(option),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFFF4A261)
-                        : Colors.white,
+                    color: isSelected ? const Color(0xFFF4A261) : Colors.white,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
@@ -636,9 +644,8 @@ class StudyTimePage extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF222222),
+                      color:
+                          isSelected ? Colors.white : const Color(0xFF222222),
                     ),
                   ),
                 ),

@@ -233,19 +233,19 @@ Insight:
 오늘은 오전 시간대 집중도가 가장 안정적이었고, 영어 학습 비중이 높았어요. 다음 세션에서는 집중도가 낮았던 한국사를 오전 9시~11시처럼 집중도가 높은 시간대에 짧게 배치해보세요.
 
 Report data:
-- Period: 이번 주
-- Total study time: 5시간 40분
-- Completed todos: 7개
-- Average focus score: 64%
-- Total sessions: 6
-- Best focus time slot: 오후 1시~3시
-- Weak focus time slot: 오후 6시~8시
+- Period: 이번 주 (3/3 - 3/9)
+- Total study time: 3시간 20분
+- Completed todos: 5개
+- Average focus score: 71%
+- Total sessions: 4
+- Best focus time slot: 3/5(수)
+- Weak focus time slot: -
 - Most studied subject: 수학
-- Lowest focus subject: 과학
-- Study mode ratio: study 55%, exam 45%
+- Lowest focus subject: -
+- Study mode ratio: -
 
 Insight:
-이번 주는 오후 1시~3시 집중도가 비교적 안정적이었지만, 평균 집중도는 조금 흔들리는 편이었어요. 다음 주에는 과학을 오후 1시~3시처럼 집중도가 높은 시간대에 먼저 배치하고, 오후 6시~8시는 가벼운 복습으로 줄여보세요.
+이번 주는 3/5(수)에 집중도가 가장 높았고, 수학 학습 비중이 가장 컸어요. 다음 주에는 다른 과목도 집중도가 좋은 요일에 배치해서 균형 있게 공부해보세요.
 
 Insight:
 """;

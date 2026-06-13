@@ -113,6 +113,16 @@ String formatMinutes(int minutes) {
   return '${h}H ${m.toString().padLeft(2, '0')}M';
 }
 
+/// 분 → 한국어 형식 (SLM 프롬프트용, 예: 85분 → '1시간 25분')
+String formatMinutesKo(int minutes) {
+  if (minutes <= 0) return '0분';
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  if (h == 0) return '$m분';
+  if (m == 0) return '$h시간';
+  return '$h시간 $m분';
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  리포트 페이지용 5종 집계 — ReportQueries (정적) + FutureProvider.family
 //

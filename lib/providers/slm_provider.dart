@@ -6,9 +6,9 @@
 //   - slmDownloadStateProvider : 모델 다운로드 상태 (앱 시작 시 자동 체크)
 //
 // 앱 lifecycle:
-//   1. main.dart 진입 → slmDownloadStateProvider 첫 watch → 자동 다운로드 트리거
-//   2. UI에서 진행률 표시
-//   3. 다운로드 완료 → isReady = true → 호출자가 SlmService.load() 가능
+//   1. slmDownloadStateProvider 첫 watch → 로컬 모델 파일 존재 여부 확인
+//   2. 모델이 있으면 isReady = true → 호출자가 SlmService.load() 가능
+//   3. 모델이 없으면 fallback 사용, 테스트 화면에서 사용자가 수동 다운로드
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:io';
@@ -64,10 +64,10 @@ final slmDownloadStateProvider =
 class SlmDownloadNotifier extends StateNotifier<SlmDownloadState> {
   final Ref ref;
   SlmDownloadNotifier(this.ref) : super(SlmDownloadState.idle) {
-    _checkAndDownload();
+    _checkModelPresence();
   }
 
-  Future<void> _checkAndDownload() async {
+  Future<void> _checkModelPresence() async {
     if (!Platform.isAndroid && !Platform.isIOS) {
       state = state.copyWith(
         error: 'SLM은 iOS/Android에서만 지원됩니다.',
@@ -76,11 +76,13 @@ class SlmDownloadNotifier extends StateNotifier<SlmDownloadState> {
       return;
     }
     final slm = ref.read(slmServiceProvider);
+    // 구 모델 파일 정리 (용량 확보)
+    await slm.cleanupLegacyModels();
     if (await slm.isModelDownloaded()) {
       state = state.copyWith(isReady: true, progress: 1.0);
       return;
     }
-    await downloadNow();
+    state = state.copyWith(isReady: false, progress: 0.0, error: null);
   }
 
   /// 사용자가 수동으로 재시도하고 싶을 때.

@@ -133,7 +133,7 @@ class CameraPage extends ConsumerStatefulWidget {
 
   const CameraPage({
     super.key,
-    this.initialSelectedTask, 
+    this.initialSelectedTask,
     required this.allTasks,
   });
 
@@ -188,8 +188,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     final prefs = await SharedPreferences.getInstance();
     final t = _selectedTask!;
     await prefs.setString(_kPrefSessionId, _activeSession!.id);
-    await prefs.setInt(
-        _kPrefSessionStartedAtMs, _activeSession!.startedAt.millisecondsSinceEpoch);
+    await prefs.setInt(_kPrefSessionStartedAtMs,
+        _activeSession!.startedAt.millisecondsSinceEpoch);
     await prefs.setString(_kPrefGoalId, t.goalId);
     await prefs.setString(_kPrefSubjectId, t.subjectId);
     await prefs.setString(_kPrefTodoId, t.todoId);
@@ -248,10 +248,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         subjectName: prefs.getString(_kPrefSubjectName),
         subjectColor: colorArgb == 0 ? null : Color(colorArgb),
       );
-      _focusMinutes =
-          prefs.getInt(_kPrefFocusMinutes) ?? _kDefaultFocusMinutes;
-      _breakMinutes =
-          prefs.getInt(_kPrefBreakMinutes) ?? _kDefaultBreakMinutes;
+      _focusMinutes = prefs.getInt(_kPrefFocusMinutes) ?? _kDefaultFocusMinutes;
+      _breakMinutes = prefs.getInt(_kPrefBreakMinutes) ?? _kDefaultBreakMinutes;
       _isBreakMode = prefs.getBool(_kPrefIsBreakMode) ?? false;
       _remainingSeconds =
           prefs.getInt(_kPrefRemainingSeconds) ?? (_focusMinutes * 60);
@@ -430,8 +428,7 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       });
     } else {
       // 집중 끝 → 점수 저장 → 평가 팝업 → 추천 적용 → 휴식 자동 시작
-      final avgScore01 =
-          _serviceReady ? _service.averageScore01 : 0.65;
+      final avgScore01 = _serviceReady ? _service.averageScore01 : 0.65;
       final avgScore = (avgScore01 * 100).clamp(0.0, 100.0);
 
       // 추천 다음 세션 시간 계산
@@ -478,8 +475,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       }
 
       setState(() {
-        _focusMinutes = rec.focusMinutes;     // 다음 집중 시간 적용
-        _breakMinutes = rec.breakMinutes;     // 휴식 시간 적용
+        _focusMinutes = rec.focusMinutes; // 다음 집중 시간 적용
+        _breakMinutes = rec.breakMinutes; // 휴식 시간 적용
         _isBreakMode = true;
         _remainingSeconds = _breakMinutes * 60;
       });
@@ -569,21 +566,47 @@ class _CameraPageState extends ConsumerState<CameraPage> {
       return;
     }
 
-    // Step 2: 채팅형 회상 질문 다이얼로그
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _RecallChatDialog(
-        taskText: task.text,
-        subjectName: task.subjectName ?? '',
-        subjectColor: task.subjectColor ?? _kAccent,
-        studyMode: 'study', // TODO: goal.mode 연결 시 동적 매핑
-        focusScorePercent: _serviceReady
-            ? (_service.averageScore01 * 100).round()
-            : null,
-        durationMinutes: _focusMinutes,
-      ),
-    );
+    // Step 2: 카메라 스트림 중단 → SLM 로드 RAM 확보
+    final wasStreaming = _camCtrl?.value.isStreamingImages ?? false;
+    if (wasStreaming) {
+      try {
+        await _camCtrl!.stopImageStream();
+      } catch (e) {
+        debugPrint('[CameraPage] 카메라 스트림 중단 실패: $e');
+      }
+    }
+
+    if (!mounted) return;
+
+    bool? saved;
+    try {
+      // 채팅형 회상 질문 다이얼로그
+      saved = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _RecallChatDialog(
+          taskText: task.text,
+          subjectName: task.subjectName ?? '',
+          subjectColor: task.subjectColor ?? _kAccent,
+          studyMode: 'study', // TODO: goal.mode 연결 시 동적 매핑
+          focusScorePercent:
+              _serviceReady ? (_service.averageScore01 * 100).round() : null,
+          durationMinutes: _focusMinutes,
+        ),
+      );
+    } finally {
+      // 다이얼로그 내부 SLM 호출이 실패해도 카메라 스트림은 복구한다.
+      if (mounted &&
+          wasStreaming &&
+          (_camCtrl?.value.isInitialized ?? false) &&
+          !(_camCtrl!.value.isStreamingImages)) {
+        try {
+          await _camCtrl!.startImageStream(_onCameraImage);
+        } catch (e) {
+          debugPrint('[CameraPage] 카메라 스트림 재개 실패: $e');
+        }
+      }
+    }
 
     if (!mounted) return;
     if (saved == true) {
@@ -643,7 +666,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF3F3F3), // ✅
+      backgroundColor:
+          isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF3F3F3), // ✅
       // 다이얼로그 키보드 떠도 카메라 페이지 자체는 줄어들지 않도록
       // (키보드는 다이얼로그가 알아서 회피함)
       resizeToAvoidBottomInset: false,
@@ -675,7 +699,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ─── 상단 바 ──────────────────────────────────────────────────────────────
-  Widget _buildTopBar(bool isDark) { // ✅ isDark 파라미터 추가
+  Widget _buildTopBar(bool isDark) {
+    // ✅ isDark 파라미터 추가
     final hasTask = _selectedTask != null;
     final chipText = hasTask ? _selectedTask!.displayLabel : '과목을 선택해주세요';
     final dotColor = hasTask ? _selectedTask!.color : const Color(0xFFCBCBCB);
@@ -716,7 +741,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: hasTask
-                          ? isDark ? Colors.white : const Color(0xFF232323) // ✅
+                          ? isDark
+                              ? Colors.white
+                              : const Color(0xFF232323) // ✅
                           : const Color(0xFFAAAAAA),
                     ),
                   ),
@@ -775,7 +802,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ─── 왼쪽 오늘 할 일 ────────────────────────────────────────────────────
-  Widget _buildLeftTaskList(bool isDark) { // ✅ isDark 파라미터 추가
+  Widget _buildLeftTaskList(bool isDark) {
+    // ✅ isDark 파라미터 추가
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
@@ -811,7 +839,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
-                  ...widget.allTasks.map((task) => _buildTaskRow(task, isDark)), // ✅
+                  ...widget.allTasks
+                      .map((task) => _buildTaskRow(task, isDark)), // ✅
                   if (widget.allTasks.isEmpty)
                     const Padding(
                       padding: EdgeInsets.all(8),
@@ -832,7 +861,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     );
   }
 
-  Widget _buildTaskRow(CameraTask task, bool isDark) { // ✅ isDark 파라미터 추가
+  Widget _buildTaskRow(CameraTask task, bool isDark) {
+    // ✅ isDark 파라미터 추가
     final isSelected = _selectedTask?.todoId == task.todoId;
     final isDone = _doneMap[task.todoId] ?? false;
 
@@ -843,7 +873,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? isDark ? const Color(0xFF2C2C2C) : Colors.white // ✅
+              ? isDark
+                  ? const Color(0xFF2C2C2C)
+                  : Colors.white // ✅
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
@@ -865,7 +897,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                   fontSize: 11,
                   color: isDone
                       ? const Color(0xFFCBCBCB)
-                      : isDark ? const Color(0xFFAAAAAA) : const Color(0xFF555555), // ✅
+                      : isDark
+                          ? const Color(0xFFAAAAAA)
+                          : const Color(0xFF555555), // ✅
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   decoration:
                       isDone ? TextDecoration.lineThrough : TextDecoration.none,
@@ -886,7 +920,8 @@ class _CameraPageState extends ConsumerState<CameraPage> {
   }
 
   // ─── 가운데: 타이머 (항상 보이게, 과목 미선택 시 컨트롤 비활성화) ──────
-  Widget _buildCenter(bool isDark) { // ✅ isDark 파라미터 추가
+  Widget _buildCenter(bool isDark) {
+    // ✅ isDark 파라미터 추가
     final hasTask = _selectedTask != null;
     final progress =
         _totalSeconds == 0 ? 0.0 : 1.0 - (_remainingSeconds / _totalSeconds);
@@ -924,7 +959,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
               painter: _RingPainter(
                 progress: progress,
                 color: ringColor,
-                trackColor: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE8E8E8), // ✅
+                trackColor: isDark
+                    ? const Color(0xFF3A3A3A)
+                    : const Color(0xFFE8E8E8), // ✅
                 strokeWidth: 7,
               ),
               child: Center(
@@ -939,7 +976,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                           fontSize: 30,
                           fontWeight: FontWeight.w800,
                           color: hasTask
-                              ? isDark ? Colors.white : Colors.black // ✅
+                              ? isDark
+                                  ? Colors.white
+                                  : Colors.black // ✅
                               : const Color(0xFFAAAAAA),
                           letterSpacing: 1.5,
                         ),
@@ -974,14 +1013,20 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: hasTask
-                      ? isDark ? const Color(0xFF3A3A3A) : const Color(0xFFEEEEEE) // ✅
-                      : isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
+                      ? isDark
+                          ? const Color(0xFF3A3A3A)
+                          : const Color(0xFFEEEEEE) // ✅
+                      : isDark
+                          ? const Color(0xFF2A2A2A)
+                          : const Color(0xFFF5F5F5),
                 ),
                 child: Icon(
                   Icons.refresh,
                   size: 18,
                   color: hasTask
-                      ? isDark ? Colors.white70 : const Color(0xFF666666) // ✅
+                      ? isDark
+                          ? Colors.white70
+                          : const Color(0xFF666666) // ✅
                       : const Color(0xFFCCCCCC),
                 ),
               ),
@@ -995,7 +1040,9 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: hasTask
-                      ? isDark ? Colors.white : Colors.black // ✅
+                      ? isDark
+                          ? Colors.white
+                          : Colors.black // ✅
                       : const Color(0xFFCCCCCC),
                 ),
                 child: Icon(
@@ -1053,42 +1100,42 @@ class _CameraPageState extends ConsumerState<CameraPage> {
                         ),
                       )
                     : (_camReady && _camCtrl != null)
-                    ? LayoutBuilder(
-                        builder: (ctx, constraints) {
-                          // 카메라의 native aspect ratio 를 유지하면서
-                          // 박스를 가득 채우기 (cover) — 비율 안 맞는 부분은 잘림
-                          final ar = _camCtrl!.value.aspectRatio;
-                          return SizedBox(
-                            width: constraints.maxWidth,
-                            height: constraints.maxHeight,
-                            child: FittedBox(
-                              fit: BoxFit.cover,
-                              clipBehavior: Clip.hardEdge,
-                              child: SizedBox(
-                                width: 100,
-                                height: 100 / ar,
-                                child: CameraPreview(_camCtrl!),
-                              ),
-                            ),
-                          );
-                        },
-                      )
-                    : Center(
-                        child: _camError != null
-                            ? Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: Text(
-                                  _camError!,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 9,
-                                    color: Color(0xFF999999),
+                        ? LayoutBuilder(
+                            builder: (ctx, constraints) {
+                              // 카메라의 native aspect ratio 를 유지하면서
+                              // 박스를 가득 채우기 (cover) — 비율 안 맞는 부분은 잘림
+                              final ar = _camCtrl!.value.aspectRatio;
+                              return SizedBox(
+                                width: constraints.maxWidth,
+                                height: constraints.maxHeight,
+                                child: FittedBox(
+                                  fit: BoxFit.cover,
+                                  clipBehavior: Clip.hardEdge,
+                                  child: SizedBox(
+                                    width: 100,
+                                    height: 100 / ar,
+                                    child: CameraPreview(_camCtrl!),
                                   ),
                                 ),
-                              )
-                            : const Icon(Icons.person_outline,
-                                size: 28, color: Color(0xFFC7C7C7)),
-                      ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: _camError != null
+                                ? Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: Text(
+                                      _camError!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        color: Color(0xFF999999),
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(Icons.person_outline,
+                                    size: 28, color: Color(0xFFC7C7C7)),
+                          ),
               ),
             ),
           ),
@@ -1331,8 +1378,7 @@ class _SessionEvalDialog extends StatelessWidget {
       backgroundColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       // 가로 모드에서도 컴팩트 (280px 카드처럼 보이게)
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 280),
         child: Padding(
@@ -1373,8 +1419,8 @@ class _SessionEvalDialog extends StatelessWidget {
 
               // 다음 세션 추천
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(8),
@@ -1475,9 +1521,7 @@ class _SessionEvalDialog extends StatelessWidget {
               fontSize: 8,
               color: sub.contains('+')
                   ? const Color(0xFF5AA85A)
-                  : (sub.contains('-')
-                      ? _kAccent
-                      : const Color(0xFF888888)),
+                  : (sub.contains('-') ? _kAccent : const Color(0xFF888888)),
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -2069,8 +2113,8 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
                 ),
                 child: Text(
                   label,
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF666666)),
+                  style:
+                      const TextStyle(fontSize: 12, color: Color(0xFF666666)),
                 ),
               ),
             ),
@@ -2145,13 +2189,11 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
             ),
           Flexible(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: isAi ? Colors.white : _kAccent,
-                border: isAi
-                    ? Border.all(color: const Color(0xFFEEEEEE))
-                    : null,
+                border:
+                    isAi ? Border.all(color: const Color(0xFFEEEEEE)) : null,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -2201,8 +2243,7 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
                 color: _kAccent, size: 14),
           ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: const Color(0xFFEEEEEE)),
@@ -2242,12 +2283,12 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
               onSubmitted: (_) => _send(),
               decoration: InputDecoration(
                 hintText: '답변을 입력하세요',
-                hintStyle: const TextStyle(
-                    color: Color(0xFFBBBBBB), fontSize: 14),
+                hintStyle:
+                    const TextStyle(color: Color(0xFFBBBBBB), fontSize: 14),
                 filled: true,
                 fillColor: const Color(0xFFF8F8F8),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(24),
                   borderSide: BorderSide.none,
@@ -2265,8 +2306,8 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
                 color: _kAccent,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.send_rounded,
-                  color: Colors.white, size: 20),
+              child:
+                  const Icon(Icons.send_rounded, color: Colors.white, size: 20),
             ),
           ),
         ],
@@ -2279,7 +2320,7 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
     ref.read(studyQaProvider.notifier).add(
           StudyQaEntry(
             subjectName: widget.subjectName,
-            subjectColorValue: widget.subjectColor.value,
+            subjectColorValue: widget.subjectColor.toARGB32(),
             question: _question!,
             answer: _firstUserAnswer!,
             date: DateTime.now(),
@@ -2301,12 +2342,12 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
             backgroundColor: _kAccent,
             padding: const EdgeInsets.symmetric(vertical: 13),
             elevation: 0,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           child: const Text('저장하기',
-              style: TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w700)),
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
         ),
       ),
     );

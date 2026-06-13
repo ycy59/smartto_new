@@ -46,7 +46,10 @@ app.*.map.json
 
 # Large model files
 assets/models/*.task
+slm_convert/
+
+# Local agent workspaces
+.claude/
 
 # Xcode device containers
 ios/*.xcappdata
-

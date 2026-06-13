@@ -82,7 +82,9 @@ class AlarmService {
         _mode == AlarmMode.soundAndVibration;
 
     if (playSound) {
-      await _player.stop();
+      try {
+        await _player.stop();
+      } catch (_) {}
       await _player.setVolume(_volume);
       await _player.play(AssetSource(_soundAsset));
     }

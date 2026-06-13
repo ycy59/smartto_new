@@ -53,7 +53,7 @@ class SlmDemoPage extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _kCoralLight.withOpacity(0.55),
+              color: _kCoralLight.withValues(alpha: 0.55),
               border: Border.all(color: _kCoralEdge),
               borderRadius: BorderRadius.circular(14),
             ),
@@ -100,7 +100,7 @@ class SlmDemoPage extends StatelessWidget {
           ),
 
           // ── 시점 그룹: 학습 종료 직후 ──────────────────────────────────
-          _GroupHeader(
+          const _GroupHeader(
             label: "학습 종료 직후 · 즉시 실행",
             color: _kCoral,
             bg: _kCoralLight,
@@ -130,10 +130,10 @@ class SlmDemoPage extends StatelessWidget {
           const SizedBox(height: 16),
 
           // ── 시점 그룹: Report 페이지 ────────────────────────────────────
-          _GroupHeader(
+          const _GroupHeader(
             label: "Report 페이지 · 별도 시점",
             color: _kTextSecondary,
-            bg: const Color(0xFFE8E4DE),
+            bg: Color(0xFFE8E4DE),
           ),
           const SizedBox(height: 8),
           _DemoCard(
@@ -338,7 +338,10 @@ class _DemoCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_right, color: _kTextMuted.withOpacity(0.7)),
+                Icon(
+                  Icons.chevron_right,
+                  color: _kTextMuted.withValues(alpha: 0.7),
+                ),
               ],
             ),
           ),
@@ -714,7 +717,7 @@ class _RecallHistoryDemo extends StatelessWidget {
           return ListTile(
             tileColor: _kBg,
             leading: CircleAvatar(
-              backgroundColor: _colorFor(r["trigger"]).withOpacity(0.15),
+              backgroundColor: _colorFor(r["trigger"]).withValues(alpha: 0.15),
               child: Icon(_iconFor(r["trigger"]),
                   color: _colorFor(r["trigger"]), size: 20),
             ),
@@ -890,7 +893,7 @@ class _StudyCardsDemo extends StatelessWidget {
     },
     {
       "name": "한국사",
-      "color": Color(0xFF8a7a5a),
+      "color": const Color(0xFF8a7a5a),
       "summary": "회상 카드 1장 · 평균 집중도 69%",
       "insight": "한국사는 원인과 결과를 연결하는 답변이 필요해요. 사건을 시간 순서로 3단계만 나눠보면 복습 효과가 좋아요.",
       "cards": [
@@ -971,7 +974,7 @@ class _StudyCardsDemo extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _kCoralLight.withOpacity(0.5),
+                      color: _kCoralLight.withValues(alpha: 0.5),
                       border: Border.all(color: _kCoralEdge),
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -1072,7 +1075,7 @@ class _SubjectStudyCard extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.14),
+                      color: color.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -1201,7 +1204,7 @@ class _SubjectCardDetailSheet extends StatelessWidget {
             _DetailBlock(
               label: "내 답변",
               text: card["a"] as String,
-              background: _kCoralLight.withOpacity(0.45),
+              background: _kCoralLight.withValues(alpha: 0.45),
             ),
             const SizedBox(height: 12),
             _DetailBlock(
