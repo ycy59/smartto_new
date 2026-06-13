@@ -427,15 +427,19 @@ class ConcentrationService {
   // contour 점들의 bbox height/width 비율 × 0.5
   double _earFromContour(List<dynamic>? pts) {
     if (pts == null || pts.length < 4) return 0.25;
-    final ys = pts.map((p) => (p.y as num).toDouble()).toList();
-    final xs = pts.map((p) => (p.x as num).toDouble()).toList();
-    double minY = ys[0], maxY = ys[0];
-    double minX = xs[0], maxX = xs[0];
-    for (int i = 1; i < ys.length; i++) {
-      if (ys[i] < minY) minY = ys[i];
-      if (ys[i] > maxY) maxY = ys[i];
-      if (xs[i] < minX) minX = xs[i];
-      if (xs[i] > maxX) maxX = xs[i];
+    final first = pts.first;
+    double minY = (first.y as num).toDouble();
+    double maxY = minY;
+    double minX = (first.x as num).toDouble();
+    double maxX = minX;
+    for (int i = 1; i < pts.length; i++) {
+      final point = pts[i];
+      final y = (point.y as num).toDouble();
+      final x = (point.x as num).toDouble();
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
     }
     final height = maxY - minY;
     final width = maxX - minX;
@@ -612,7 +616,10 @@ class ConcentrationService {
   // ONNX 추론 + 안정화 + 점수 산정 (50/30/20)
   // ─────────────────────────────────────────────────────────────────────────
   void _runInferenceIfReady() {
-    final faceCount = _buf.where((f) => f[9] > 0.5).length;
+    var faceCount = 0;
+    for (final frame in _buf) {
+      if (frame[9] > 0.5) faceCount++;
+    }
     if (!_ready && faceCount >= _kMlMinSamples) {
       _ready = true;
       _stable = true;
@@ -671,12 +678,13 @@ class ConcentrationService {
 
         // presence: 최근 5초 윈도우 (자리 이탈 즉각 반영)
         const presenceWindowFrames = 30;
-        final recentBuf = _buf.length > presenceWindowFrames
-            ? _buf.sublist(_buf.length - presenceWindowFrames)
-            : _buf;
-        final recentFace = recentBuf.where((f) => f[9] > 0.5).length;
-        final presenceRatio =
-            recentBuf.isEmpty ? 1.0 : recentFace / recentBuf.length;
+        final recentStart = math.max(0, _buf.length - presenceWindowFrames);
+        var recentFace = 0;
+        for (int i = recentStart; i < _buf.length; i++) {
+          if (_buf[i][9] > 0.5) recentFace++;
+        }
+        final recentCount = _buf.length - recentStart;
+        final presenceRatio = recentCount == 0 ? 1.0 : recentFace / recentCount;
 
         // stare: 정상 깜빡임 비율
         final blinkCount = _countBlinksInBuffer();

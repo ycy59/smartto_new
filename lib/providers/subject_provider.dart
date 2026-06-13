@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../domain/entities/subject.dart';
+import 'calendar_provider.dart';
 import 'database_provider.dart';
 import 'stats_provider.dart';
 import 'today_plan_provider.dart';
@@ -28,6 +29,7 @@ class SubjectNotifier extends AsyncNotifier<List<Subject>> {
     // 새 과목이 생기면 오늘 계획·통계도 영향을 받을 수 있음
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
+    invalidateReportProviders(ref);
     return subject;
   }
 
@@ -38,5 +40,7 @@ class SubjectNotifier extends AsyncNotifier<List<Subject>> {
     // 관련 화면 데이터도 함께 무효화.
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
+    ref.invalidate(calendarMonthDataProvider);
+    invalidateReportProviders(ref);
   }
 }

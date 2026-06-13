@@ -95,7 +95,7 @@ final calendarMonthDataProvider =
   final subjectRepo = ref.read(subjectRepoProvider);
 
   final sessionsFuture = sessionRepo.getByDateRange(from, to);
-  final goalsFuture = goalRepo.getAll();
+  final goalsFuture = goalRepo.getAllWithoutTodos();
   final subjectsFuture = subjectRepo.getAll();
 
   // 1) 해당 월에 발생한 세션 → 일별 집중도 평균

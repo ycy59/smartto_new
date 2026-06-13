@@ -42,13 +42,26 @@ class SmarttoApp extends ConsumerWidget {
   }
 }
 
-class _AppEntry extends StatelessWidget {
+class _AppEntry extends StatefulWidget {
   const _AppEntry();
+
+  @override
+  State<_AppEntry> createState() => _AppEntryState();
+}
+
+class _AppEntryState extends State<_AppEntry> {
+  late final Future<SharedPreferences> _prefsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefsFuture = SharedPreferences.getInstance();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<SharedPreferences>(
-      future: SharedPreferences.getInstance(),
+      future: _prefsFuture,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const Scaffold(backgroundColor: Colors.white);

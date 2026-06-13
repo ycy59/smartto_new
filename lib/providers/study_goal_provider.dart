@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../algorithms/fsrs/fsrs_engine.dart';
 import '../domain/entities/study_goal.dart';
 import '../domain/entities/todo_item.dart';
+import 'calendar_provider.dart';
 import 'database_provider.dart';
 import 'stats_provider.dart';
 import 'today_plan_provider.dart';
@@ -10,8 +11,8 @@ import 'today_plan_provider.dart';
 const _uuid = Uuid();
 
 /// 특정 과목의 학습 목표 목록
-final goalsBySubjectProvider =
-    AsyncNotifierProviderFamily<GoalsBySubjectNotifier, List<StudyGoal>, String>(
+final goalsBySubjectProvider = AsyncNotifierProviderFamily<
+    GoalsBySubjectNotifier, List<StudyGoal>, String>(
   GoalsBySubjectNotifier.new,
 );
 
@@ -67,6 +68,8 @@ class GoalsBySubjectNotifier
     ref.invalidateSelf();
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
+    ref.invalidate(calendarMonthDataProvider);
+    invalidateReportProviders(ref);
   }
 
   /// 세션 종료 후 집중도 점수로 FSRS 업데이트
@@ -102,5 +105,7 @@ class GoalsBySubjectNotifier
     ref.invalidateSelf();
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
+    ref.invalidate(calendarMonthDataProvider);
+    invalidateReportProviders(ref);
   }
 }

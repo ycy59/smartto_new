@@ -17,9 +17,7 @@ class DatabaseHelper {
   }
 
   Future<Database> _init() async {
-    final path = kIsWeb
-        ? _dbName
-        : p.join(await getDatabasesPath(), _dbName);
+    final path = kIsWeb ? _dbName : p.join(await getDatabasesPath(), _dbName);
     return openDatabase(
       path,
       version: _dbVersion,
@@ -117,29 +115,31 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      await db.execute(
-        'ALTER TABLE todo_items ADD COLUMN priority INTEGER NOT NULL DEFAULT 0',
-      );
-    }
-    if (oldVersion < 3) {
-      await db.execute(
-        "ALTER TABLE todo_items ADD COLUMN mode TEXT NOT NULL DEFAULT 'study'",
-      );
-      await db.execute(
-        'ALTER TABLE todo_items ADD COLUMN due_date INTEGER',
-      );
-    }
-    if (oldVersion < 4) {
-      // 리포트의 "오늘 완료한 todo" 집계를 위해 완료 시각 추가.
-      // 기존 is_done=1 데이터는 completed_at이 NULL → 일자별 집계에서 자연스럽게 제외됨.
-      await db.execute(
-        'ALTER TABLE todo_items ADD COLUMN completed_at INTEGER',
-      );
-      await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todo_items(completed_at)',
-      );
-    }
+    await db.transaction((txn) async {
+      if (oldVersion < 2) {
+        await txn.execute(
+          'ALTER TABLE todo_items ADD COLUMN priority INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (oldVersion < 3) {
+        await txn.execute(
+          "ALTER TABLE todo_items ADD COLUMN mode TEXT NOT NULL DEFAULT 'study'",
+        );
+        await txn.execute(
+          'ALTER TABLE todo_items ADD COLUMN due_date INTEGER',
+        );
+      }
+      if (oldVersion < 4) {
+        // 리포트의 "오늘 완료한 todo" 집계를 위해 완료 시각 추가.
+        // 기존 is_done=1 데이터는 completed_at이 NULL → 일자별 집계에서 자연스럽게 제외됨.
+        await txn.execute(
+          'ALTER TABLE todo_items ADD COLUMN completed_at INTEGER',
+        );
+        await txn.execute(
+          'CREATE INDEX IF NOT EXISTS idx_todos_completed_at ON todo_items(completed_at)',
+        );
+      }
+    });
   }
 
   // ── CRUD 헬퍼 ──────────────────────────────────────────────────────
@@ -160,6 +160,18 @@ class DatabaseHelper {
     return db.insert(table, data, conflictAlgorithm: ConflictAlgorithm.abort);
   }
 
+  Future<void> insertAll(
+    String table,
+    Iterable<Map<String, dynamic>> rows,
+  ) async {
+    final db = await database;
+    final batch = db.batch();
+    for (final row in rows) {
+      batch.insert(table, row, conflictAlgorithm: ConflictAlgorithm.abort);
+    }
+    await batch.commit(noResult: true);
+  }
+
   Future<List<Map<String, dynamic>>> query(
     String table, {
     String? where,
@@ -167,7 +179,8 @@ class DatabaseHelper {
     String? orderBy,
   }) async {
     final db = await database;
-    return db.query(table, where: where, whereArgs: whereArgs, orderBy: orderBy);
+    return db.query(table,
+        where: where, whereArgs: whereArgs, orderBy: orderBy);
   }
 
   Future<int> update(

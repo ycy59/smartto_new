@@ -20,9 +20,11 @@ class PriorityCalculator {
   static const int _maxPerGroup = 4;
 
   /// 전체 목표 우선순위 점수 계산 후 정렬
-  static List<PrioritizedGoal> sort(List<StudyGoal> goals) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
+  static List<PrioritizedGoal> sort(
+    List<StudyGoal> goals, {
+    DateTime? today,
+  }) {
+    final today0 = today ?? _today();
 
     final prioritized = goals.map((goal) {
       final nextDueDay = DateTime(
@@ -30,11 +32,13 @@ class PriorityCalculator {
         goal.nextDue.month,
         goal.nextDue.day,
       );
-      final overdueDays = today.difference(nextDueDay).inDays.toDouble();
+      final overdueDays = today0.difference(nextDueDay).inDays.toDouble();
 
       double deadlineBonus = 0;
       if (goal.mode == StudyMode.exam && goal.dueDate != null) {
-        final daysLeft = goal.daysUntilDeadline ?? 999;
+        final dueDate = goal.dueDate!;
+        final deadlineDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+        final daysLeft = deadlineDay.difference(today0).inDays;
         if (daysLeft >= 0 && daysLeft <= _deadlineUrgencyDays) {
           deadlineBonus = (_deadlineUrgencyDays - daysLeft).toDouble();
         }
@@ -56,17 +60,24 @@ class PriorityCalculator {
   /// 오늘의 계획: 시험 모드 [_maxPerGroup] + 학습 모드 [_maxPerGroup] 까지.
   /// 각 그룹 안에서 우선순위 높은 순으로 선택 후 합쳐서 재정렬.
   static List<PrioritizedGoal> todayPlan(List<StudyGoal> allGoals) {
-    final dueGoals = allGoals.where((g) => g.isDue).toList();
-    final sorted = sort(dueGoals);
+    final today = _today();
+    final dueGoals = allGoals.where((g) {
+      final due = DateTime(g.nextDue.year, g.nextDue.month, g.nextDue.day);
+      return !due.isAfter(today);
+    }).toList();
+    final sorted = sort(dueGoals, today: today);
 
-    final examPicks = sorted
-        .where((p) => p.goal.mode == StudyMode.exam)
-        .take(_maxPerGroup);
-    final studyPicks = sorted
-        .where((p) => p.goal.mode == StudyMode.study)
-        .take(_maxPerGroup);
+    final examPicks =
+        sorted.where((p) => p.goal.mode == StudyMode.exam).take(_maxPerGroup);
+    final studyPicks =
+        sorted.where((p) => p.goal.mode == StudyMode.study).take(_maxPerGroup);
 
     return [...examPicks, ...studyPicks]
       ..sort((a, b) => b.score.compareTo(a.score));
+  }
+
+  static DateTime _today() {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day);
   }
 }

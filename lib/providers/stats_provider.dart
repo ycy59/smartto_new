@@ -634,6 +634,24 @@ final weeklyReportProvider =
   return ReportQueries.getWeeklyReport(db, weekStart);
 });
 
+void invalidateReportProviders(Ref ref) {
+  ref.invalidate(dailyReportProvider);
+  ref.invalidate(dailyHourlyBucketsProvider);
+  ref.invalidate(dailyModeRatioProvider);
+  ref.invalidate(dailyActivitiesProvider);
+  ref.invalidate(dailyReportBundleProvider);
+  ref.invalidate(weeklyReportProvider);
+}
+
+void invalidateReportProvidersFromWidget(WidgetRef ref) {
+  ref.invalidate(dailyReportProvider);
+  ref.invalidate(dailyHourlyBucketsProvider);
+  ref.invalidate(dailyModeRatioProvider);
+  ref.invalidate(dailyActivitiesProvider);
+  ref.invalidate(dailyReportBundleProvider);
+  ref.invalidate(weeklyReportProvider);
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 //  내부 유틸
 // ───────────────────────────────────────────────────────────────────────────

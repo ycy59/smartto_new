@@ -7,6 +7,7 @@ import '../domain/entities/subject.dart' as domain;
 import '../domain/entities/study_goal.dart';
 import '../domain/entities/todo_item.dart' as domain;
 import '../providers/database_provider.dart';
+import '../providers/calendar_provider.dart';
 import '../providers/stats_provider.dart';
 import '../providers/study_goal_provider.dart';
 import '../providers/study_qa_provider.dart';
@@ -79,12 +80,20 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     final subjectRepo = ref.read(subjectRepoProvider);
     final goalRepo = ref.read(studyGoalRepoProvider);
 
-    final subjects = await subjectRepo.getAll();
+    final subjectsFuture = subjectRepo.getAll();
+    final goalsFuture = goalRepo.getAll();
+    final subjects = await subjectsFuture;
+    final goals = await goalsFuture;
+    final goalsBySubject = <String, List<StudyGoal>>{};
+    for (final goal in goals) {
+      (goalsBySubject[goal.subjectId] ??= []).add(goal);
+    }
+
     final result = <SubjectItem>[];
 
     for (final subject in subjects) {
-      final goals = await goalRepo.getBySubject(subject.id);
-      if (goals.isEmpty) {
+      final subjectGoals = goalsBySubject[subject.id] ?? const <StudyGoal>[];
+      if (subjectGoals.isEmpty) {
         result.add(SubjectItem(
           subjectId: subject.id,
           goalId: null,
@@ -95,7 +104,7 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
         ));
         continue;
       }
-      final goal = goals.first;
+      final goal = subjectGoals.first;
       result.add(SubjectItem(
         subjectId: subject.id,
         goalId: goal.id,
@@ -171,10 +180,11 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       }
     }
 
+    final todosToSave = <domain.TodoItem>[];
     for (int i = 0; i < item.todos.length; i++) {
       final t = item.todos[i];
       if (t.text.isNotEmpty) {
-        await todoRepo.save(domain.TodoItem(
+        todosToSave.add(domain.TodoItem(
           id: t.id ?? uuid.v4(),
           goalId: goalId,
           text: t.text,
@@ -186,9 +196,12 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
         ));
       }
     }
+    await todoRepo.saveAll(todosToSave);
 
     ref.read(todayPlanProvider.notifier).refresh();
     ref.read(statsProvider.notifier).refresh();
+    ref.invalidate(calendarMonthDataProvider);
+    invalidateReportProvidersFromWidget(ref);
     if (item.subjectId != null) {
       ref.invalidate(goalsBySubjectProvider(item.subjectId!));
     }
@@ -244,7 +257,9 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.45,
-                    color: isDark ? const Color(0xFF888888) : const Color(0xFF8F8F8F),
+                    color: isDark
+                        ? const Color(0xFF888888)
+                        : const Color(0xFF8F8F8F),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -258,12 +273,16 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
                           onPressed: () => Navigator.pop(context, false),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(
-                              color: isDark ? const Color(0xFF444444) : const Color(0xFFE5E5E5),
+                              color: isDark
+                                  ? const Color(0xFF444444)
+                                  : const Color(0xFFE5E5E5),
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF8F8F8),
+                            backgroundColor: isDark
+                                ? const Color(0xFF2C2C2C)
+                                : const Color(0xFFF8F8F8),
                             foregroundColor: const Color(0xFF9A9A9A),
                           ),
                           child: const Text(
@@ -308,9 +327,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
 
     final cameraTasks = _subjects
         .where((s) => s.goalId != null && s.subjectId != null)
-        .expand((s) => s.todos
-            .where((t) => t.text.isNotEmpty)
-            .map((t) => CameraTask(
+        .expand((s) =>
+            s.todos.where((t) => t.text.isNotEmpty).map((t) => CameraTask(
                   todoId: t.id ?? '',
                   goalId: s.goalId!,
                   subjectId: s.subjectId!,
@@ -337,7 +355,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
         .where((c) => !used.contains(c.toARGB32()))
         .toList();
     if (unused.isEmpty) {
-      return kSubjectColorPalette[Random().nextInt(kSubjectColorPalette.length)];
+      return kSubjectColorPalette[
+          Random().nextInt(kSubjectColorPalette.length)];
     }
     unused.shuffle(Random());
     return unused.first;
@@ -399,6 +418,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
       await ref.read(subjectRepoProvider).delete(item.subjectId!);
       ref.read(todayPlanProvider.notifier).refresh();
       ref.read(statsProvider.notifier).refresh();
+      ref.invalidate(calendarMonthDataProvider);
+      invalidateReportProvidersFromWidget(ref);
       ref.invalidate(goalsBySubjectProvider(item.subjectId!));
     }
     setState(() {
@@ -444,7 +465,8 @@ class _SubjectPageShellState extends ConsumerState<SubjectPageShell> {
     }
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2),
+      backgroundColor:
+          isDark ? const Color(0xFF121212) : const Color(0xFFF7F4F2),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -573,7 +595,8 @@ class SubjectListPage extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
-                color: isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2),
+                color:
+                    isDark ? const Color(0xFF666666) : const Color(0xFFB2B2B2),
               ),
             ),
             const SizedBox(height: 18),
@@ -782,7 +805,9 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
   UnderstandingLevel? _selectedLevel;
 
   final List<TodoItem> _todos = [TodoItem(text: '', done: false)];
-  final List<TextEditingController> _todoControllers = [TextEditingController()];
+  final List<TextEditingController> _todoControllers = [
+    TextEditingController()
+  ];
 
   @override
   void dispose() {
@@ -868,7 +893,9 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF555555) : const Color(0xFFD0D0D0),
+                  color: isDark
+                      ? const Color(0xFF555555)
+                      : const Color(0xFFD0D0D0),
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
@@ -878,7 +905,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
               '이름 설정',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
+                color:
+                    isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -886,10 +914,13 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
             Container(
               height: 42,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFEFD),
+                color:
+                    isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFEFD),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: isDark ? const Color(0xFF444444) : const Color(0xFFE6E2D8),
+                  color: isDark
+                      ? const Color(0xFF444444)
+                      : const Color(0xFFE6E2D8),
                 ),
               ),
               child: TextField(
@@ -901,7 +932,9 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 decoration: InputDecoration(
                   hintText: '입력',
                   hintStyle: TextStyle(
-                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE),
+                    color: isDark
+                        ? const Color(0xFF666666)
+                        : const Color(0xFFBEBEBE),
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
@@ -914,7 +947,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
               '이해도',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
+                color:
+                    isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -926,7 +960,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '어려움',
                     background: const Color(0xFFF08AA1),
                     selected: _selectedLevel == UnderstandingLevel.hard,
-                    onTap: () => setState(() => _selectedLevel = UnderstandingLevel.hard),
+                    onTap: () => setState(
+                        () => _selectedLevel = UnderstandingLevel.hard),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -935,7 +970,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '보통',
                     background: const Color(0xFFF0C06F),
                     selected: _selectedLevel == UnderstandingLevel.normal,
-                    onTap: () => setState(() => _selectedLevel = UnderstandingLevel.normal),
+                    onTap: () => setState(
+                        () => _selectedLevel = UnderstandingLevel.normal),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -944,7 +980,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                     title: '쉬움',
                     background: const Color(0xFF97D778),
                     selected: _selectedLevel == UnderstandingLevel.easy,
-                    onTap: () => setState(() => _selectedLevel = UnderstandingLevel.easy),
+                    onTap: () => setState(
+                        () => _selectedLevel = UnderstandingLevel.easy),
                   ),
                 ),
               ],
@@ -954,7 +991,8 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
               '할 일',
               style: TextStyle(
                 fontSize: 13,
-                color: isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
+                color:
+                    isDark ? const Color(0xFF888888) : const Color(0xFF7A7A7A),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1000,17 +1038,22 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                   isDense: true,
                                   hintText: '할 일 입력',
                                   hintStyle: TextStyle(
-                                    color: isDark ? const Color(0xFF666666) : const Color(0xFFBEBEBE),
+                                    color: isDark
+                                        ? const Color(0xFF666666)
+                                        : const Color(0xFFBEBEBE),
                                     fontSize: 13,
                                   ),
                                   border: const UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                    borderSide:
+                                        BorderSide(color: Color(0xFFD9D9D9)),
                                   ),
                                   enabledBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                    borderSide:
+                                        BorderSide(color: Color(0xFFD9D9D9)),
                                   ),
                                   focusedBorder: const UnderlineInputBorder(
-                                    borderSide: BorderSide(color: Color(0xFFBDBDBD)),
+                                    borderSide:
+                                        BorderSide(color: Color(0xFFBDBDBD)),
                                   ),
                                 ),
                               ),
@@ -1028,9 +1071,12 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                                 });
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: isExam ? const Color(0xFFF08AA1) : const Color(0xFFB8DE9D),
+                                  color: isExam
+                                      ? const Color(0xFFF08AA1)
+                                      : const Color(0xFFB8DE9D),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
@@ -1052,14 +1098,17 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                               onTap: () => _pickTodoDate(index),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.calendar_today, size: 13, color: Color(0xFF9B9B9B)),
+                                  const Icon(Icons.calendar_today,
+                                      size: 13, color: Color(0xFF9B9B9B)),
                                   const SizedBox(width: 6),
                                   Text(
                                     dateText ?? '시험일자 선택',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: dateText != null
-                                          ? isDark ? Colors.white70 : const Color(0xFF444444)
+                                          ? isDark
+                                              ? Colors.white70
+                                              : const Color(0xFF444444)
                                           : const Color(0xFFBEBEBE),
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -1082,12 +1131,16 @@ class _SubjectAddPageState extends State<SubjectAddPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF299B2),
                   disabledBackgroundColor: const Color(0xFFF0D8DF),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
                   elevation: 0,
                 ),
                 child: const Text(
                   '완료',
-                  style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700),
                 ),
               ),
             ),
@@ -1153,7 +1206,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                 ))
             .toList();
 
-    _todoControllers = _todos.map((e) => TextEditingController(text: e.text)).toList();
+    _todoControllers =
+        _todos.map((e) => TextEditingController(text: e.text)).toList();
   }
 
   @override
@@ -1227,7 +1281,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
             done: _todos[i].done,
             priority: _todos[i].priority,
             mode: _todos[i].mode,
-            dueDate: _todos[i].mode == StudyMode.exam ? _todos[i].dueDate : null,
+            dueDate:
+                _todos[i].mode == StudyMode.exam ? _todos[i].dueDate : null,
           ),
         );
       }
@@ -1292,7 +1347,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                               _showColorPalette = !_showColorPalette;
                             });
                           },
-                          icon: const Icon(Icons.edit, size: 18, color: Color(0xFF9B9B9B)),
+                          icon: const Icon(Icons.edit,
+                              size: 18, color: Color(0xFF9B9B9B)),
                         ),
                       ],
                     ),
@@ -1323,7 +1379,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                   height: 8,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: selected ? color : Colors.transparent,
+                                    color:
+                                        selected ? color : Colors.transparent,
                                   ),
                                 ),
                               ),
@@ -1337,13 +1394,17 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                       children: [
                         GestureDetector(
                           onTap: widget.onBack,
-                          child: const Icon(Icons.chevron_left, color: Color(0xFFB2B2B2)),
+                          child: const Icon(Icons.chevron_left,
+                              color: Color(0xFFB2B2B2)),
                         ),
                         Expanded(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF2C2C2C) : _softBackground(_selectedColor),
+                              color: isDark
+                                  ? const Color(0xFF2C2C2C)
+                                  : _softBackground(_selectedColor),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Column(
@@ -1357,12 +1418,15 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                       style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
-                                        color: isDark ? Colors.white : Colors.black,
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black,
                                       ),
                                     ),
                                     const Spacer(),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
                                         color: _levelColor,
                                         borderRadius: BorderRadius.circular(12),
@@ -1377,12 +1441,15 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    if (_todos.any((t) => t.mode == StudyMode.exam))
+                                    if (_todos
+                                        .any((t) => t.mode == StudyMode.exam))
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
                                         decoration: BoxDecoration(
                                           color: const Color(0xFFB8DE9D),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                         child: Text(
                                           'D-${_dDay < 0 ? 0 : _dDay + 1}',
@@ -1397,14 +1464,16 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                 ),
                                 const SizedBox(height: 10),
                                 Column(
-                                  children: List.generate(_todoControllers.length, (index) {
+                                  children: List.generate(
+                                      _todoControllers.length, (index) {
                                     final todo = _todos[index];
                                     final isExam = todo.mode == StudyMode.exam;
                                     final dateText = todo.dueDate != null
                                         ? '${todo.dueDate!.month}/${todo.dueDate!.day}'
                                         : null;
                                     return Padding(
-                                      padding: const EdgeInsets.only(bottom: 10),
+                                      padding:
+                                          const EdgeInsets.only(bottom: 10),
                                       child: Column(
                                         children: [
                                           Row(
@@ -1412,7 +1481,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                               GestureDetector(
                                                 onTap: () {
                                                   setState(() {
-                                                    _todos[index].done = !_todos[index].done;
+                                                    _todos[index].done =
+                                                        !_todos[index].done;
                                                   });
                                                 },
                                                 child: Container(
@@ -1421,7 +1491,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                                   decoration: BoxDecoration(
                                                     color: _todos[index].done
                                                         ? _selectedColor
-                                                        : const Color(0xFFE0E0E0),
+                                                        : const Color(
+                                                            0xFFE0E0E0),
                                                     shape: BoxShape.circle,
                                                   ),
                                                 ),
@@ -1429,7 +1500,8 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                               const SizedBox(width: 10),
                                               Expanded(
                                                 child: TextField(
-                                                  controller: _todoControllers[index],
+                                                  controller:
+                                                      _todoControllers[index],
                                                   onChanged: (value) {
                                                     _todos[index].text = value;
                                                   },
@@ -1438,18 +1510,30 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                                   },
                                                   style: TextStyle(
                                                     fontSize: 13,
-                                                    color: isDark ? Colors.white : Colors.black,
+                                                    color: isDark
+                                                        ? Colors.white
+                                                        : Colors.black,
                                                   ),
-                                                  decoration: const InputDecoration(
+                                                  decoration:
+                                                      const InputDecoration(
                                                     isDense: true,
-                                                    border: UnderlineInputBorder(
-                                                      borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                                    border:
+                                                        UnderlineInputBorder(
+                                                      borderSide: BorderSide(
+                                                          color: Color(
+                                                              0xFFD9D9D9)),
                                                     ),
-                                                    enabledBorder: UnderlineInputBorder(
-                                                      borderSide: BorderSide(color: Color(0xFFD9D9D9)),
+                                                    enabledBorder:
+                                                        UnderlineInputBorder(
+                                                      borderSide: BorderSide(
+                                                          color: Color(
+                                                              0xFFD9D9D9)),
                                                     ),
-                                                    focusedBorder: UnderlineInputBorder(
-                                                      borderSide: BorderSide(color: Color(0xFFBDBDBD)),
+                                                    focusedBorder:
+                                                        UnderlineInputBorder(
+                                                      borderSide: BorderSide(
+                                                          color: Color(
+                                                              0xFFBDBDBD)),
                                                     ),
                                                   ),
                                                 ),
@@ -1458,26 +1542,39 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                               GestureDetector(
                                                 onTap: () {
                                                   setState(() {
-                                                    if (todo.mode == StudyMode.study) {
-                                                      todo.mode = StudyMode.exam;
+                                                    if (todo.mode ==
+                                                        StudyMode.study) {
+                                                      todo.mode =
+                                                          StudyMode.exam;
                                                     } else {
-                                                      todo.mode = StudyMode.study;
+                                                      todo.mode =
+                                                          StudyMode.study;
                                                       todo.dueDate = null;
                                                     }
                                                   });
                                                 },
                                                 child: Container(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 3),
                                                   decoration: BoxDecoration(
-                                                    color: isExam ? const Color(0xFFF08AA1) : const Color(0xFFB8DE9D),
-                                                    borderRadius: BorderRadius.circular(10),
+                                                    color: isExam
+                                                        ? const Color(
+                                                            0xFFF08AA1)
+                                                        : const Color(
+                                                            0xFFB8DE9D),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            10),
                                                   ),
                                                   child: Text(
                                                     isExam ? '시험' : '학습',
                                                     style: const TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 9,
-                                                      fontWeight: FontWeight.w700,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                     ),
                                                   ),
                                                 ),
@@ -1486,21 +1583,32 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
                                           ),
                                           if (isExam)
                                             Padding(
-                                              padding: const EdgeInsets.only(left: 22, top: 4),
+                                              padding: const EdgeInsets.only(
+                                                  left: 22, top: 4),
                                               child: GestureDetector(
-                                                onTap: () => _pickTodoDate(index),
+                                                onTap: () =>
+                                                    _pickTodoDate(index),
                                                 child: Row(
                                                   children: [
-                                                    const Icon(Icons.calendar_today, size: 12, color: Color(0xFF9B9B9B)),
+                                                    const Icon(
+                                                        Icons.calendar_today,
+                                                        size: 12,
+                                                        color:
+                                                            Color(0xFF9B9B9B)),
                                                     const SizedBox(width: 4),
                                                     Text(
                                                       dateText ?? '시험일자 선택',
                                                       style: TextStyle(
                                                         fontSize: 11,
                                                         color: dateText != null
-                                                            ? isDark ? Colors.white70 : const Color(0xFF444444)
-                                                            : const Color(0xFFBEBEBE),
-                                                        fontWeight: FontWeight.w600,
+                                                            ? isDark
+                                                                ? Colors.white70
+                                                                : const Color(
+                                                                    0xFF444444)
+                                                            : const Color(
+                                                                0xFFBEBEBE),
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                       ),
                                                     ),
                                                   ],
@@ -1531,12 +1639,16 @@ class _SubjectDetailPageState extends State<SubjectDetailPage> {
               onPressed: _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFF299B2),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
                 elevation: 0,
               ),
               child: const Text(
                 '저장',
-                style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -1575,12 +1687,15 @@ class _LevelButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(12),
-            border: selected ? Border.all(color: const Color(0xFF8D8D8D), width: 1) : null,
+            border: selected
+                ? Border.all(color: const Color(0xFF8D8D8D), width: 1)
+                : null,
           ),
           alignment: Alignment.center,
           child: Text(
             title,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+            style: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ),
       ),
@@ -1620,8 +1735,9 @@ class SubjectItem {
     return earliest;
   }
 
-  StudyMode get derivedMode =>
-      todos.any((t) => t.mode == StudyMode.exam) ? StudyMode.exam : StudyMode.study;
+  StudyMode get derivedMode => todos.any((t) => t.mode == StudyMode.exam)
+      ? StudyMode.exam
+      : StudyMode.study;
 
   int get dDay {
     final date = earliestExamDate;
@@ -1748,9 +1864,12 @@ class StudyQAPage extends ConsumerWidget {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF6E1DF),
+                    color: isDark
+                        ? const Color(0xFF2C2C2C)
+                        : const Color(0xFFF6E1DF),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1758,7 +1877,9 @@ class StudyQAPage extends ConsumerWidget {
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFFD97068),
+                      color: isDark
+                          ? const Color(0xFFAAAAAA)
+                          : const Color(0xFFD97068),
                     ),
                   ),
                 ),
@@ -1773,7 +1894,9 @@ class StudyQAPage extends ConsumerWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: isDark ? const Color(0xFF666666) : const Color(0xFFB3B3B3),
+                        color: isDark
+                            ? const Color(0xFF666666)
+                            : const Color(0xFFB3B3B3),
                         height: 1.6,
                       ),
                     ),
@@ -1848,7 +1971,9 @@ class _QACardState extends State<_QACard> {
                   '${qa.date.month}월 ${qa.date.day}일',
                   style: TextStyle(
                     fontSize: 11,
-                    color: isDark ? const Color(0xFF666666) : const Color(0xFFAAAAAA),
+                    color: isDark
+                        ? const Color(0xFF666666)
+                        : const Color(0xFFAAAAAA),
                   ),
                 ),
               ],
@@ -1867,7 +1992,10 @@ class _QACardState extends State<_QACard> {
               children: [
                 const Text(
                   '질문',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFD97068)),
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFFD97068)),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -1898,7 +2026,10 @@ class _QACardState extends State<_QACard> {
                   children: [
                     const Text(
                       '내 답변',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF79B13D)),
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF79B13D)),
                     ),
                     const Spacer(),
                     GestureDetector(
@@ -1908,7 +2039,9 @@ class _QACardState extends State<_QACard> {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? const Color(0xFF888888) : const Color(0xFFAAAAAA),
+                          color: isDark
+                              ? const Color(0xFF888888)
+                              : const Color(0xFFAAAAAA),
                         ),
                       ),
                     ),
@@ -1931,7 +2064,9 @@ class _QACardState extends State<_QACard> {
                     '탭하여 답변 보기',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDark ? const Color(0xFF666666) : const Color(0xFFBBBBBB),
+                      color: isDark
+                          ? const Color(0xFF666666)
+                          : const Color(0xFFBBBBBB),
                     ),
                   ),
                 ],

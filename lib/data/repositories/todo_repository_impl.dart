@@ -24,9 +24,8 @@ class TodoRepositoryImpl implements TodoRepository {
 
   @override
   Future<void> saveAll(List<TodoItem> items) async {
-    for (final item in items) {
-      await _db.insert('todo_items', item.toMap());
-    }
+    if (items.isEmpty) return;
+    await _db.insertAll('todo_items', items.map((item) => item.toMap()));
   }
 
   @override
@@ -47,9 +46,8 @@ class TodoRepositoryImpl implements TodoRepository {
       'todo_items',
       {
         'is_done': isDone ? 1 : 0,
-        'completed_at': isDone
-            ? (when ?? DateTime.now()).millisecondsSinceEpoch
-            : null,
+        'completed_at':
+            isDone ? (when ?? DateTime.now()).millisecondsSinceEpoch : null,
       },
       where: 'id = ?',
       whereArgs: [todoId],

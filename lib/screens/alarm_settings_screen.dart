@@ -99,7 +99,8 @@ class AlarmSettingsScreen extends ConsumerStatefulWidget {
   const AlarmSettingsScreen({super.key});
 
   @override
-  ConsumerState<AlarmSettingsScreen> createState() => _AlarmSettingsScreenState();
+  ConsumerState<AlarmSettingsScreen> createState() =>
+      _AlarmSettingsScreenState();
 }
 
 class _AlarmSettingsScreenState extends ConsumerState<AlarmSettingsScreen> {
@@ -123,9 +124,15 @@ class _AlarmSettingsScreenState extends ConsumerState<AlarmSettingsScreen> {
     setState(() => _mode = m);
   }
 
-  Future<void> _onVolumeChanged(double v) async {
+  void _onVolumePreviewChanged(double v) {
+    setState(() => _volume = v.clamp(0.0, 1.0));
+  }
+
+  Future<void> _persistVolume(double v) async {
     await _alarm.setVolume(v);
-    setState(() => _volume = v);
+    if (mounted) {
+      setState(() => _volume = _alarm.volume);
+    }
   }
 
   Future<void> _onSoundChanged(String asset) async {
@@ -206,7 +213,8 @@ class _AlarmSettingsScreenState extends ConsumerState<AlarmSettingsScreen> {
                   _VolumeRow(
                     volume: _volume,
                     enabled: _soundActive,
-                    onChanged: _soundActive ? _onVolumeChanged : null,
+                    onChanged: _soundActive ? _onVolumePreviewChanged : null,
+                    onChangeEnd: _soundActive ? _persistVolume : null,
                     isDark: isDark,
                   ),
                   _Divider(isDark: isDark),
@@ -343,10 +351,18 @@ class _ModeSelector extends StatelessWidget {
   });
 
   static const _modes = [
-    (mode: AlarmMode.silent,            icon: Icons.notifications_off_outlined,    label: '무음'),
-    (mode: AlarmMode.vibrationOnly,     icon: Icons.vibration,                     label: '진동'),
-    (mode: AlarmMode.soundOnly,         icon: Icons.volume_up_outlined,            label: '소리'),
-    (mode: AlarmMode.soundAndVibration, icon: Icons.notifications_active_outlined, label: '소리+진동'),
+    (
+      mode: AlarmMode.silent,
+      icon: Icons.notifications_off_outlined,
+      label: '무음'
+    ),
+    (mode: AlarmMode.vibrationOnly, icon: Icons.vibration, label: '진동'),
+    (mode: AlarmMode.soundOnly, icon: Icons.volume_up_outlined, label: '소리'),
+    (
+      mode: AlarmMode.soundAndVibration,
+      icon: Icons.notifications_active_outlined,
+      label: '소리+진동'
+    ),
   ];
 
   @override
@@ -401,9 +417,7 @@ class _ModeSelector extends StatelessWidget {
                     Icon(
                       m.icon,
                       size: 22,
-                      color: isSelected
-                          ? Colors.white
-                          : _secondaryText(isDark),
+                      color: isSelected ? Colors.white : _secondaryText(isDark),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -439,18 +453,19 @@ class _VolumeRow extends StatelessWidget {
   final double volume;
   final bool enabled;
   final ValueChanged<double>? onChanged;
+  final ValueChanged<double>? onChangeEnd;
   final bool isDark;
   const _VolumeRow({
     required this.volume,
     required this.enabled,
     this.onChanged,
+    this.onChangeEnd,
     required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    final labelColor =
-        enabled ? _primaryText(isDark) : _mutedText(isDark);
+    final labelColor = enabled ? _primaryText(isDark) : _mutedText(isDark);
     final iconColor = enabled
         ? (isDark ? const Color(0xFFCFCFCF) : const Color(0xFF444444))
         : _mutedText(isDark);
@@ -494,7 +509,9 @@ class _VolumeRow extends StatelessWidget {
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: enabled
                   ? _kAccent
-                  : (isDark ? const Color(0xFF3A3A3A) : const Color(0xFFDDDDDD)),
+                  : (isDark
+                      ? const Color(0xFF3A3A3A)
+                      : const Color(0xFFDDDDDD)),
               inactiveTrackColor:
                   isDark ? const Color(0xFF2C2C2C) : const Color(0xFFEEEEEE),
               thumbColor: enabled ? _kAccent : _mutedText(isDark),
@@ -505,6 +522,7 @@ class _VolumeRow extends StatelessWidget {
             child: Slider(
               value: volume,
               onChanged: enabled ? onChanged : null,
+              onChangeEnd: enabled ? onChangeEnd : null,
             ),
           ),
         ],
@@ -532,8 +550,7 @@ class _SoundPickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelColor =
-        enabled ? _primaryText(isDark) : _mutedText(isDark);
+    final labelColor = enabled ? _primaryText(isDark) : _mutedText(isDark);
     final iconColor = enabled
         ? (isDark ? const Color(0xFFCFCFCF) : const Color(0xFF444444))
         : _mutedText(isDark);
@@ -603,9 +620,8 @@ class _SoundPickerRow extends StatelessWidget {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF555555)
-                    : const Color(0xFFD0D0D0),
+                color:
+                    isDark ? const Color(0xFF555555) : const Color(0xFFD0D0D0),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -628,13 +644,13 @@ class _SoundPickerRow extends StatelessWidget {
                 title: Text(
                   s.label,
                   style: TextStyle(
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected ? _kAccent : _primaryText(isDark),
                   ),
                 ),
-                trailing:
-                    isSelected ? const Icon(Icons.check, color: _kAccent) : null,
+                trailing: isSelected
+                    ? const Icon(Icons.check, color: _kAccent)
+                    : null,
                 onTap: () {
                   onChanged?.call(s.asset);
                   Navigator.pop(ctx);
@@ -723,9 +739,8 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon,
               size: 20,
-              color: isDark
-                  ? const Color(0xFFCFCFCF)
-                  : const Color(0xFF444444)),
+              color:
+                  isDark ? const Color(0xFFCFCFCF) : const Color(0xFF444444)),
           const SizedBox(width: 10),
           Text(
             label,

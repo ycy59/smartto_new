@@ -2,6 +2,7 @@ import '../entities/study_goal.dart';
 
 abstract class StudyGoalRepository {
   Future<List<StudyGoal>> getAll();
+  Future<List<StudyGoal>> getAllWithoutTodos();
   Future<List<StudyGoal>> getBySubject(String subjectId);
   Future<List<StudyGoal>> getDueToday();
   Future<StudyGoal?> getById(String id);

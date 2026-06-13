@@ -4,6 +4,7 @@ import '../domain/entities/study_goal.dart';
 import '../domain/entities/subject.dart';
 import 'calendar_provider.dart';
 import 'database_provider.dart';
+import 'stats_provider.dart';
 
 class TodayPlanEntry {
   final Subject subject;
@@ -97,7 +98,9 @@ class TodayPlanNotifier extends AsyncNotifier<List<TodayPlanEntry>> {
       ref.invalidateSelf();
     }
 
-    // 4) 캘린더의 완료 todo 카운트도 갱신
+    // 4) 완료 todo 기반 통계/리포트/캘린더도 갱신
+    ref.invalidate(statsProvider);
+    invalidateReportProviders(ref);
     ref.invalidate(calendarMonthDataProvider);
   }
 }

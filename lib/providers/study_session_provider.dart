@@ -41,8 +41,7 @@ class StudySessionNotifier extends AsyncNotifier<List<StudySession>> {
     required String subjectId,
   }) async {
     final now = DateTime.now();
-    final durationMinutes =
-        now.difference(session.startedAt).inMinutes;
+    final durationMinutes = now.difference(session.startedAt).inMinutes;
     // FSRS 엔진은 0~100 스케일을 기대하므로 변환.
     final focusPercent = (focusScore * 100).clamp(0.0, 100.0);
 
@@ -68,10 +67,6 @@ class StudySessionNotifier extends AsyncNotifier<List<StudySession>> {
 
     // 리포트 페이지의 family provider 들 — 캐시가 영구라 명시적 invalidate 필요.
     // (이걸 안 하면 세션 종료 후 리포트 페이지에 새 세션이 한참 동안 안 보임)
-    ref.invalidate(dailyReportProvider);
-    ref.invalidate(dailyHourlyBucketsProvider);
-    ref.invalidate(dailyModeRatioProvider);
-    ref.invalidate(dailyActivitiesProvider);
-    ref.invalidate(weeklyReportProvider);
+    invalidateReportProviders(ref);
   }
 }
