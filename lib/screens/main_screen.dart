@@ -35,12 +35,29 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
   late String _nickname;
   String? _profileImagePath;
+  AsyncValue<StudyStats> _statsAsync = const AsyncValue.loading();
 
   @override
   void initState() {
     super.initState();
     _nickname = widget.nickname;
     _profileImagePath = widget.profileImagePath;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStats());
+  }
+
+  Future<void> _loadStats({bool refresh = false}) async {
+    if (refresh) {
+      setState(() => _statsAsync = const AsyncValue.loading());
+      ref.invalidate(statsProvider);
+    }
+    try {
+      final stats = await ref.read(statsProvider.future);
+      if (!mounted) return;
+      setState(() => _statsAsync = AsyncValue.data(stats));
+    } catch (error, stackTrace) {
+      if (!mounted) return;
+      setState(() => _statsAsync = AsyncValue.error(error, stackTrace));
+    }
   }
 
   void _openMyPage() {
@@ -224,12 +241,18 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         child: Column(
                           children: [
                             _FadeSlideIn(
-                              child: GreetingCard(nickname: _nickname),
+                              child: GreetingCard(
+                                nickname: _nickname,
+                                statsAsync: _statsAsync,
+                                onGoalChanged: () => _loadStats(refresh: true),
+                              ),
                             ),
                             const SizedBox(height: 16),
-                            const _FadeSlideIn(
-                              delay: Duration(milliseconds: 90),
-                              child: WeeklyStatsCard(),
+                            _FadeSlideIn(
+                              delay: const Duration(milliseconds: 90),
+                              child: WeeklyStatsCard(
+                                statsAsync: _statsAsync,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             _FadeSlideIn(
@@ -268,10 +291,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 // ─────────────────────────────────────────────
 class GreetingCard extends ConsumerWidget {
   final String nickname;
+  final AsyncValue<StudyStats> statsAsync;
+  final VoidCallback onGoalChanged;
 
   const GreetingCard({
     super.key,
     required this.nickname,
+    required this.statsAsync,
+    required this.onGoalChanged,
   });
 
   /// step(1~16) → 표시 레이블
@@ -296,7 +323,10 @@ class GreetingCard extends ConsumerWidget {
 
   /// 목표 시간 슬라이더 바텀시트
   Future<void> _showGoalPicker(
-      BuildContext context, WidgetRef ref, bool isDark) async {
+    BuildContext context,
+    WidgetRef ref,
+    bool isDark,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     final savedStr = prefs.getString('study_time_goal') ?? '120';
     final savedMin = int.tryParse(savedStr) ?? 120;
@@ -420,7 +450,7 @@ class GreetingCard extends ConsumerWidget {
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString(
                             'study_time_goal', '${step * 30}');
-                        ref.invalidate(statsProvider);
+                        onGoalChanged();
                         if (ctx.mounted) Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
@@ -461,7 +491,6 @@ class GreetingCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final displayName = nickname.trim();
-    final statsAsync = ref.watch(statsProvider);
     final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅ 수정
 
     final todayLabel = statsAsync.when(
@@ -639,11 +668,15 @@ class GreetingCard extends ConsumerWidget {
 // WeeklyStatsCard
 // ─────────────────────────────────────────────
 class WeeklyStatsCard extends ConsumerWidget {
-  const WeeklyStatsCard({super.key});
+  final AsyncValue<StudyStats> statsAsync;
+
+  const WeeklyStatsCard({
+    super.key,
+    required this.statsAsync,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final statsAsync = ref.watch(statsProvider);
     final isDark = ref.watch(themeProvider) == ThemeMode.dark; // ✅ 수정
 
     final totalFocus = statsAsync.when(
@@ -845,6 +878,7 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
   final bool _isEditing = false;
   int? _paletteOpenIndex;
   List<MainPlanSubject> _subjects = [];
+  ProviderSubscription<AsyncValue<List<TodayPlanEntry>>>? _planSub;
 
   final List<Color> _subjectColors = const [
     Color(0xFFE06B63),
@@ -858,7 +892,28 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadTodayPlan());
+    _planSub = ref.listenManual<AsyncValue<List<TodayPlanEntry>>>(
+      todayPlanProvider,
+      (_, next) {
+        next.whenData((entries) {
+          if (mounted && !_isEditing) {
+            setState(() => _subjects = _mapEntries(entries));
+          }
+        });
+      },
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Future<void>.delayed(const Duration(milliseconds: 90));
+      if (mounted) {
+        await _loadTodayPlan();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _planSub?.close();
+    super.dispose();
   }
 
   Future<void> _loadTodayPlan({bool refresh = false}) async {
@@ -984,14 +1039,6 @@ class _TodayPlanCardState extends ConsumerState<TodayPlanCard> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(todayPlanProvider, (_, next) {
-      next.whenData((entries) {
-        if (mounted && !_isEditing) {
-          setState(() => _subjects = _mapEntries(entries));
-        }
-      });
-    });
-
     final isDark = ref.watch(themeProvider) == ThemeMode.dark;
     return Container(
       width: double.infinity,

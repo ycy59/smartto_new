@@ -185,7 +185,11 @@ class _CameraPageState extends ConsumerState<CameraPage> {
     _alarm.init();
     // 세션은 ▶ 누를 때 _startTimer 에서 시작.
     // (선택 상태로 진입하지 않음 — 홈의 task 선택 기능을 제거했기 때문)
-    _initCamera();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initCamera();
+      }
+    });
     // 직전에 ▶ 누르고 백아웃한 진행 중 세션이 있으면 복원 (paused 상태로).
     _restorePausedState();
   }
@@ -335,6 +339,10 @@ class _CameraPageState extends ConsumerState<CameraPage> {
         _camCtrl = ctrl;
         _camReady = true;
       });
+
+      // 프리뷰를 먼저 그린 뒤 ML/ONNX 초기화를 이어서 실행해 첫 진입 멈춤을 줄인다.
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
 
       // ConcentrationService 초기화 + image stream 시작
       try {
