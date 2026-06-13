@@ -1971,12 +1971,13 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
 
   Future<String> _generateInitialQuestion() async {
     try {
-      final downloadState = ref.read(slmDownloadStateProvider);
-      if (!downloadState.isReady) {
-        return SlmPrompts.fallbackQuestion();
-      }
       final slm = ref.read(slmServiceProvider);
-      if (!slm.modelReady) await slm.load();
+      if (!slm.modelReady) {
+        if (!await slm.isModelDownloaded()) {
+          return SlmPrompts.fallbackQuestion();
+        }
+        await slm.load();
+      }
       final prompt = SlmPrompts.recallQuestion(
         subject: widget.subjectName,
         title: widget.taskText,
@@ -1996,7 +1997,12 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
   Future<String> _generateFeedback(String userAnswer) async {
     try {
       final slm = ref.read(slmServiceProvider);
-      if (!slm.modelReady) return SlmPrompts.fallbackFeedback;
+      if (!slm.modelReady) {
+        if (!await slm.isModelDownloaded()) {
+          return SlmPrompts.fallbackFeedback;
+        }
+        await slm.load();
+      }
       final prompt = SlmPrompts.evaluateAnswer(
         question: _question ?? '',
         userAnswer: userAnswer,
@@ -2016,7 +2022,12 @@ class _RecallChatDialogState extends ConsumerState<_RecallChatDialog> {
   Future<String> _generateSummary() async {
     try {
       final slm = ref.read(slmServiceProvider);
-      if (!slm.modelReady) return _fallbackSummary();
+      if (!slm.modelReady) {
+        if (!await slm.isModelDownloaded()) {
+          return _fallbackSummary();
+        }
+        await slm.load();
+      }
       final prompt = SlmPrompts.modelSummary(
         question: _question ?? '',
         subject: widget.subjectName,
